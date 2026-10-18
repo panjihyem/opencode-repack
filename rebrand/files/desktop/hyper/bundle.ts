@@ -58,6 +58,8 @@ async function startServices(children: ChildProcess[]) {
   await applyUnattended(configDir(), state.unattended !== false).catch((error) => log("permission", error))
   // Persistent memory plugin (managed): retains prompts and injects recall.
   await applySessionMemoryPlugin(configDir()).catch((error) => log("memory", error))
+  // Local web search MCP (no API key, no remote configuration).
+  await registerSearch()
   // The memory server follows the RAM-tiered model the wizard picked, but never
   // switches to a model that is not fully downloaded (older installs keep theirs).
   if (await hindsightInstalled(dataDir())) {
@@ -157,6 +159,18 @@ async function registerMemory() {
   await applyServers(configDir(), {
     mem: managed({ type: "remote", url: `http://${host}:${port}/mcp/`, oauth: false }),
   }).catch((error) => log("mem", error))
+}
+
+async function registerSearch() {
+  const entry = path.join(bundleRoot(), "search", "mcp.mjs")
+  await applyServers(configDir(), {
+    "hyper-search": managed({
+      type: "local",
+      // The app's own Electron binary doubles as Node, so no system Node is needed.
+      command: [process.execPath, entry],
+      environment: { ELECTRON_RUN_AS_NODE: "1" },
+    }),
+  }).catch((error) => log("search", error))
 }
 
 async function log(scope: string, detail: unknown) {

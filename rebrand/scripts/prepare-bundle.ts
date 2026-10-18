@@ -30,5 +30,7 @@ for (const component of [manifest.context7]) {
 }
 
 // The setup wizard is plain HTML + a CommonJS preload so it needs no bundler.
+// The search MCP server is the same: plain JavaScript, one bundle every OS.
 await cp(path.join(import.meta.dir, "../files/desktop/wizard"), path.join(root, "wizard"), { recursive: true })
-console.log("bundled setup wizard")
+await cp(path.join(import.meta.dir, "../files/desktop/search"), path.join(root, "search"), { recursive: true })
+console.log("bundled setup wizard + search MCP")
