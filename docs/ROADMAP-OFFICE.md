@@ -64,6 +64,25 @@ Setiap T punya kriteria selesai (definition of done) dan bisa dikirim satu commi
 
 T1→T4 (F1) → T14/T15 (F5, kecil & damage-limiting) → T5/T6/T7 (F2) → T9/T10/T11 (F3) → T12/T13 (F4) → T8/T16.
 
+## Progres (2026-10-19)
+
+| Fase | Status | Bukti/komit |
+|---|---|---|
+| F0 T0 | ✅ | `aaa48be` — wizard auto-pilot; app prod ter-install & diverifikasi |
+| F1 T1–T4 | ✅ | `bcc0367` — office.ts, skills.ts (4 skill), komponen wizard office |
+| F5 T14/T15 | ✅ | `394448e` — applyUnattended on/off idempotent + toggle wizard |
+| F2 T5–T7 | ✅ | `39c667a` — knowledge.ts: `~/Hyper-Knowledge`, sync tiap app-start, ingest langsung via hindsight `files/retain` (Docling tak dibutuhkan utk ingest), bank `general` + `project:<slug>`, idempoten via manifest; uji live: PMK & file project masuk bank, recall keluar fakta + tag `knowledge:regulasi` / `project:audit-2025` |
+| F3 T9/T10 | ✅ | `b629655` — plugin `hyper-memory` (managed): prompt user → bank `sessions` async; recall injection ke system prompt (max 8 fakta, cache per prompt); compaction menyimpan ekor transkrip. Uji live: plugin hot-reload oleh server berjalan, retain terekstraksi |
+| F3 T11 | ◑ | mental models/knowledge pages hindsight tersedia via MCP `mem`; halaman otomatis "Ringkasan Project" belum dibuat (opsional, lanjut nanti) |
+| F4 T12 | ✅ | `3c81805` — MCP `hyper-search` (search/mcp.mjs): rantai DDG → Bing (redirect dibalik + filter anti-bot: 1 domain/ tanpa irisan kata query) → Wikipedia; tak butuh API key; terdaftar sebagai MCP lokal via Electron-as-node |
+| F4 T13 | ✅(≈) | Browser = plugin internal upstream (`plugin-browser`, selalu aktif — sesi Hyper AI otomatis punya 45 tool browser); verifikasi penuh menunggu app final |
+| T8 | ◐ | belum |
+| T16 | ✅(≈) | semua install user-level; wizard belum diganti-nama penuh di beberapa label |
+
+Catatan jaringan mesin dev: DDG diblokir TLS oleh jaringan lokal & Bing kadang
+menyetuh mode anti-bot (hasil canned) — filter memindahkan ke Wikipedia; di
+jaringan normal seluruh sumber berfungsi.
+
 ## Catatan risiko
 
 - `formulas` lib evaluasi xlsx tidak 100% paritas dengan Excel (function coverage ~90%);
