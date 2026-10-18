@@ -1,4 +1,4 @@
-import { chmod, cp, mkdir, mkdtemp, rm, stat } from "node:fs/promises"
+import { chmod, cp, mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import { download } from "./download"
@@ -24,7 +24,9 @@ function appLocation(dataDir: string) {
       "LM Studio",
       "LM Studio.exe",
     )
-  if (process.platform === "darwin") return path.join(os.homedir(), "Applications", "LM Studio.app")
+  // LM Studio's newer builds check that they run from /Applications and misbehave
+  // (their CLI tooling cannot find a valid install) when launched from elsewhere.
+  if (process.platform === "darwin") return "/Applications/LM Studio.app"
   return path.join(dataDir, "lm-studio", "LM-Studio.AppImage")
 }
 
@@ -44,27 +46,44 @@ export async function installLmStudio(dataDir: string, report: Report) {
   await download(installer.url, file, (done, total) => total && report("Downloading LM Studio", done / total))
 
   report("Installing LM Studio", 1)
+  let installed: string | undefined
   if (installer.kind === "exe") await run(file, ["/S"])
-  if (installer.kind === "dmg") await installDmg(file)
+  if (installer.kind === "dmg") installed = await installDmg(file)
   if (installer.kind === "appimage") {
     const target = appLocation(dataDir)
     await mkdir(path.dirname(target), { recursive: true })
     await cp(file, target)
     await chmod(target, 0o755)
+    installed = target
   }
   await rm(file, { force: true })
+  // Their CLI ("lms") only trusts standalone install-location marker files under
+  // ~/.lmstudio/.internal, which the installer itself does not create on headless
+  // machines. Writing them lets the daemon bootstrap succeed in the wizard.
+  if (process.platform === "darwin" && installed) {
+    const internal = path.join(os.homedir(), ".lmstudio", ".internal")
+    await mkdir(internal, { recursive: true })
+    await writeFile(path.join(internal, "app-install-location.json"), JSON.stringify({ json: installed }))
+    await writeFile(path.join(internal, "llmster-install-location.json"), JSON.stringify({ json: installed }))
+  }
 }
 
+/** Copies the app out of the DMG; prefers /Applications, falls back to ~/Applications. */
 async function installDmg(dmg: string) {
   const mount = await mkdtemp(path.join(os.tmpdir(), "hyper-ai-lmstudio-"))
   await run("hdiutil", ["attach", dmg, "-nobrowse", "-readonly", "-mountpoint", mount])
   try {
-    const applications = path.join(os.homedir(), "Applications")
-    await mkdir(applications, { recursive: true })
-    await cp(path.join(mount, "LM Studio.app"), path.join(applications, "LM Studio.app"), {
-      recursive: true,
-      force: true,
-    })
+    const preferred = "/Applications/LM Studio.app"
+    const fallback = path.join(os.homedir(), "Applications", "LM Studio.app")
+    let target = preferred
+    try {
+      await cp(path.join(mount, "LM Studio.app"), preferred, { recursive: true, force: true })
+    } catch {
+      target = fallback
+      await mkdir(path.dirname(fallback), { recursive: true })
+      await cp(path.join(mount, "LM Studio.app"), fallback, { recursive: true, force: true })
+    }
+    return target
   } finally {
     await run("hdiutil", ["detach", mount, "-force"]).catch(() => undefined)
     await rm(mount, { recursive: true, force: true })
@@ -85,12 +104,22 @@ export async function installModels(report: Report) {
   }
 }
 
-/** Starts LM Studio's headless server when its CLI exists (it appears after the app has run once). */
+/** Starts LM Studio's headless server when a CLI binary exists. */
 export async function startLmServer(logDir: string) {
-  if (!(await exists(lmsPath()))) return false
-  await run(lmsPath(), ["daemon", "up"]).catch(() => undefined)
-  const child = await launch(
+  // The app normally links the installed CLI into ~/.lmstudio/bin after its first
+  // GUI run, but a fresh wizard-only install hasn't run yet: fall back to the
+  // copy bundled inside the app itself.
+  const candidates = [
     lmsPath(),
+    path.join("/Applications/LM Studio.app", "Contents/Resources/app/.webpack/lms"),
+    path.join(os.homedir(), "Applications/LM Studio.app/Contents/Resources/app/.webpack/lms"),
+  ]
+  let lms: string | undefined
+  for (const candidate of candidates) if (await exists(candidate)) lms = candidate
+  if (!lms) return false
+  await run(lms, ["daemon", "up"]).catch(() => undefined)
+  const child = await launch(
+    lms,
     ["server", "start", "--port", String(manifest.lmstudio.port)],
     path.join(logDir, "lmstudio.log"),
   )

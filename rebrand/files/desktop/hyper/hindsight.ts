@@ -1,4 +1,5 @@
 import { chmod, cp, mkdir, readdir, rm, stat, writeFile } from "node:fs/promises"
+import os from "node:os"
 import path from "node:path"
 import { download } from "./download"
 import { manifest } from "./manifest"
@@ -54,9 +55,60 @@ export async function installHindsight(dataDir: string, report: Report) {
   await writeFile(marker(root), new Date().toISOString())
 }
 
+/**
+ * pg0's bundled PostgreSQL binaries are linked against Homebrew's OpenSSL
+ * (/opt/homebrew/opt/openssl@3), which machines without Homebrew don't have and
+ * users shouldn't need. Rewire those load commands to the OpenSSL dylibs shipped
+ * inside psycopg2's wheel in our venv. install_name_tool rejects replacement
+ * paths longer than the originals, so a short symlink directory keeps everything
+ * fitting — no Homebrew required.
+ */
+async function patchPostgresOpenSSL(dataDir: string) {
+  if (process.platform !== "darwin") return
+  const homeRoot = process.env.PG0_HOME ?? path.join(os.homedir(), ".pg0")
+  const dylibs = path.join(hindsightRoot(dataDir), "venv", "lib", "python3.12", "site-packages", "psycopg2", ".dylibs")
+  const body = [
+    'export PATH="/usr/bin:/bin:$PATH"',
+    'found=0',
+    'for lib in "$HYPER_PG0_HOME"/installation/*/bin/* "$HYPER_PG0_HOME"/installation/*/lib/*.dylib; do',
+    '  [ -f "$lib" ] || continue',
+    '  otool -L "$lib" 2>/dev/null | grep -q "/opt/homebrew/opt/openssl@3" || continue',
+    '  found=1',
+    '  break',
+    'done',
+    '[ "$found" = 1 ] || exit 0',
+    'mkdir -p "$HYPER_HL_DIR"',
+    'for name in libssl.3.dylib libcrypto.3.dylib; do',
+    '  [ -f "$HYPER_VENV_DYLIBS/$name" ] || continue',
+    '  ln -sf "$HYPER_VENV_DYLIBS/$name" "$HYPER_HL_DIR/$name"',
+    'done',
+    'for lib in "$HYPER_PG0_HOME"/installation/*/bin/* "$HYPER_PG0_HOME"/installation/*/lib/*.dylib; do',
+    '  [ -f "$lib" ] || continue',
+    '  otool -L "$lib" 2>/dev/null | grep "/opt/homebrew/opt/openssl@3" | awk \'{print $1}\' |',
+    '    while IFS= read -r dep; do',
+    '      install_name_tool -change "$dep" "$HYPER_HL_DIR/$(basename "$dep")" "$lib" 2>/dev/null',
+    '    done',
+    '  codesign --force --sign - "$lib" >/dev/null 2>&1',
+    'done',
+    'exit 0',
+  ].join("\n")
+  await run(
+    "bash",
+    ["-c", body],
+    {
+      env: {
+        HYPER_PG0_HOME: homeRoot,
+        HYPER_VENV_DYLIBS: dylibs,
+        HYPER_HL_DIR: path.join(homeRoot, "hl"),
+      },
+    },
+  ).catch(() => undefined)
+}
+
 /** Starts the local memory server unless one already answers on its port. */
 export async function startHindsight(dataDir: string, logDir: string) {
   if (await listening(hindsight.port, hindsight.host)) return undefined
+  await patchPostgresOpenSSL(dataDir)
   const root = hindsightRoot(dataDir)
   // Reasoning mode makes each extraction call take minutes and trips client timeouts, so it is switched off.
   return launch(
