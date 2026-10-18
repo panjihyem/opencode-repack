@@ -83,6 +83,16 @@ Catatan jaringan mesin dev: DDG diblokir TLS oleh jaringan lokal & Bing kadang
 menyetuh mode anti-bot (hasil canned) — filter memindahkan ke Wikipedia; di
 jaringan normal seluruh sumber berfungsi.
 
+## Progres lokal (19-10-2026, lapisan pekerjaan diaktifkan)
+
+| Task | Status | Bukti |
+|---|---|---|
+| CI release v2.0.32 (3c81805 = F2+F3+F4) | ✅ | run `39161430831` success, 30 aset semua platform |
+| T17a install komponen lokal (uv → office venv) | ✅ | marker `installed-9a942aef` di `hyper-bundle/office`; 4 skill `hyper-excel/report/chart/tax-id` tampil di sesi live |
+| T17b office e2e smoke | ✅ | XLSX (formula+native chart+table+CF), evaluasi `formulas` E2=440 jt, DOCX (heading+tabel), PPTX chart native, PDF reportlab→pypdf, Pandas baca ulang — SEMUA OK di venv nyata |
+| T17c CLI `hyper knowledge sync` | ◐ berikut | scanner di luar GUI |
+| T18–T21 (renderer `--hyper-viz`, `forensic.py`+DuckDB, skill `hyper-fundflow`+docxtpl, visual QA) | ◐ berikut | rencana F6 Forensic Reporting |
+
 ## Catatan risiko
 
 - `formulas` lib evaluasi xlsx tidak 100% paritas dengan Excel (function coverage ~90%);
