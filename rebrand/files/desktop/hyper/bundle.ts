@@ -9,6 +9,7 @@ import { applyDocSkill } from "./docling"
 import { hindsightInstalled, startHindsight } from "./hindsight"
 import { applyKnowledgeSkill, syncKnowledge } from "./knowledge"
 import { lmStudioInstalled, startLmServer, tuneLmStudio } from "./lmstudio"
+import { applySessionMemoryPlugin } from "./memory"
 import { manifest } from "./manifest"
 import { applyOfficeSkills } from "./skills"
 
@@ -55,6 +56,8 @@ async function startServices(children: ChildProcess[]) {
   // permission rules always outrank anything written here.
   const state = await readState()
   await applyUnattended(configDir(), state.unattended !== false).catch((error) => log("permission", error))
+  // Persistent memory plugin (managed): retains prompts and injects recall.
+  await applySessionMemoryPlugin(configDir()).catch((error) => log("memory", error))
   // The memory server follows the RAM-tiered model the wizard picked, but never
   // switches to a model that is not fully downloaded (older installs keep theirs).
   if (await hindsightInstalled(dataDir())) {
