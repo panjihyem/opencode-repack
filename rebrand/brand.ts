@@ -10,7 +10,7 @@ export const brand = {
   scheme: "hyper-ai",
   vendor: "Bikinin AI",
   maintainerEmail: "noreply@bikinin.ai.id",
-  repo: { owner: "bikinin-ai-id", name: "opencode-repack" },
-  homepage: "https://github.com/bikinin-ai-id/opencode-repack",
+  repo: { owner: "panjihyem", name: "opencode-repack" },
+  homepage: "https://github.com/panjihyem/opencode-repack",
   summary: "AI coding agent, repacked from OpenCode",
 }
