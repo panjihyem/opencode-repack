@@ -15,6 +15,8 @@ const MAX_BYTES = 250e6
 export type KnowledgeDirs = { root: string; generalRoot: string; projectsRoot: string; manifestFile: string }
 
 export const knowledgeRoot = () => path.join(os.homedir(), "Hyper-Knowledge")
+/** Exposed for the standalone `hyper` CLI in the bundle (see files/desktop/cli). */
+export const hindsightApiRoot = () => api()
 const api = () => `http://${manifest.hindsight.host}:${manifest.hindsight.port}/v1/default`
 
 /** Creates the folder skeleton. Idempotent; nothing user-authored is touched. */

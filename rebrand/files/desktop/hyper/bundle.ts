@@ -1,5 +1,5 @@
 import { app, BrowserWindow, ipcMain, Notification } from "electron"
-import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { chmod, mkdir, readFile, readlink, stat, symlink, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import type { ChildProcess } from "node:child_process"
@@ -60,6 +60,8 @@ async function startServices(children: ChildProcess[]) {
   await applySessionMemoryPlugin(configDir()).catch((error) => log("memory", error))
   // Local web search MCP (no API key, no remote configuration).
   await registerSearch()
+  // `hyper` command line companion (sync/recall without the GUI).
+  await ensureHyperCli().catch((error) => log("cli", error))
   // The memory server follows the RAM-tiered model the wizard picked, but never
   // switches to a model that is not fully downloaded (older installs keep theirs).
   if (await hindsightInstalled(dataDir())) {
@@ -171,6 +173,20 @@ async function registerSearch() {
       environment: { ELECTRON_RUN_AS_NODE: "1" },
     }),
   }).catch((error) => log("search", error))
+}
+
+/** Makes the `hyper` CLI reachable from the user's shell (best effort). */
+async function ensureHyperCli() {
+  const bin = path.join(bundleRoot(), "bin")
+  await chmod(path.join(bin, "hyper.mjs"), 0o755).catch(() => undefined)
+  const link = path.join(os.homedir(), ".local", "bin", "hyper")
+  const launcher = path.join(bin, "hyper.mjs")
+  const current = await readlink(link).catch(() => undefined)
+  if (current === launcher) return
+  await stat(path.join(os.homedir(), ".local", "bin")).then(
+    () => symlink(launcher, link).catch(() => undefined),
+    () => log("cli", "~/.local/bin tidak ada — jalankan CLI lewat path lengkap aplikasi"),
+  )
 }
 
 async function log(scope: string, detail: unknown) {

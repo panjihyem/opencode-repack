@@ -6,7 +6,7 @@
 // (see the extraResources rule in apply.ts). The packages are plain JavaScript,
 // so one bundle serves every platform.
 
-import { cp, rm } from "node:fs/promises"
+import { cp, chmod, rename, rm } from "node:fs/promises"
 import path from "node:path"
 import { $ } from "bun"
 import { manifest } from "./../files/desktop/hyper/manifest"
@@ -34,3 +34,19 @@ for (const component of [manifest.context7]) {
 await cp(path.join(import.meta.dir, "../files/desktop/wizard"), path.join(root, "wizard"), { recursive: true })
 await cp(path.join(import.meta.dir, "../files/desktop/search"), path.join(root, "search"), { recursive: true })
 console.log("bundled setup wizard + search MCP")
+
+// The `hyper` CLI shares the knowledge module with the app: compile it as a
+// standalone ESM (electron-free) plus the thin launcher that drives it. Bun's
+// naming only emits `.js`, so rename to .mjs for the launcher's import.
+await cp(path.join(import.meta.dir, "../files/desktop/cli"), path.join(root, "bin"), { recursive: true })
+await Bun.build({
+  entrypoints: [path.join(import.meta.dir, "../files/desktop/hyper/knowledge.ts")],
+  target: "node",
+  external: ["electron"],
+  format: "esm",
+  outdir: path.join(root, "bin"),
+  naming: "[dir]/knowledge.[ext]",
+})
+await rename(path.join(root, "bin", "knowledge.js"), path.join(root, "bin", "knowledge.mjs"))
+await chmod(path.join(root, "bin", "hyper.mjs"), 0o755)
+console.log("bundled hyper CLI (bin/knowledge.mjs + bin/hyper.mjs)")
