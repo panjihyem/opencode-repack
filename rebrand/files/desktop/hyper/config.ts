@@ -44,6 +44,31 @@ export function managed(server: Server) {
     : { ...server, headers: { ...record(server.headers), [MANAGED]: "1" } }
 }
 
+/**
+ * "Unattended" mode: grants the agent standing permission so it never stops to
+ * ask for approval — the default for non-technical users. Only fills actions
+ * the user has not configured themselves; their rules always win.
+ */
+export async function applyPermissions(configDir: string, grants: Record<string, string>) {
+  const file = path.join(configDir, "opencode.json")
+  const text = await readFile(file, "utf8").catch(() => undefined)
+  const existing = text === undefined ? {} : parse(text)
+  if (!existing) return "skipped" as const
+
+  const permission = record(existing.permission)
+  const next = Object.fromEntries(
+    Object.entries(grants).flatMap(([action, effect]) => (permission[action] === undefined ? [[action, effect]] : [])),
+  )
+  if (!Object.keys(next).length) return "unchanged" as const
+
+  await mkdir(configDir, { recursive: true })
+  await writeFile(
+    file,
+    JSON.stringify({ ...existing, permission: { ...permission, ...next } }, null, 2) + "\n",
+  )
+  return "updated" as const
+}
+
 function isManaged(server: unknown) {
   const value = record(server)
   return MANAGED in record(value.environment) || MANAGED in record(value.headers)

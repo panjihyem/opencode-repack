@@ -49,4 +49,21 @@ export const manifest = {
     },
   ],
   docling: { package: "docling", version: "2.140.0", python: "3.12" },
+  // Office toolkit: reading/writing Excel (formulas included), Word, PowerPoint,
+  // PDF and charts for office & tax-investigation work. Minimum-version bounds
+  // keep installs reproducible while letting uv resolve the newest compatible
+  // builds on the user's machine.
+  office: {
+    python: "3.12",
+    packages: [
+      "openpyxl>=3.1",
+      "pandas>=2.2",
+      "formulas>=0.6",
+      "python-docx>=1.1",
+      "python-pptx>=1.0",
+      "matplotlib>=3.9",
+      "reportlab>=4.2",
+      "pypdf>=5",
+    ],
+  },
 }

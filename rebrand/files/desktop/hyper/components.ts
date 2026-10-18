@@ -5,6 +5,7 @@ import { doclingInstalled, installDocling } from "./docling"
 import { hindsightInstalled, installHindsight } from "./hindsight"
 import { installLmStudio, installModels, lmStudioInstalled } from "./lmstudio"
 import { manifest } from "./manifest"
+import { installOffice, officeInstalled } from "./office"
 import type { Report } from "./process"
 
 export type Component = {
@@ -95,6 +96,16 @@ export const components: Component[] = [
     recommended: false,
     installed: doclingInstalled,
     install: async (dataDir, report) => installDocling(dataDir, report),
+  },
+  {
+    id: "office",
+    name: "Paket Office",
+    description:
+      "Baca/analisa/buat Excel (termasuk formula), Word, PowerPoint, PDF dan grafik — semuanya lokal, tanpa kirim data ke luar.",
+    bytes: 1.0e9,
+    recommended: true,
+    installed: officeInstalled,
+    install: async (dataDir, report) => installOffice(dataDir, report),
   },
 ]
 

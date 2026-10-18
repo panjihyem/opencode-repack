@@ -4,11 +4,12 @@ import os from "node:os"
 import path from "node:path"
 import type { ChildProcess } from "node:child_process"
 import { components, provision, selectedModelId } from "./components"
-import { applyServers, managed } from "./config"
+import { applyPermissions, applyServers, managed } from "./config"
 import { applyDocSkill } from "./docling"
 import { hindsightInstalled, startHindsight } from "./hindsight"
 import { lmStudioInstalled, startLmServer } from "./lmstudio"
 import { manifest } from "./manifest"
+import { applyOfficeSkills } from "./skills"
 
 // Makes a fresh Hyper AI install usable without manual setup:
 //   - Context7 ships inside the installer and is registered as an MCP server
@@ -43,6 +44,10 @@ export async function startHyperBundle() {
 
 async function startServices(children: ChildProcess[]) {
   await applyDocSkill(configDir(), dataDir()).catch((error) => log("docs", error))
+  await applyOfficeSkills(configDir(), dataDir()).catch((error) => log("skills", error))
+  // Unattended mode: the agent acts without approval prompts unless the user
+  // configured their own permission rules.
+  await applyPermissions(configDir(), { "*": "allow" }).catch((error) => log("permission", error))
   // The memory server follows the RAM-tiered model the wizard picked, but never
   // switches to a model that is not fully downloaded (older installs keep theirs).
   if (await hindsightInstalled(dataDir())) {
