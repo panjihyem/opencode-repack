@@ -544,6 +544,26 @@ const rules: Rule[] = [
     replace: JSON.stringify(NAME),
     critical: true,
   },
+  // GUI/user-visible branding: web-app HTML + PWA manifest + desktop theme name + titlebar menu.
+  { file: "packages/app/index.html", find: "<title>OpenCode</title>", replace: `<title>${NAME}</title>`, critical: true },
+  {
+    file: "packages/app/manifest.json",
+    find: '"name": "OpenCode",\n  "short_name": "OpenCode",',
+    replace: `"name": "${NAME}",\n  "short_name": "${NAME}",`,
+    critical: true,
+  },
+  {
+    file: "packages/ui/src/theme/themes/oc-2.json",
+    find: '"name": "OpenCode"',
+    replace: `"name": "${NAME}"`,
+    critical: true,
+  },
+  {
+    file: "packages/app/src/shell/titlebar/windows-menu.tsx",
+    find: '<Menu.GroupLabel class="desktop-app-menu-heading">OpenCode</Menu.GroupLabel>',
+    replace: `<Menu.GroupLabel class="desktop-app-menu-heading">${NAME}</Menu.GroupLabel>`,
+    critical: true,
+  },
   { file: "packages/desktop/resources/linux/opencode-desktop.desktop", find: "Name=OpenCode", replace: `Name=${NAME}` },
 ]
 
