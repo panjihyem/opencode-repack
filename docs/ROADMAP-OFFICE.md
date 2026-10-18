@@ -13,6 +13,12 @@ baca/buat dokumen & Excel, riset online, memori lintas sesi, dan folder pengetah
 
 Setiap T punya kriteria selesai (definition of done) dan bisa dikirim satu commit.
 
+### F0 — Installer Tunggal (zero-click)
+
+| Task | Isi | Selesai jika |
+|---|---|---|
+| T0 | Wizard auto-pilot: peluncuran pertama memasang SEMUA komponen tanpa satu klik pun (checkbox "Mode praktis" ikut on default), jendela menutup sendiri saat selesai; `--hyper-setup` tetap tersedia sebagai jalur pulih manual | 1 DMG/EXE → app terbuka → semua terpasang → AI siap pakai |
+
 ### F1 — Office Pack + Skills
 
 | Task | Isi | Selesai jika |

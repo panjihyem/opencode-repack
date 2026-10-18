@@ -101,6 +101,7 @@
       let step = 0
       let running = false
       let finished = false
+      let auto = false
 
       const formatSize = (bytes) => (bytes >= 1e9 ? (bytes / 1e9).toFixed(1) + " GB" : Math.round(bytes / 1e6) + " MB")
 
@@ -137,7 +138,9 @@
           label.innerHTML = '<input type="checkbox" data-id="' + item.id + '">' +
             '<span><span class="name"></span><br><span class="desc"></span></span><span class="size"></span>'
           const input = label.querySelector("input")
-          input.checked = item.required || item.recommended
+          // Everything is picked by default: one installer is meant to produce a
+          // fully working setup.
+          input.checked = !item.installed
           input.disabled = item.required || item.installed
           label.querySelector(".name").textContent = item.name
           label.querySelector(".desc").textContent = item.description
@@ -172,6 +175,8 @@
             : "Hyper AI siap dipakai."
           $("next").textContent = "Mulai pakai Hyper AI"
           $("next").disabled = false
+          // Auto mode never asks for a click: close once the setup has settled.
+          if (auto) setTimeout(() => api.finish(), 2500)
           return
         }
         const row = $("row-" + update.id)
@@ -180,6 +185,15 @@
         row.querySelector(".status").textContent = statusText[update.status] ?? update.status
         row.querySelector(".msg").textContent = update.message ?? ""
         if (typeof update.fraction === "number") row.querySelector(".bar i").style.width = Math.round(update.fraction * 100) + "%"
+      }
+
+      async function beginAuto() {
+        const ids = selectedIds()
+        renderProgress(ids)
+        show(2)
+        running = true
+        $("note").textContent = ""
+        await api.start(ids, { unattended: true })
       }
 
       $("next").addEventListener("click", async () => {
@@ -198,10 +212,17 @@
       $("skip").addEventListener("click", () => api.skip())
 
       api.onProgress(applyProgress)
-      api.plan().then((items) => {
+      api.plan().then(async (items) => {
         plan = items
         renderChoices()
         show(0)
+        // Auto mode (first launch): no clicks — jump straight into installing.
+        auto = await api.auto()
+        if (auto) {
+          $("unattended").checked = true
+          $("subtitle").textContent = "Menyiapkan semua komponen otomatis — tidak perlu diklik apa pun."
+          await beginAuto()
+        }
       })
     </script>
   </body>

@@ -36,7 +36,11 @@ export async function startHyperBundle() {
   await registerContext7()
 
   const state = await readState()
-  if (!state.wizard || process.argv.includes("--hyper-setup")) await openWizard()
+  const recovery = process.argv.includes("--hyper-setup")
+  // First launch is fully automatic: the wizard pre-selects every component and
+  // starts provisioning without a single click, so one installer is all a user
+  // needs. --hyper-setup reopens the same window in manual mode for recovery.
+  if (!state.wizard || recovery) await openWizard(!recovery)
 
   // Services run on every launch once installed, not only right after setup.
   await startServices(children)
@@ -61,7 +65,7 @@ async function startServices(children: ChildProcess[]) {
   if (await lmStudioInstalled(dataDir())) await startLmServer(logDir())
 }
 
-function openWizard() {
+function openWizard(auto: boolean) {
   return new Promise<void>((resolve) => {
     const window = new BrowserWindow({
       width: 680,
@@ -79,6 +83,7 @@ function openWizard() {
     const send = (update: unknown) => window.isDestroyed() || window.webContents.send("hyper:progress", update)
     let outcome: State["wizard"] = "skipped"
 
+    ipcMain.handle("hyper:auto", () => auto)
     ipcMain.handle("hyper:plan", () =>
       Promise.all(
         components.map(async (item) => ({
@@ -104,20 +109,19 @@ function openWizard() {
       new Notification({
         title: "Hyper AI",
         body: failed.length
-          ? `Setup incomplete (${failed.join(", ")}). Retry with --hyper-setup.`
-          : "Local AI setup finished.",
+          ? `Setup belum lengkap (${failed.join(", ")}). Ulangi dengan --hyper-setup.`
+          : "Semuanya siap. Hyper AI siap dipakai.",
       }).show()
     })
     ipcMain.handle("hyper:skip", () => window.close())
     ipcMain.handle("hyper:finish", () => window.close())
 
     window.on("closed", async () => {
-      ipcMain.removeHandler("hyper:plan")
-      ipcMain.removeHandler("hyper:start")
-      ipcMain.removeHandler("hyper:skip")
-      ipcMain.removeHandler("hyper:finish")
+      for (const channel of ["hyper:auto", "hyper:plan", "hyper:start", "hyper:skip", "hyper:finish"]) {
+        ipcMain.removeHandler(channel)
+      }
       // Closing without finishing asks again on the next launch.
-      if (outcome === "completed") await writeState({ wizard: outcome })
+      if (outcome === "completed") await writeState({ ...(await readState()), wizard: outcome })
       resolve()
     })
     void window.loadFile(path.join(bundleRoot(), "wizard", "wizard.html"))
