@@ -1,6 +1,7 @@
 import { stat } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
+import { doclingInstalled, installDocling } from "./docling"
 import { hindsightInstalled, installHindsight } from "./hindsight"
 import { installLmStudio, installModels, lmStudioInstalled } from "./lmstudio"
 import { manifest } from "./manifest"
@@ -19,7 +20,35 @@ export type Component = {
   install: (dataDir: string, report: Report) => Promise<void>
 }
 
-const model = manifest.models[0]
+/**
+ * Model tier from physical RAM: 30 GB+ runs the sharp 9B, 8-30 GB the balanced
+ * 4B (with vision), and anything smaller the 1.6 GB LFM2.5-2.6B. Memory servers
+ * and daily work never need more than the tiered pick.
+ */
+export function tieredModel() {
+  const gb = os.totalmem() / 1024 ** 3
+  const tier = gb >= 30 ? "full" : gb >= 8 ? "lite" : "nano"
+  return manifest.models.find((m) => m.tier === tier) ?? manifest.models[0]
+}
+
+const model = tieredModel()
+
+const modelFile = (m: (typeof manifest.models)[number]) =>
+  path.join(os.homedir(), ".lmstudio", "models", m.publisher, m.repo, m.file)
+
+const modelPresent = (m: (typeof manifest.models)[number]) =>
+  stat(modelFile(m)).then(
+    (info) => info.size === m.bytes,
+    () => false,
+  )
+
+/** The model hindsight should talk to: the RAM-tiered pick whenever present,
+ * otherwise any tier already fully downloaded (older installs), else the tiered pick. */
+export async function selectedModelId() {
+  const others = manifest.models.filter((m) => m !== model)
+  for (const candidate of [model, ...others]) if (await modelPresent(candidate)) return candidate.id
+  return model.id
+}
 
 export const components: Component[] = [
   {
@@ -42,16 +71,12 @@ export const components: Component[] = [
   },
   {
     id: "models",
-    name: "Model lokal Qwen3.5 9B",
-    description: "Model untuk ekstraksi memori dan tugas offline.",
+    name: `Model lokal ${model.id}`,
+    description: "Model untuk ekstraksi memori dan tugas offline; dipilih otomatis sesuai RAM. Model di-load hanya begitu dibutuhkan dan segera dilepas saat idle.",
     bytes: model.bytes,
     recommended: true,
-    installed: () =>
-      stat(path.join(os.homedir(), ".lmstudio", "models", model.publisher, model.repo, model.file)).then(
-        (info) => info.size === model.bytes,
-        () => false,
-      ),
-    install: async (_dataDir, report) => installModels(report),
+    installed: () => modelPresent(model),
+    install: async (_dataDir, report) => installModels(report, [model.id]),
   },
   {
     id: "hindsight",
@@ -61,6 +86,15 @@ export const components: Component[] = [
     recommended: true,
     installed: hindsightInstalled,
     install: async (dataDir, report) => installHindsight(dataDir, report),
+  },
+  {
+    id: "docs",
+    name: "Ekstraksi Dokumen (Docling)",
+    description: "PDF/scan/gambar menjadi Markdown terstruktur dengan OCR lokal; opsional untuk pekerjaan dokumen.",
+    bytes: 1.5e9,
+    recommended: false,
+    installed: doclingInstalled,
+    install: async (dataDir, report) => installDocling(dataDir, report),
   },
 ]
 

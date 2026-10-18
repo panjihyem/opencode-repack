@@ -21,12 +21,32 @@ export const manifest = {
   },
   lmstudio: { version: "0.4.25-1", port: 1234 },
   models: [
+    // Per-tier defaults, picked by physical RAM (see tieredModel in components).
+    // Sizes are the exact byte counts of the pinned Q4_K_M quantizations.
     {
       id: "qwen3.5-9b",
+      tier: "full",
       publisher: "unsloth",
       repo: "Qwen3.5-9B-GGUF",
       file: "Qwen3.5-9B-Q4_K_M.gguf",
       bytes: 5680522464,
     },
+    {
+      id: "qwen3.5-4b",
+      tier: "lite",
+      publisher: "unsloth",
+      repo: "Qwen3.5-4B-GGUF",
+      file: "Qwen3.5-4B-Q4_K_M.gguf",
+      bytes: 2740937888,
+    },
+    {
+      id: "lfm2.5-2.6b",
+      tier: "nano",
+      publisher: "LiquidAI",
+      repo: "LFM2.5-2.6B-GGUF",
+      file: "LFM2.5-2.6B-Q4_K_M.gguf",
+      bytes: 1674455040,
+    },
   ],
+  docling: { package: "docling", version: "2.140.0", python: "3.12" },
 }

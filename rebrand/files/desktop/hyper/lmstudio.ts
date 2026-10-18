@@ -90,9 +90,9 @@ async function installDmg(dmg: string) {
   }
 }
 
-/** Downloads the pinned GGUF models into LM Studio's models directory. */
-export async function installModels(report: Report) {
-  for (const model of manifest.models) {
+/** Downloads the pinned GGUF models into LM Studio's models directory; pass ids to restrict the set. */
+export async function installModels(report: Report, ids?: string[]) {
+  for (const model of manifest.models.filter((m) => !ids || ids.includes(m.id))) {
     const dest = path.join(os.homedir(), ".lmstudio", "models", model.publisher, model.repo, model.file)
     const present = await stat(dest).then(
       (info) => info.size === model.bytes,

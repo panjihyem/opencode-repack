@@ -3,8 +3,9 @@ import { mkdir, readFile, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import type { ChildProcess } from "node:child_process"
-import { components, provision } from "./components"
+import { components, provision, selectedModelId } from "./components"
 import { applyServers, managed } from "./config"
+import { applyDocSkill } from "./docling"
 import { hindsightInstalled, startHindsight } from "./hindsight"
 import { lmStudioInstalled, startLmServer } from "./lmstudio"
 import { manifest } from "./manifest"
@@ -41,8 +42,12 @@ export async function startHyperBundle() {
 }
 
 async function startServices(children: ChildProcess[]) {
+  await applyDocSkill(configDir(), dataDir()).catch((error) => log("docs", error))
+  // The memory server follows the RAM-tiered model the wizard picked, but never
+  // switches to a model that is not fully downloaded (older installs keep theirs).
   if (await hindsightInstalled(dataDir())) {
-    const child = await startHindsight(dataDir(), logDir())
+    const modelId = await selectedModelId()
+    const child = await startHindsight(dataDir(), logDir(), modelId)
     if (child) children.push(child)
     await registerMemory()
   }
