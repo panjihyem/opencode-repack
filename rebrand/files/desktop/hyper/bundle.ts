@@ -7,7 +7,7 @@ import { components, provision, selectedModelId } from "./components"
 import { applyServers, applyUnattended, managed } from "./config"
 import { applyDocSkill } from "./docling"
 import { hindsightInstalled, startHindsight } from "./hindsight"
-import { lmStudioInstalled, startLmServer } from "./lmstudio"
+import { lmStudioInstalled, startLmServer, tuneLmStudio } from "./lmstudio"
 import { manifest } from "./manifest"
 import { applyOfficeSkills } from "./skills"
 
@@ -62,7 +62,10 @@ async function startServices(children: ChildProcess[]) {
     if (child) children.push(child)
     await registerMemory()
   }
-  if (await lmStudioInstalled(dataDir())) await startLmServer(logDir())
+  if (await lmStudioInstalled(dataDir())) {
+    await tuneLmStudio().catch((error) => log("lmstudio", error))
+    await startLmServer(logDir())
+  }
 }
 
 function openWizard(auto: boolean) {

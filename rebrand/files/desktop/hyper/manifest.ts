@@ -19,7 +19,7 @@ export const manifest = {
     port: 8888,
     llm: { provider: "lmstudio", baseUrl: "http://localhost:1234/v1", model: "qwen3.5-9b" },
   },
-  lmstudio: { version: "0.4.25-1", port: 1234 },
+  lmstudio: { version: "0.4.25-1", port: 1234, jitUnloadSeconds: 900 },
   models: [
     // Per-tier defaults, picked by physical RAM (see tieredModel in components).
     // Sizes are the exact byte counts of the pinned Q4_K_M quantizations.

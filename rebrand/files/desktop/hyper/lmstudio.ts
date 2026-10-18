@@ -1,4 +1,4 @@
-import { chmod, cp, mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises"
+import { chmod, cp, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import { download } from "./download"
@@ -104,9 +104,41 @@ export async function installModels(report: Report, ids?: string[]) {
   }
 }
 
+/**
+ * Aligns LM Studio's memory policy with Hyper AI's expectation: when a model
+ * is requested it JIT-loads automatically, and memory is freed on its own —
+ * the previous JIT model unloads as soon as another is loaded, and an idle
+ * model unloads after 15 minutes. Runs on every launch (idempotent) and never
+ * touches settings it does not know about.
+ */
+export async function tuneLmStudio() {
+  const settings = path.join(os.homedir(), ".lmstudio", "apps", "bionic", "settings.json")
+  if (!(await exists(settings))) return "wait" as const
+  let value: unknown
+  try {
+    value = JSON.parse(await readFile(settings, "utf8"))
+  } catch {
+    return "skip" as const
+  }
+  const body = typeof value === "object" && value !== null ? (value as Record<string, any>) : {}
+  const jit = body.jitModelTTL
+  const ttl = manifest.lmstudio.jitUnloadSeconds ?? 900
+  const aligned =
+    body.unloadPreviousJITModelOnLoad === true &&
+    typeof jit === "object" &&
+    jit !== null &&
+    jit.enabled === true &&
+    jit.ttlSeconds === ttl
+  if (aligned) return "unchanged" as const
+  body.unloadPreviousJITModelOnLoad = true
+  body.jitModelTTL = { enabled: true, ttlSeconds: ttl }
+  await mkdir(path.dirname(settings), { recursive: true })
+  await writeFile(settings, JSON.stringify(body, null, 2))
+  return "updated" as const
+}
+
 /** Starts LM Studio's headless server when a CLI binary exists. */
-export async function startLmServer(logDir: string) {
-  // The app normally links the installed CLI into ~/.lmstudio/bin after its first
+export async function startLmServer(logDir: string) {  // The app normally links the installed CLI into ~/.lmstudio/bin after its first
   // GUI run, but a fresh wizard-only install hasn't run yet: fall back to the
   // copy bundled inside the app itself.
   const candidates = [
