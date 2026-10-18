@@ -7,6 +7,7 @@ import { components, provision, selectedModelId } from "./components"
 import { applyServers, applyUnattended, managed } from "./config"
 import { applyDocSkill } from "./docling"
 import { hindsightInstalled, startHindsight } from "./hindsight"
+import { applyKnowledgeSkill, syncKnowledge } from "./knowledge"
 import { lmStudioInstalled, startLmServer, tuneLmStudio } from "./lmstudio"
 import { manifest } from "./manifest"
 import { applyOfficeSkills } from "./skills"
@@ -61,6 +62,11 @@ async function startServices(children: ChildProcess[]) {
     const child = await startHindsight(dataDir(), logDir(), modelId)
     if (child) children.push(child)
     await registerMemory()
+    // Knowledge tree: safe to run on every start; ingestion is asynchronous
+    // inside the memory server, so this never blocks the app.
+    void syncKnowledge((message) => log("knowledge", message))
+      .catch((error) => log("knowledge", error))
+      .then(() => applyKnowledgeSkill(configDir()).catch((error) => log("knowledge", error)))
   }
   if (await lmStudioInstalled(dataDir())) {
     await tuneLmStudio().catch((error) => log("lmstudio", error))
