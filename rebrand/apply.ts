@@ -516,6 +516,34 @@ const rules: Rule[] = [
     replace: `"name": "${brand.vendor}",\n    "email": "${brand.maintainerEmail}"`,
     critical: true,
   },
+  // Built-in provider models.dev display names -> Hyper AI (IDs stay "opencode*").
+  {
+    file: "packages/core/src/models-dev.ts",
+    find: `    const info = {
+      id: providerID,
+      name: item.name,`,
+    replace: `    const info = {
+      id: providerID,
+      name:
+        item.id === "opencode"
+          ? ${JSON.stringify(NAME)}
+          : item.id === "opencode-go"
+            ? ${JSON.stringify(NAME + " Go")}
+            : item.name,`,
+    critical: true,
+  },
+  {
+    file: "packages/core/src/models-dev/snapshot.txt",
+    find: '"name":"OpenCode Go"',
+    replace: JSON.stringify(NAME + " Go"),
+    critical: true,
+  },
+  {
+    file: "packages/core/src/models-dev/snapshot.txt",
+    find: '"name":"OpenCode"',
+    replace: JSON.stringify(NAME),
+    critical: true,
+  },
   { file: "packages/desktop/resources/linux/opencode-desktop.desktop", find: "Name=OpenCode", replace: `Name=${NAME}` },
 ]
 
@@ -525,6 +553,9 @@ type Write = { file: string; source: string; critical?: boolean; create?: boolea
 const writes: Write[] = [
   { file: "packages/tui/src/logo.ts", source: "logo.ts", critical: true },
   { file: "packages/tui/test/logo-render.test.tsx", source: "logo-render.test.tsx", create: true },
+  // Pixel-art wordmark redrawn as "HYPER AI" (GUI Logo/Splash/Mark + provider mark).
+  { file: "packages/ui/src/components/logo.tsx", source: "ui/components/logo.tsx", critical: true },
+  { file: "packages/app/src/providers/opencode-logo.tsx", source: "app/providers/opencode-logo.tsx", critical: true },
   // First-run provisioning for the desktop app (see rebrand/files/desktop/hyper).
   ...["bundle", "components", "config", "download", "hindsight", "lmstudio", "manifest", "platform", "process"].map(
     (name) => ({
