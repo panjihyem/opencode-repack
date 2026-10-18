@@ -72,6 +72,7 @@
         <div class="list">
           <div class="row"><div><div class="name">Yang akan disiapkan</div><div class="desc">Pilih komponen di langkah berikutnya. Semua diunduh langsung dari penerbit resminya dan bisa diulang kapan saja.</div></div></div>
           <div class="row"><div><div class="name">Konteks &amp; memori untuk agen</div><div class="desc">Context7 (dokumentasi library terbaru) sudah termasuk. Memori jangka panjang Hindsight dan model lokal bersifat opsional.</div></div></div>
+          <label class="row" style="cursor:pointer"><input id="unattended" type="checkbox" style="width:18px;height:18px;accent-color:var(--accent)" checked><div><div class="name">Mode praktis (tanpa konfirmasi)</div><div class="desc">Agen berjalan penuh tanpa menanyakan izin di setiap langkah — cocok bila Anda tidak ingin dipakai memilih "Izinkan" terus-menerus. Bisa diganti kapan saja.</div></div><span></span></label>
         </div>
       </section>
 
@@ -186,10 +187,11 @@
         if (step === 0) return show(1)
         if (step === 1) {
           const ids = selectedIds()
+          const unattended = $("unattended").checked
           renderProgress(ids)
           show(2)
           running = true
-          await api.start(ids)
+          await api.start(ids, { unattended })
         }
       })
       $("back").addEventListener("click", () => show(0))

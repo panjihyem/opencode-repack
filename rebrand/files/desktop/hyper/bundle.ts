@@ -4,7 +4,7 @@ import os from "node:os"
 import path from "node:path"
 import type { ChildProcess } from "node:child_process"
 import { components, provision, selectedModelId } from "./components"
-import { applyPermissions, applyServers, managed } from "./config"
+import { applyServers, applyUnattended, managed } from "./config"
 import { applyDocSkill } from "./docling"
 import { hindsightInstalled, startHindsight } from "./hindsight"
 import { lmStudioInstalled, startLmServer } from "./lmstudio"
@@ -19,7 +19,7 @@ import { applyOfficeSkills } from "./skills"
 // Failures are logged and shown in the wizard; the app never waits on this.
 // Run `--hyper-setup` to open the wizard again.
 
-type State = { wizard?: "completed" | "skipped" }
+type State = { wizard?: "completed" | "skipped"; unattended?: boolean }
 
 const dataDir = () => path.join(app.getPath("userData"), "hyper-bundle")
 const logDir = () => path.join(dataDir(), "logs")
@@ -45,9 +45,11 @@ export async function startHyperBundle() {
 async function startServices(children: ChildProcess[]) {
   await applyDocSkill(configDir(), dataDir()).catch((error) => log("docs", error))
   await applyOfficeSkills(configDir(), dataDir()).catch((error) => log("skills", error))
-  // Unattended mode: the agent acts without approval prompts unless the user
-  // configured their own permission rules.
-  await applyPermissions(configDir(), { "*": "allow" }).catch((error) => log("permission", error))
+  // Unattended mode (chosen in the wizard, default on): the agent acts without
+  // approval prompts. Turning it off removes the standing grant; the user's own
+  // permission rules always outrank anything written here.
+  const state = await readState()
+  await applyUnattended(configDir(), state.unattended !== false).catch((error) => log("permission", error))
   // The memory server follows the RAM-tiered model the wizard picked, but never
   // switches to a model that is not fully downloaded (older installs keep theirs).
   if (await hindsightInstalled(dataDir())) {
@@ -90,7 +92,9 @@ function openWizard() {
         })),
       ),
     )
-    ipcMain.handle("hyper:start", async (_event, ids: string[]) => {
+    ipcMain.handle("hyper:start", async (_event, ids: string[], opts?: { unattended?: boolean }) => {
+      // Persist the agent-autonomy choice before setup runs, so services pick it up.
+      await writeState({ ...(await readState()), unattended: opts?.unattended !== false })
       const failed = await provision(ids, dataDir(), (update) => {
         if (update.type === "step") send({ ...update })
         else send(update)

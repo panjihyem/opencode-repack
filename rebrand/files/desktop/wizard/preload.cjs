@@ -4,7 +4,7 @@ const { contextBridge, ipcRenderer } = require("electron")
 
 contextBridge.exposeInMainWorld("hyperSetup", {
   plan: () => ipcRenderer.invoke("hyper:plan"),
-  start: (ids) => ipcRenderer.invoke("hyper:start", ids),
+  start: (ids, opts) => ipcRenderer.invoke("hyper:start", ids, opts),
   skip: () => ipcRenderer.invoke("hyper:skip"),
   finish: () => ipcRenderer.invoke("hyper:finish"),
   onProgress: (listener) => {

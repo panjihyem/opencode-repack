@@ -45,27 +45,28 @@ export function managed(server: Server) {
 }
 
 /**
- * "Unattended" mode: grants the agent standing permission so it never stops to
- * ask for approval — the default for non-technical users. Only fills actions
- * the user has not configured themselves; their rules always win.
+ * "Unattended" mode switch: grants the agent standing permission so it never
+ * stops to ask for approval — the default for non-technical users. Turning it
+ * off removes the standing grant this module wrote earlier; the user's own
+ * permission rules are never touched either way.
  */
-export async function applyPermissions(configDir: string, grants: Record<string, string>) {
+export async function applyUnattended(configDir: string, enabled: boolean) {
   const file = path.join(configDir, "opencode.json")
   const text = await readFile(file, "utf8").catch(() => undefined)
   const existing = text === undefined ? {} : parse(text)
   if (!existing) return "skipped" as const
 
-  const permission = record(existing.permission)
-  const next = Object.fromEntries(
-    Object.entries(grants).flatMap(([action, effect]) => (permission[action] === undefined ? [[action, effect]] : [])),
-  )
-  if (!Object.keys(next).length) return "unchanged" as const
-
+  const permission: Record<string, unknown> = record(existing.permission)
+  if (enabled) {
+    if (permission["*"] !== undefined) return "unchanged" as const
+    await mkdir(configDir, { recursive: true })
+    await writeFile(file, JSON.stringify({ ...existing, permission: { ...permission, "*": "allow" } }, null, 2) + "\n")
+    return "updated" as const
+  }
+  if (permission["*"] !== "allow") return "unchanged" as const
+  delete permission["*"]
   await mkdir(configDir, { recursive: true })
-  await writeFile(
-    file,
-    JSON.stringify({ ...existing, permission: { ...permission, ...next } }, null, 2) + "\n",
-  )
+  await writeFile(file, JSON.stringify({ ...existing, permission }, null, 2) + "\n")
   return "updated" as const
 }
 
