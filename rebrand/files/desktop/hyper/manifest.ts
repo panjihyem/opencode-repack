@@ -69,6 +69,13 @@ export const manifest = {
       "matplotlib>=3.9",
       "reportlab>=4.2",
       "pypdf>=5",
+      // F6 forensic layer: DuckDB for transaction analysis, NetworkX for fund-flow
+      // cycle detection, docxtpl for BAP/LHP letter templates, plotly for static charts.
+      "duckdb>=1.1",
+      "networkx>=3.4",
+      "docxtpl>=0.19",
+      "plotly>=5.24",
+      "kaleido>=0.2",
     ],
   },
 }

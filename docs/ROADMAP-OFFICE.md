@@ -92,7 +92,8 @@ jaringan normal seluruh sumber berfungsi.
 | T17b office e2e smoke | ✅ | XLSX (formula+native chart+table+CF), evaluasi `formulas` E2=440 jt, DOCX (heading+tabel), PPTX chart native, PDF reportlab→pypdf, Pandas baca ulang — SEMUA OK di venv nyata |
 | T17c CLI `hyper` | ✅ | `9026617` — `hyper sync/banks/recall`; symlink `~/.local/bin/hyper` via `ensureHyperCli` |
 | T18 renderer `--hyper-viz` | ✅ | `hyper viz <job.json>` — ECharts 6.1.0 (manifest `viz` + prepare-bundle) → SVG+PNG via Electron offscreen. Render **di luar kunci single-instance** (patch `index.ts`): jalan walau app terbuka. Uji nyata: Sankey 1600×900 SVG + PNG Hi-DPI 3200×1800, exit 0 |
-| T19–T21 (`forensic.py`+DuckDB, `hyper-fundflow`+docxtpl, visual QA) | ◐ berikut | F6 Forensic Reporting |
+| T19 `forensic.py` + skill `hyper-fundflow` | ✅ | `forensic.ts` = konstanta `FORENSIC_SOURCE` (11,4 KB; regex nominal `[^\\d.\\-]` di TS → `[^\d.\-]` di Python) ditulis `writeForensicModule` → `office/lib/forensic.py`; manifest office 13 paket (duckdb, networkx, docxtpl, plotly, kaleido). **Sankey = DAG-only** (`_dag_only` memotong ujung penutup siklus + subtext eksplisit; siklus tetap di cycles.json/sheet Siklus) — ECharts menolak siklus. E2E: CSV 12 trx → 4 siklus → 9 aliran (3 ujung dibuang) → `hyper viz` exit 0 (SVG) → workbook 4 sheet; angka konsisten 974.000.000 = 727.000.000 + 247.000.000. Skill `hyper-fundflow` tertulis (5/5 written, placeholder `__FORENSIC_PY__` 0 sisa) |
+| T20–T21 (templat docxtpl BAP/LHP, visual QA) | ◐ berikut | F6 Forensic Reporting |
 
 ## Catatan risiko
 

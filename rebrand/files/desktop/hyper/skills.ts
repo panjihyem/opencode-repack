@@ -1,6 +1,6 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises"
 import path from "node:path"
-import { officeInstalled, officePython } from "./office"
+import { forensicModule, officeInstalled, officePython } from "./office"
 
 // Office-work skills for the agent: Excel (including formulas), reports
 // (DOCX/PPTX/PDF), charts and tax-investigation documents. Written only while
@@ -8,10 +8,14 @@ import { officeInstalled, officePython } from "./office"
 
 const MANAGED = "HYPER_AI_MANAGED"
 
+// forensic.py ditulis sebagai artefak managed di dataDir/office (lihat office.ts);
+// path absolutnya disuntikkan ke body skill lewat placeholder ini.
+const FORENSIC_PLACEHOLDER = "__FORENSIC_PY__"
+
 type SkillSpec = {
   id: string
   description: string
-  body: (python: string) => string
+  body: (python: string, forensic: string) => string
 }
 
 const skills: SkillSpec[] = [
@@ -165,12 +169,88 @@ description: Alur dan dokumen penyidikan pajak (SP2ID, BAP, SP2RB, SPNP, LHP); c
 - Data subjek dimanfaatkan secara lokal; keluaran dibuat ringkas sesuai kebutuhan, tidak berlebihan.
 `,
   },
+  {
+    id: "hyper-fundflow",
+    description:
+      "Analisa aliran dana forensik: sankey/treemap/graph dari data transaksi (Excel/CSV), deteksi siklus transaksi berulang, ekspor workbook multi-sheet + grafik statis. Gunakan untuk visualisasi aliran dana dan analisa jaringan transaksi.",
+    body: (python, forensic) => `---
+name: hyper-fundflow
+description: Analisa aliran dana forensik (Sankey/treemap/graph dari transaksi), deteksi siklus transaksi berulang, ekspor workbook multi-sheet + grafik statis. Gunakan untuk visualisasi aliran dana dan jaringan transaksi.
+---
+
+# Aliran Dana Forensik (Hyper AI)
+
+\`${MANAGED}\`
+
+Python siap pakai: \`${python}\` — paket \`duckdb\`, \`networkx\`, \`plotly\`, \`pandas\`, \`openpyxl\`.
+
+## Toolkit cepat (forensic.py)
+
+Modul managed: \`${forensic}\`. Skema tabel transaksi \`hia_txn\`
+(tanggal, dari, ke, nominal, keterangan, ref) — nama kolom sumber fleksibel
+(pengirim/penerima/asal/tujuan… otomatis dinormalkan).
+
+\`\`\`
+${python} ${forensic} --db kasus.duckdb load     --csv transaksi.csv
+${python} ${forensic} --db kasus.duckdb summary  --top 20
+${python} ${forensic} --db kasus.duckdb cycles   --out cycles.json
+${python} ${forensic} --db kasus.duckdb sankey   --min 1000000 --out sankey.json
+${python} ${forensic} --db kasus.duckdb workbook --out kasus.xlsx
+\`\`\`
+
+- \`workbook\` → 4 sheet (Ringkasan / Rekap Aliran / Transaksi / Siklus) siap lampir BAP/LHP.
+- \`sankey\` mengeluarkan job \`hyper viz\` — render: \`hyper viz sankey.json\`
+  (hasil \`aliran-dana.svg\` + PNG di folder yang sama).
+
+## Baca & agregasi transaksi
+
+- Sumber: Excel/CSV via \`pandas\`; langsung ke DuckDB untuk agregasi skala besar tanpa memuat
+  seluruhnya ke memori:
+
+\`\`\`
+import duckdb, pandas as pd
+df = pd.read_excel("transaksi.xlsx")
+duckdb.sql("CREATE TABLE txn AS SELECT * FROM df")
+ringkas = duckdb.sql("""
+  SELECT pengirim, penerima, count(*) AS jumlah, sum(nominal) AS total
+  FROM txn GROUP BY 1,2 ORDER BY total DESC
+""").df()
+\`\`\`
+
+## Deteksi siklus & jaringan (networkx)
+
+- Bangun graf berarah berbobot (\`nx.from_pandas_edgelist\`, \`DiGraph\`, bobot = total nominal).
+- Cari siklus transaksi berulang: \`nx.cycle_basis\` (tak berarah) atau \`nx.simple_cycles\` (berarah,
+  hati-hati biaya komputasi — batasi ke subgraf/top-N).
+- Metrik: \`nx.pagerank\` (simpul pengumpul dana), degree sentralitas, komunitas terdeteksi.
+
+## Grafik statis (plotly)
+
+- Sankey: \`go.Sankey(node=dict(label=…), link=dict(source=…, target=…, value=…))\`;
+  simpan \`fig.write_image("sankey.png", scale=2)\` (butuh \`kaleido\`).
+- Sankey/Treemap besar → render via aplikasi: tulis job \`{"charts":[{id,format,spec}]} lalu
+  \`hyper viz <job.json>\` (Chromium lokal, hasil SVG + PNG di folder job).
+- \`kaleido\` gagal (font/OS) → jatuhkan ke matplotlib \`Agg\` atau \`hyper viz\`.
+
+## Workbook multi-sheet (openpyxl)
+
+- Satu workbook: sheet \`Ringkasan\`, \`Transaksi\`, \`Siklus\`, \`Sumber\`. Tulis dengan \`openpyxl\`;
+  sisipkan Sankey/heatmap sebagai gambar (\`ws.add_image\`) bila perlu.
+- Selalu simpan ke berkas BARU; jangan menimpa file milik user.
+- Angka di chart harus = angka di sheet (sumber sama) agar lulus pemeriksaan visual.
+
+## Laporan
+
+- Sisipkan PNG Sankey/heatmap ke DOCX/LHP via \`python-docx\` (\`hyper-report\`).
+`,
+  },
 ]
 
 /** Writes the office skills next to the other Hyper AI skills; reports which were written/skipped/kept. */
 export async function applyOfficeSkills(configDir: string, dataDir: string) {
   if (!(await officeInstalled(dataDir))) return ["skipped"] as const
   const python = officePython(dataDir)
+  const forensic = forensicModule(dataDir)
   const results: string[] = []
   for (const spec of skills) {
     const dir = path.join(configDir, "skill", spec.id)
@@ -181,7 +261,7 @@ export async function applyOfficeSkills(configDir: string, dataDir: string) {
       continue
     }
     await mkdir(dir, { recursive: true })
-    await writeFile(file, spec.body(python))
+    await writeFile(file, spec.body(python, forensic).split(FORENSIC_PLACEHOLDER).join(forensic))
     results.push("written")
   }
   return results
