@@ -175,6 +175,60 @@ async function registerSearch() {
   }).catch((error) => log("search", error))
 }
 
+/** Job file: { charts: [{ id, spec, width, height, format? }] } — specs are ECharts options (Sankey, graph, treemap, heatmap…). */
+export async function runHyperViz(jobFile: string) {
+  const exit = (code: number, message: string) => {
+    process.stdout.write(`hyper-viz: ${message}\n`)
+    app.exit(code)
+  }
+  try {
+    const job = JSON.parse(await readFile(jobFile, "utf8")) as VizJob
+    await app.whenReady()
+    const window = new BrowserWindow({ show: false, width: 1200, height: 800, webPreferences: { sandbox: true } })
+    const echarts = path.join(bundleRoot(), manifest.viz.entry)
+    await window.loadURL("data:text/html,<html><body><div id='c' style='width:100%;height:100%'></div></body></html>")
+    await window.webContents.executeJavaScript(
+      `(async () => {
+        const src = ${JSON.stringify(await readFile(echarts, "utf8"))}
+        const script = document.createElement("script"); script.textContent = src; document.head.appendChild(script)
+        return true
+      })()`,
+    )
+    const results: VizResult[] = []
+    for (const chart of job.charts ?? []) {
+      const spec = JSON.stringify(chart.spec ?? {})
+      const outputs = await window.webContents.executeJavaScript(
+        `(async () => {
+          const chart = echarts.init(document.getElementById("c"), null, {
+            renderer: ${JSON.stringify(chart.format ?? "svg")},
+            width: ${Number(chart.width) || 1600}, height: ${Number(chart.height) || 900},
+          })
+          chart.setOption(${spec})
+          const fmt = ${JSON.stringify(chart.format ?? "svg")}
+          const value = fmt === "svg"
+            ? (typeof chart.renderToSVGString === "function" ? chart.renderToSVGString() : (document.getElementById("c").querySelector("svg")?.outerHTML ?? ""))
+            : chart.getDataURL({ type: "png", pixelRatio: 2, backgroundColor: "#fff" })
+          chart.dispose()
+          return value
+        })()`,
+      )
+      const dir = path.dirname(jobFile)
+      const base = path.join(dir, chart.id ?? `chart-${results.length + 1}`)
+      const file = `${base}.${chart.format === "png" ? "png" : "svg"}`
+      if (chart.format === "png") await writeFile(file, Buffer.from(String(outputs).split(",")[1], "base64"))
+      else await writeFile(file, String(outputs))
+      results.push({ id: chart.id, file })
+    }
+    window.destroy()
+    exit(0, `${results.length} chart selesai: ${results.map((result) => result.file).join(", ")}`)
+  } catch (error) {
+    exit(1, `gagal: ${error instanceof Error ? error.message : error}`)
+  }
+}
+
+type VizJob = { charts?: Array<{ id?: string; spec?: unknown; width?: number; height?: number; format?: string }> }
+type VizResult = { id?: string; file: string }
+
 /** Makes the `hyper` CLI reachable from the user's shell (best effort). */
 async function ensureHyperCli() {
   const bin = path.join(bundleRoot(), "bin")

@@ -6,7 +6,7 @@
 // (see the extraResources rule in apply.ts). The packages are plain JavaScript,
 // so one bundle serves every platform.
 
-import { cp, chmod, rename, rm } from "node:fs/promises"
+import { chmod, rename, rm } from "node:fs/promises"
 import path from "node:path"
 import { $ } from "bun"
 import { manifest } from "./../files/desktop/hyper/manifest"
@@ -20,7 +20,7 @@ if (!desktop) {
 const root = path.join(desktop, "hyper-bundle")
 await rm(root, { recursive: true, force: true })
 
-for (const component of [manifest.context7]) {
+for (const component of [manifest.context7, manifest.viz]) {
   const name = component.entry.split("/")[0]
   const prefix = path.join(root, name)
   await $`npm install --omit=dev --no-audit --no-fund --ignore-scripts --prefix ${prefix} ${component.package}@${component.version}`
@@ -31,14 +31,14 @@ for (const component of [manifest.context7]) {
 
 // The setup wizard is plain HTML + a CommonJS preload so it needs no bundler.
 // The search MCP server is the same: plain JavaScript, one bundle every OS.
-await cp(path.join(import.meta.dir, "../files/desktop/wizard"), path.join(root, "wizard"), { recursive: true })
-await cp(path.join(import.meta.dir, "../files/desktop/search"), path.join(root, "search"), { recursive: true })
+await $`cp -R ${path.join(import.meta.dir, "../files/desktop/wizard")} ${path.join(root, "wizard")}`
+await $`cp -R ${path.join(import.meta.dir, "../files/desktop/search")} ${path.join(root, "search")}`
 console.log("bundled setup wizard + search MCP")
 
 // The `hyper` CLI shares the knowledge module with the app: compile it as a
 // standalone ESM (electron-free) plus the thin launcher that drives it. Bun's
 // naming only emits `.js`, so rename to .mjs for the launcher's import.
-await cp(path.join(import.meta.dir, "../files/desktop/cli"), path.join(root, "bin"), { recursive: true })
+await $`cp -R ${path.join(import.meta.dir, "../files/desktop/cli")} ${path.join(root, "bin")}`
 await Bun.build({
   entrypoints: [path.join(import.meta.dir, "../files/desktop/hyper/knowledge.ts")],
   target: "node",

@@ -10,6 +10,11 @@ export const manifest = {
     // Relative to the bundle root (resources/hyper-bundle).
     entry: "context7/node_modules/@upstash/context7-mcp/dist/index.js",
   },
+  viz: {
+    package: "echarts",
+    version: "6.1.0",
+    entry: "viz/node_modules/echarts/dist/echarts.min.js",
+  },
   uv: { version: "0.9.0" },
   hindsight: {
     package: "hindsight-api",

@@ -379,6 +379,15 @@ const rules: Rule[] = [
     replace: 'marks.bundle = Date.now()\n\nvoid import("./hyper/bundle").then((module) => module.startHyperBundle())',
     critical: true,
   },
+  // Headless chart rendering must bypass the single-instance lock so a chart can render even
+  // while the app is open. It never touches the GUI or the user's session state.
+  {
+    file: "packages/desktop/src/main/index.ts",
+    find: "if (acquireApplicationLock()) {\n  registerRendererScheme()",
+    replace:
+      '// Headless chart rendering (Hyper AI): the agent passes `--hyper-viz=<job.json>` and this\n// process only renders ECharts specs to SVG/PNG, then exits. It deliberately runs outside the\n// single-instance lock so a chart can render even while the app is open, and it never touches\n// the GUI or the user\'s session state.\nconst vizArg = process.argv.find((arg) => arg.startsWith("--hyper-viz="))\nif (vizArg) {\n  void import("./hyper/bundle").then((module) => module.runHyperViz(vizArg.slice("--hyper-viz=".length)))\n} else if (acquireApplicationLock()) {\n  registerRendererScheme()',
+    critical: true,
+  },
   // Windows signing needs the upstream Azure account; without it the build is simply unsigned.
   {
     file: "packages/desktop/electron-builder.config.ts",

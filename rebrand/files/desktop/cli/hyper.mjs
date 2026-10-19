@@ -1,8 +1,11 @@
 // HYPER_AI_MANAGED — the `hyper` command-line companion.
 // Works with or without the desktop app: `sync` re-scans ~/Hyper-Knowledge and
 // ingests into the local memory server (same contract as the app-start sync).
+// `viz` renders ECharts jobs through the app's own Chromium, even while the app is open.
 // Offered via resources/hyper-bundle/bin and linked into ~/.local/bin.
 import { performance } from "node:perf_hooks"
+import { existsSync } from "node:fs"
+import { spawn } from "node:child_process"
 import { fileURLToPath } from "node:url"
 import path from "node:path"
 
@@ -17,9 +20,11 @@ const usage = () =>
     "  sync                Pindai ~/Hyper-Knowledge, ingest berkas baru/berubah ke memori",
     "  recall <kueri>      Cari fakta di seluruh bank (opsional: --bank <nama> --limit <n>)",
     "  banks               Daftar bank memori",
+    "  viz <job.json>      Render chart ECharts (sankey/graph/treemap/…) ke SVG/PNG di folder job",
     "",
     "Server memori berjalan bersama aplikasi Hyper AI (tanpa aplikasi, gitu tanpa",
     "  `hyper sync` akan melaporkan koneksi gagal — buka aplikasinya dulu).",
+    "`hyper viz` memakai Chromium milik aplikasi — bisa jalan walau aplikasi terbuka).",
   ].join("\n")
 
 const parseFlags = (args) => {
@@ -37,9 +42,53 @@ const json = async (url, init) => {
   return response.json()
 }
 
+// The CLI lives in <resources>/hyper-bundle/bin, so the app binary sits three levels up
+// (Contents/MacOS on macOS, app root on Windows/Linux). HYPER_APP overrides for the CLI tarball.
+const resolveAppBinary = () => {
+  if (process.env.HYPER_APP) return process.env.HYPER_APP
+  const root = path.resolve(binDir, "..", "..", "..")
+  const candidates =
+    process.platform === "darwin"
+      ? [path.join(root, "MacOS", "Hyper AI")]
+      : process.platform === "win32"
+        ? [path.join(root, "Hyper AI.exe")]
+        : [path.join(root, "hyper"), path.join(root, "Hyper AI")]
+  return candidates.find((candidate) => existsSync(candidate))
+}
+
+// Renders an ECharts job file (SVG + PNG next to it) through the app's own Chromium —
+// the same `--hyper-viz` entry the agent can also call directly on the binary.
+const runViz = async (jobFile) => {
+  const job = path.resolve(jobFile)
+  if (!existsSync(job)) throw new Error(`job tidak ditemukan: ${job}`)
+  const binary = resolveAppBinary()
+  if (!binary) throw new Error("binary Hyper AI tidak ditemukan (set HYPER_APP bila terpasang manual)")
+  const code = await new Promise((resolve) => {
+    const child = spawn(binary, [`--hyper-viz=${job}`], { stdio: "inherit" })
+    child.on("exit", (value) => resolve(value ?? 1))
+  })
+  if (code !== 0) {
+    console.error(`render gagal (kode ${code})`)
+    process.exit(code || 1)
+  }
+}
+
 async function main() {
   const [command, ...rest] = process.argv.slice(2)
   if (!command || command === "--help" || command === "-h" || command === "help") return console.log(usage())
+
+  // `viz` needs neither the memory server nor knowledge.mjs: it spawns the desktop app's
+  // own Chromium headlessly, and it works even while the app window is open.
+  if (command === "viz") {
+    if (!rest[0]) return console.error("job file dibutuhkan — contoh: hyper viz /path/job.json")
+    try {
+      await runViz(rest[0])
+    } catch (error) {
+      console.error(error.message)
+      process.exitCode = 1
+    }
+    return
+  }
 
   const knowledge = await import(bundled).catch((error) => {
     console.error("modul knowledge gagal dimuat:", error.message)

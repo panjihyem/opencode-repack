@@ -90,8 +90,9 @@ jaringan normal seluruh sumber berfungsi.
 | CI release v2.0.32 (3c81805 = F2+F3+F4) | ✅ | run `39161430831` success, 30 aset semua platform |
 | T17a install komponen lokal (uv → office venv) | ✅ | marker `installed-9a942aef` di `hyper-bundle/office`; 4 skill `hyper-excel/report/chart/tax-id` tampil di sesi live |
 | T17b office e2e smoke | ✅ | XLSX (formula+native chart+table+CF), evaluasi `formulas` E2=440 jt, DOCX (heading+tabel), PPTX chart native, PDF reportlab→pypdf, Pandas baca ulang — SEMUA OK di venv nyata |
-| T17c CLI `hyper knowledge sync` | ◐ berikut | scanner di luar GUI |
-| T18–T21 (renderer `--hyper-viz`, `forensic.py`+DuckDB, skill `hyper-fundflow`+docxtpl, visual QA) | ◐ berikut | rencana F6 Forensic Reporting |
+| T17c CLI `hyper` | ✅ | `9026617` — `hyper sync/banks/recall`; symlink `~/.local/bin/hyper` via `ensureHyperCli` |
+| T18 renderer `--hyper-viz` | ✅ | `hyper viz <job.json>` — ECharts 6.1.0 (manifest `viz` + prepare-bundle) → SVG+PNG via Electron offscreen. Render **di luar kunci single-instance** (patch `index.ts`): jalan walau app terbuka. Uji nyata: Sankey 1600×900 SVG + PNG Hi-DPI 3200×1800, exit 0 |
+| T19–T21 (`forensic.py`+DuckDB, `hyper-fundflow`+docxtpl, visual QA) | ◐ berikut | F6 Forensic Reporting |
 
 ## Catatan risiko
 
