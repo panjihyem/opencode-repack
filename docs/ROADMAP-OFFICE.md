@@ -103,6 +103,7 @@ jaringan normal seluruh sumber berfungsi.
 - ◐ OTA Linux AppImage: updater code + channel x64/arm64 ada di `9050695`/`aeca89e`; **belum live**. Manifest `latest*.yml` perlu masuk release workflow dan versi semver lebih baru dipublish. Workflow edit lokal tertahan GitHub OAuth token tanpa scope `workflow`.
 - ◐ OTA Windows NSIS: sengaja disabled sampai Azure Authenticode publisher identity dikonfigurasi; update tanpa verifikasi publisher ditolak.
 - ⏸ OTA macOS: perlu Apple Developer ID certificate + notarization; build saat ini adhoc-signed, jadi OTA belum aman/layak. Tetap install manual dari DMG.
+- ⏸ OTA workflow publish: perubahan koleksi `latest.yml` ditahan lokal; GitHub OAuth token hanya scope `gist, read:org, repo`, push `.github/workflows/repack-build.yml` ditolak tanpa scope `workflow`.
 
 ## Catatan risiko
 
