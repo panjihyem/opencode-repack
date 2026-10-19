@@ -586,7 +586,7 @@ const writes: Write[] = [
   { file: "packages/ui/src/components/logo.tsx", source: "ui/components/logo.tsx", critical: true },
   { file: "packages/app/src/providers/opencode-logo.tsx", source: "app/providers/opencode-logo.tsx", critical: true },
   // First-run provisioning for the desktop app (see rebrand/files/desktop/hyper).
-  ...["bundle", "components", "config", "docling", "download", "forensic", "hindsight", "knowledge", "lmstudio", "manifest", "memory", "office", "platform", "process", "skills", "uv"].map(
+  ...["bundle", "components", "config", "docling", "download", "forensic", "hindsight", "knowledge", "lmstudio", "manifest", "memory", "office", "platform", "process", "skills", "updates", "uv"].map(
     (name) => ({
       file: `packages/desktop/src/main/hyper/${name}.ts`,
       source: `desktop/hyper/${name}.ts`,

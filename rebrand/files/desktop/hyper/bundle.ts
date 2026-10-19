@@ -12,6 +12,7 @@ import { lmStudioInstalled, startLmServer, tuneLmStudio } from "./lmstudio"
 import { applySessionMemoryPlugin } from "./memory"
 import { manifest } from "./manifest"
 import { applyOfficeSkills } from "./skills"
+import { startHyperUpdates } from "./updates"
 
 // Makes a fresh Hyper AI install usable without manual setup:
 //   - Context7 ships inside the installer and is registered as an MCP server
@@ -34,6 +35,7 @@ export async function startHyperBundle() {
   if (!app.isPackaged && !process.env.HYPER_AI_BUNDLE_ROOT) return
   const children: ChildProcess[] = []
   app.once("will-quit", () => children.forEach((child) => child.kill()))
+  startHyperUpdates((message) => log("updates", message))
 
   await registerContext7()
 
