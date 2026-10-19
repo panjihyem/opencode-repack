@@ -96,6 +96,14 @@ jaringan normal seluruh sumber berfungsi.
 | T20 templat `docxtpl` + exhibit | ✅ | `forensic.py docgen --kind bap|lhp` buat draf DOCX berisi statistik DB, isian `--set`/JSON `--context`; BAP tabel 3 kolom × 4 baris; `exhibit` daftar 4 artefak + item tambahan. E2E DOCX dibuka `python-docx`; angka LHP = workbook (12 transaksi, 10 rekening distinct, 4 siklus, Rp974.000.000). `[ISI]` tetap perlu verifikasi penyidik |
 | T21 visual QA + demo end-to-end | ✅ | Demo `/tmp/fe2e`: CSV → DuckDB → workbook (4 sheet) + BAP/LHP/exhibit DOCX + cycles.json + Sankey. Sankey 9 edge DAG; 3 ujung siklus/total Rp247.000.000 dicatat subtext, sisa Rp727.000.000 (total DB Rp974.000.000); assert DAG + workbook totals lulus. `hyper viz` exit 0; `aliran-dana.svg` valid 1600×900 dan dibuka di preview. Renderer ini hasilkan SVG saja (PNG tidak ada) |
 
+## Update OTA (2026-10-19)
+
+- ✅ Tiga GGUF tier terpasang lokal (`~/.lmstudio/models`): Qwen3.5-9B (5.68 GB), Qwen3.5-4B (2.74 GB), LFM2.5-2.6B (1.67 GB). Model aktif tidak berubah; user memilih melalui wizard lalu restart.
+- ✅ App build picker terpasang di `~/Applications/Hyper AI.app` (user-level; `/Applications` tidak diubah). Installer/admin privilege tidak tersedia dalam sesi ini.
+- ◐ OTA Linux AppImage: updater code + channel x64/arm64 ada di `9050695`/`aeca89e`; **belum live**. Manifest `latest*.yml` perlu masuk release workflow dan versi semver lebih baru dipublish. Workflow edit lokal tertahan GitHub OAuth token tanpa scope `workflow`.
+- ◐ OTA Windows NSIS: sengaja disabled sampai Azure Authenticode publisher identity dikonfigurasi; update tanpa verifikasi publisher ditolak.
+- ⏸ OTA macOS: perlu Apple Developer ID certificate + notarization; build saat ini adhoc-signed, jadi OTA belum aman/layak. Tetap install manual dari DMG.
+
 ## Catatan risiko
 
 - `formulas` lib evaluasi xlsx tidak 100% paritas dengan Excel (function coverage ~90%);
