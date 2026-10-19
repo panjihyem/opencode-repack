@@ -134,7 +134,7 @@
         const ids = selectedIds()
         const components = plan.filter((item) => ids.includes(item.id) && item.id !== "models" && !item.installed)
         const selectedModel = models.find((item) => item.id === $("model-select").value)
-        const modelBytes = ids.includes("models") && !plan.find((item) => item.id === "models")?.installed ? (selectedModel?.bytes ?? 0) : 0
+          const modelBytes = ids.includes("models") && !selectedModel?.installed ? (selectedModel?.bytes ?? 0) : 0
         return components.reduce((sum, item) => sum + item.bytes, 0) + modelBytes
       }
 
