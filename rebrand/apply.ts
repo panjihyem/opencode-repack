@@ -422,6 +422,15 @@ const rules: Rule[] = [
   },
   {
     file: "packages/desktop/electron-builder.config.ts",
+    find: '      target: ["AppImage", "deb", "rpm"],',
+    replace: `      target: ["AppImage", "deb", "rpm"],
+      appImage: {
+        publish: [{ provider: "github", owner: "${brand.repo.owner}", repo: "${brand.repo.name}", channel: target.cpu === "arm64" ? "latest-arm64" : "latest" }],
+      },`,
+    critical: true,
+  },
+  {
+    file: "packages/desktop/electron-builder.config.ts",
     find: 'name: "OpenCode Beta", schemes: ["opencode"]',
     replace: `name: "${NAME} Beta", schemes: ["${brand.scheme}"]`,
     critical: true,
