@@ -196,11 +196,16 @@ ${python} ${forensic} --db kasus.duckdb summary  --top 20
 ${python} ${forensic} --db kasus.duckdb cycles   --out cycles.json
 ${python} ${forensic} --db kasus.duckdb sankey   --min 1000000 --out sankey.json
 ${python} ${forensic} --db kasus.duckdb workbook --out kasus.xlsx
+${python} ${forensic} --db kasus.duckdb docgen --kind lhp --out draf-lhp.docx
+${python} ${forensic} --db kasus.duckdb docgen --kind bap --out draf-bap.docx
+${python} ${forensic} --db kasus.duckdb exhibit --out daftar-lampiran.docx
 \`\`\`
 
 - \`workbook\` → 4 sheet (Ringkasan / Rekap Aliran / Transaksi / Siklus) siap lampir BAP/LHP.
+- \`docgen --kind bap|lhp\` → draf DOCX dari statistik kasus; isi identitas, dasar, simpulan, dan usul lewat \`--set key=value\` atau JSON \`--context\`. Teks \`[ISI]\` wajib diverifikasi penyidik.
+- \`exhibit\` → daftar lampiran awal (data transaksi, workbook, siklus, Sankey) + item tambahan via \`--item\`.
 - \`sankey\` mengeluarkan job \`hyper viz\` — render: \`hyper viz sankey.json\`
-  (hasil \`aliran-dana.svg\` + PNG di folder yang sama).
+  (hasil \`aliran-dana.svg\` di folder yang sama; loop/siklus dipisah di laporan siklus).
 
 ## Baca & agregasi transaksi
 

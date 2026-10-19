@@ -260,6 +260,174 @@ def cmd_workbook(args):
     print(f"workbook {args.out}: Ringkasan, Rekap Aliran ({len(totals)}), Transaksi ({len(txns)}), Siklus ({len(cycles)})")
 
 
+def _case_stats(con):
+    """Angka kasus dari hia_txn untuk disuntikkan ke dokumen (sumber tunggal)."""
+    import networkx as nx
+
+    overall = con.execute(
+        "SELECT COUNT(*), MIN(tanggal), MAX(tanggal), COALESCE(SUM(nominal),0) FROM hia_txn"
+    ).fetchone()
+    rekening = con.execute(
+        "SELECT COUNT(*) FROM (SELECT dari AS rekening FROM hia_txn UNION SELECT ke FROM hia_txn)"
+    ).fetchone()[0]
+    graph = _graph(con)
+    siklus = sum(1 for _ in nx.simple_cycles(graph))
+    return {
+        "transaksi_jumlah": overall[0],
+        "tanggal_mulai": overall[1] or "-",
+        "tanggal_selesai": overall[2] or "-",
+        "nominal_total": f"{overall[3]:,.0f}",
+        "rekening_jumlah": rekening,
+        "siklus_jumlah": siklus,
+    }
+
+
+def _starter_template(kind, stats):
+    """Bangun templat dokumen (python-docx) ber-tag jinja untuk docxtpl."""
+    from docx import Document
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Pt
+
+    doc = Document()
+    normal = doc.styles["Normal"]
+    normal.font.name = "Times New Roman"
+    normal.font.size = Pt(12)
+
+    def line(text="", bold=False, align=None, size=12):
+        para = doc.add_paragraph()
+        run = para.add_run(text)
+        run.bold = bold
+        run.font.size = Pt(size)
+        if align is not None:
+            para.alignment = align
+        return para
+
+    center = WD_ALIGN_PARAGRAPH.CENTER
+    if kind == "bap":
+        line("BERITA ACARA PEMERIKSAAN", bold=True, align=center, size=14)
+        line("Nomor: {{ nomor }}", align=center)
+        line()
+        line("Pada hari ini, {{ tanggal }}, bertempat di {{ tempat }}, telah dilakukan pemeriksaan terhadap:")
+        for label, key in (("Nama/NIK", "wp_nama"), ("NPWP", "wp_npwp"), ("Alamat", "wp_alamat")):
+            line(f"{label}: {{{{{key}}}}}")
+        line()
+        line("Berdasarkan Surat Perintah Penyidikan {{ dasar }}, pemeriksaan menyangkut hal berikut:")
+        table = doc.add_table(rows=1, cols=3)
+        table.style = "Table Grid"
+        for cell, header in zip(table.rows[0].cells, ("No.", "Materi pemeriksaan", "Keterangan")):
+            cell.text = header
+        # Baris statis agar struktur tabel tetap valid setelah render docxtpl.
+        for index in range(3):
+            cells = table.add_row().cells
+            cells[0].text = str(index + 1)
+            cells[1].text = "{{ materi[" + str(index) + "] }}"
+            cells[2].text = "{{ materi_keterangan[" + str(index) + "] }}"
+        line()
+        line("Hasil pemeriksaan sebagaimana tercantum dalam lampiran yang merupakan bagian tidak terpisahkan.")
+        line()
+        line("Berita acara ini dibuat dengan sebenarnya untuk dapat dipergunakan sebagaimana mestinya.")
+        for role, key in (("Penyidik", "penyidik"), ("Terdakwa/Pihak Diperiksa", "terperiksa")):
+            line()
+            line(f"{role}: {{{{ {key} }}}}", align=center)
+    else:
+        line("LAPORAN HASIL PENELITIAN", bold=True, align=center, size=14)
+        line("Nomor: {{ nomor }}", align=center)
+        line()
+        line(f"1. Dasar: {{{{ dasar }}}}")
+        line(f"2. Maksud: {{{{ maksud }}}}")
+        line("3. Hasil penelitian:")
+        line(f"   - Jumlah transaksi yang diteliti: {stats['transaksi_jumlah']} transaksi")
+        line(f"   - Periode: {stats['tanggal_mulai']} s.d. {stats['tanggal_selesai']}")
+        line(f"   - Total nominal: Rp {stats['nominal_total']}")
+        line(f"   - Jumlah rekening terlibat: {stats['rekening_jumlah']}")
+        line(f"   - Ditemukan pola siklus aliran dana: {stats['siklus_jumlah']} siklus")
+        line("   {{ hasil }}")
+        line("4. Simpulan: {{ simpulan }}")
+        line("5. Usul/Rekomendasi: {{ usul }}")
+        line()
+        line("Daftar lampiran (exhibit) melekat pada laporan ini.")
+        line()
+        line("Dibuat oleh:", align=center)
+        line("{{ penyidik }}", align=center)
+    return doc
+
+
+def cmd_docgen(args):
+    from docxtpl import DocxTemplate
+
+    ctx = {"nomor": "-", "tanggal": "-", "dasar": "[ISI surat perintah]", "penyidik": "[ISI nama+NIP]"}
+    if args.context:
+        with open(args.context, encoding="utf-8") as handle:
+            ctx.update(json.load(handle))
+    for item in args.set or []:
+        key, sep, value = item.partition("=")
+        if sep:
+            ctx[key] = value
+
+    con = _connect(args.db)
+    stats = _case_stats(con)
+    ctx.setdefault("materi", ["Pemeriksaan rekening", "Analisa aliran dana", "Penelitian bukti transaksi"])
+    ctx.setdefault("materi_keterangan", ["[ISI]", "[ISI]", "[ISI]"])
+    ctx.setdefault("maksud", "Meneliti kebenaran data transaksi dan aliran dana")
+    ctx.setdefault("hasil", "")
+    ctx.setdefault("simpulan", "")
+    ctx.setdefault("usul", "")
+    ctx["statistik"] = stats
+
+    if args.template:
+        source = args.template
+    else:
+        from tempfile import NamedTemporaryFile
+
+        starter = _starter_template(args.kind, stats)
+        with NamedTemporaryFile(suffix=".docx", delete=False) as handle:
+            temp = handle.name
+        starter.save(temp)
+        source = temp
+
+    template = DocxTemplate(source)
+    template.render(ctx)
+    template.save(args.out)
+    print(f"dokumen {args.kind} → {args.out} (nilai kasus dari {args.db}: {stats['transaksi_jumlah']} transaksi, {stats['siklus_jumlah']} siklus)")
+
+
+def cmd_exhibit(args):
+    from docx import Document
+    from docx.shared import Pt
+
+    con = _connect(args.db)
+    stats = _case_stats(con)
+    con.execute("SELECT COUNT(*) FROM hia_txn").fetchone()
+
+    doc = Document()
+    doc.styles["Normal"].font.name = "Times New Roman"
+    doc.styles["Normal"].font.size = Pt(12)
+    doc.add_paragraph().add_run("DAFTAR LAMPIRAN (EXHIBIT)").bold = True
+    doc.add_paragraph(f"Kasus: {args.kasus or '[ISI nama kasus]'}")
+    table = doc.add_table(rows=1, cols=4)
+    table.style = "Table Grid"
+    for cell, header in zip(table.rows[0].cells, ("No.", "Kode", "Uraian", "Keterangan")):
+        cell.text = header
+    items = [
+        ("A.1", "Data transaksi mentah", f"{stats['transaksi_jumlah']} baris, total Rp {stats['nominal_total']}"),
+        ("A.2", "Workbook rekap aliran dana (xlsx)", "Ringkasan / Rekap Aliran / Transaksi / Siklus"),
+        ("A.3", "Rekap pola siklus (json)", f"{stats['siklus_jumlah']} siklus terdeteksi"),
+        ("A.4", "Grafis Sankey aliran dana (svg/png)", "Render: hyper viz sankey.json"),
+    ]
+    items.extend(
+        (item.get("kode", "-"), item.get("uraian", "-"), item.get("keterangan", ""))
+        for item in (json.loads(entry) for entry in args.item or [])
+    )
+    for index, (kode, uraian, keterangan) in enumerate(items, start=1):
+        cells = table.add_row().cells
+        cells[0].text = str(index)
+        cells[1].text = kode
+        cells[2].text = uraian
+        cells[3].text = keterangan
+    doc.save(args.out)
+    print(f"daftar exhibit ({len(items)} lampiran) → {args.out}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Forensic toolkit Hyper AI (offline)")
     parser.add_argument("--db", required=True, help="file DuckDB (dibuat bila belum ada)")
@@ -287,6 +455,20 @@ def main():
     workbook = sub.add_parser("workbook", help="workbook multi-sheet (openpyxl)")
     workbook.add_argument("--out", required=True)
     workbook.set_defaults(func=cmd_workbook)
+
+    docgen = sub.add_parser("docgen", help="draf BAP/LHP (docxtpl) berisi angka kasus")
+    docgen.add_argument("--kind", choices=["bap", "lhp"], required=True)
+    docgen.add_argument("--out", required=True)
+    docgen.add_argument("--template", help="templat docx milik user (opsional)")
+    docgen.add_argument("--context", help="JSON isian tambahan")
+    docgen.add_argument("--set", action="append", help="isian key=value (bisa berulang)")
+    docgen.set_defaults(func=cmd_docgen)
+
+    exhibit = sub.add_parser("exhibit", help="daftar lampiran/ exhibit (docx)")
+    exhibit.add_argument("--out", required=True)
+    exhibit.add_argument("--kasus", help="nama kasus untuk kepala daftar")
+    exhibit.add_argument("--item", action="append", help="JSON {kode,uraian,keterangan} (bisa berulang)")
+    exhibit.set_defaults(func=cmd_exhibit)
 
     args = parser.parse_args()
     if args.command == "load":
