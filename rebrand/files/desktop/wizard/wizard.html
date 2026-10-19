@@ -78,6 +78,10 @@
 
       <section id="step-choose" hidden>
         <div class="list" id="components"></div>
+        <div class="row" id="model-choice" style="margin-top:12px">
+          <label for="model-select"><span class="name">Model AI lokal</span><br><span class="desc" id="model-hint">Rekomendasi otomatis sesuai RAM.</span></label>
+          <select id="model-select" aria-label="Pilih model AI lokal" style="font:inherit;padding:8px;border-radius:8px"></select>
+        </div>
       </section>
 
       <section id="step-run" hidden>
@@ -102,6 +106,7 @@
       let running = false
       let finished = false
       let auto = false
+      let models = []
 
       const formatSize = (bytes) => (bytes >= 1e9 ? (bytes / 1e9).toFixed(1) + " GB" : Math.round(bytes / 1e6) + " MB")
 
@@ -127,7 +132,28 @@
       }
       function selectedBytes() {
         const ids = selectedIds()
-        return plan.filter((item) => ids.includes(item.id) && !item.installed).reduce((sum, item) => sum + item.bytes, 0)
+        const components = plan.filter((item) => ids.includes(item.id) && item.id !== "models" && !item.installed)
+        const selectedModel = models.find((item) => item.id === $("model-select").value)
+        const modelBytes = ids.includes("models") && !plan.find((item) => item.id === "models")?.installed ? (selectedModel?.bytes ?? 0) : 0
+        return components.reduce((sum, item) => sum + item.bytes, 0) + modelBytes
+      }
+
+      function renderModels() {
+        const select = $("model-select")
+        select.innerHTML = ""
+        for (const model of models) {
+          const option = document.createElement("option")
+          option.value = model.id
+          option.textContent = model.id + (model.recommended ? " — rekomendasi RAM" : "") + (model.installed ? " — sudah diunduh" : "")
+          select.append(option)
+        }
+        select.addEventListener("change", () => {
+          const model = models.find((item) => item.id === select.value)
+          $("model-hint").textContent = model?.installed
+            ? "Model ini sudah diunduh. Model aktif Hindsight mengikuti pilihan ini setelah aplikasi dibuka ulang."
+            : "Model ini akan diunduh. Model sebelumnya tidak dihapus. Model aktif Hindsight berubah setelah aplikasi dibuka ulang."
+          $("note").textContent = "Perkiraan ruang: " + formatSize(selectedBytes())
+        })
       }
 
       function renderChoices() {
@@ -189,11 +215,13 @@
 
       async function beginAuto() {
         const ids = selectedIds()
+        const recommended = models.find((model) => model.recommended)
+        if (recommended) $("model-select").value = recommended.id
         renderProgress(ids)
         show(2)
         running = true
         $("note").textContent = ""
-        await api.start(ids, { unattended: true })
+        await api.start(ids, { unattended: true, modelId: $("model-select").value })
       }
 
       $("next").addEventListener("click", async () => {
@@ -205,15 +233,17 @@
           renderProgress(ids)
           show(2)
           running = true
-          await api.start(ids, { unattended })
+          await api.start(ids, { unattended, modelId: $("model-select").value })
         }
       })
       $("back").addEventListener("click", () => show(0))
       $("skip").addEventListener("click", () => api.skip())
 
       api.onProgress(applyProgress)
-      api.plan().then(async (items) => {
+      Promise.all([api.plan(), api.modelChoices()]).then(async ([items, choices]) => {
         plan = items
+        models = choices
+        renderModels()
         renderChoices()
         show(0)
         // Auto mode (first launch): no clicks — jump straight into installing.

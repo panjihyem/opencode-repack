@@ -45,11 +45,21 @@ const modelPresent = (m: (typeof manifest.models)[number]) =>
 
 /** The model hindsight should talk to: the RAM-tiered pick whenever present,
  * otherwise any tier already fully downloaded (older installs), else the tiered pick. */
-export async function selectedModelId() {
+export async function selectedModelId(preferred?: string) {
+  const selected = manifest.models.find((candidate) => candidate.id === preferred)
+  if (selected && (await modelPresent(selected))) return selected.id
   const others = manifest.models.filter((m) => m !== model)
   for (const candidate of [model, ...others]) if (await modelPresent(candidate)) return candidate.id
   return model.id
 }
+
+export const modelChoices = async () =>
+  Promise.all(manifest.models.map(async (item) => ({
+    id: item.id,
+    bytes: item.bytes,
+    recommended: item.id === model.id,
+    installed: await modelPresent(item),
+  })))
 
 export const components: Component[] = [
   {
@@ -72,11 +82,12 @@ export const components: Component[] = [
   },
   {
     id: "models",
-    name: `Model lokal ${model.id}`,
-    description: "Model untuk ekstraksi memori dan tugas offline; dipilih otomatis sesuai RAM. Model di-load hanya begitu dibutuhkan dan segera dilepas saat idle.",
-    bytes: model.bytes,
+    name: "Model lokal",
+    description: "Pilih model rekomendasi RAM atau salah satu model lain. Model aktif akan diunduh; model lama tidak dihapus.",
+    bytes: 0,
     recommended: true,
-    installed: () => modelPresent(model),
+    // Model choice is per-wizard, so installed state is checked against selection in provision().
+    installed: async () => false,
     install: async (_dataDir, report) => installModels(report, [model.id]),
   },
   {
@@ -114,16 +125,20 @@ export type Update =
   | { type: "complete"; failed: string[] }
 
 /** Installs the chosen components in order; a failing one is reported and does not stop the rest. */
-export async function provision(ids: string[], dataDir: string, emit: (update: Update) => void) {
+export async function provision(ids: string[], dataDir: string, emit: (update: Update) => void, modelId = model.id) {
   const failed: string[] = []
   for (const component of components.filter((item) => ids.includes(item.id) && !item.required)) {
-    if (await component.installed(dataDir)) {
+    const selected = component.id === "models" ? manifest.models.find((item) => item.id === modelId) ?? model : undefined
+    if (selected ? await modelPresent(selected) : await component.installed(dataDir)) {
       emit({ type: "step", id: component.id, status: "skipped", message: "Sudah terpasang", fraction: 1 })
       continue
     }
     emit({ type: "step", id: component.id, status: "running", fraction: 0 })
     try {
-      await component.install(dataDir, (message, fraction) =>
+      if (component.id === "models") {
+        const chosen = selected ?? model
+        await installModels((message, fraction) => emit({ type: "step", id: component.id, status: "running", message, fraction }), [chosen.id])
+      } else await component.install(dataDir, (message, fraction) =>
         emit({ type: "step", id: component.id, status: "running", message, fraction }),
       )
       emit({ type: "step", id: component.id, status: "done", fraction: 1 })

@@ -4,6 +4,7 @@ const { contextBridge, ipcRenderer } = require("electron")
 
 contextBridge.exposeInMainWorld("hyperSetup", {
   auto: () => ipcRenderer.invoke("hyper:auto"),
+  modelChoices: () => ipcRenderer.invoke("hyper:model-choices"),
   plan: () => ipcRenderer.invoke("hyper:plan"),
   start: (ids, opts) => ipcRenderer.invoke("hyper:start", ids, opts),
   skip: () => ipcRenderer.invoke("hyper:skip"),

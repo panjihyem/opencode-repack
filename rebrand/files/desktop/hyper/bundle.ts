@@ -3,7 +3,7 @@ import { chmod, mkdir, readFile, readlink, stat, symlink, writeFile } from "node
 import os from "node:os"
 import path from "node:path"
 import type { ChildProcess } from "node:child_process"
-import { components, provision, selectedModelId } from "./components"
+import { components, modelChoices, provision, selectedModelId } from "./components"
 import { applyServers, applyUnattended, managed } from "./config"
 import { applyDocSkill } from "./docling"
 import { hindsightInstalled, startHindsight } from "./hindsight"
@@ -21,7 +21,7 @@ import { applyOfficeSkills } from "./skills"
 // Failures are logged and shown in the wizard; the app never waits on this.
 // Run `--hyper-setup` to open the wizard again.
 
-type State = { wizard?: "completed" | "skipped"; unattended?: boolean }
+type State = { wizard?: "completed" | "skipped"; unattended?: boolean; modelId?: string }
 
 const dataDir = () => path.join(app.getPath("userData"), "hyper-bundle")
 const logDir = () => path.join(dataDir(), "logs")
@@ -65,7 +65,7 @@ async function startServices(children: ChildProcess[]) {
   // The memory server follows the RAM-tiered model the wizard picked, but never
   // switches to a model that is not fully downloaded (older installs keep theirs).
   if (await hindsightInstalled(dataDir())) {
-    const modelId = await selectedModelId()
+    const modelId = await selectedModelId(state.modelId)
     const child = await startHindsight(dataDir(), logDir(), modelId)
     if (child) children.push(child)
     await registerMemory()
@@ -87,7 +87,7 @@ function openWizard(auto: boolean) {
       width: 680,
       height: 560,
       resizable: false,
-      title: "Hyper AI Setup",
+      title: "Hyper AI — Penyiapan",
       autoHideMenuBar: true,
       webPreferences: {
         preload: path.join(bundleRoot(), "wizard", "preload.cjs"),
@@ -100,6 +100,7 @@ function openWizard(auto: boolean) {
     let outcome: State["wizard"] = "skipped"
 
     ipcMain.handle("hyper:auto", () => auto)
+    ipcMain.handle("hyper:model-choices", () => modelChoices())
     ipcMain.handle("hyper:plan", () =>
       Promise.all(
         components.map(async (item) => ({
@@ -113,14 +114,14 @@ function openWizard(auto: boolean) {
         })),
       ),
     )
-    ipcMain.handle("hyper:start", async (_event, ids: string[], opts?: { unattended?: boolean }) => {
+    ipcMain.handle("hyper:start", async (_event, ids: string[], opts?: { unattended?: boolean; modelId?: string }) => {
       // Persist the agent-autonomy choice before setup runs, so services pick it up.
-      await writeState({ ...(await readState()), unattended: opts?.unattended !== false })
+      await writeState({ ...(await readState()), unattended: opts?.unattended !== false, ...(opts?.modelId ? { modelId: opts.modelId } : {}) })
       const failed = await provision(ids, dataDir(), (update) => {
         if (update.type === "step") send({ ...update })
         else send(update)
         if (update.type === "step") void log(update.id, `${update.status} ${update.message ?? ""}`)
-      })
+      }, opts?.modelId)
       if (!failed.length) outcome = "completed"
       new Notification({
         title: "Hyper AI",
@@ -133,7 +134,7 @@ function openWizard(auto: boolean) {
     ipcMain.handle("hyper:finish", () => window.close())
 
     window.on("closed", async () => {
-      for (const channel of ["hyper:auto", "hyper:plan", "hyper:start", "hyper:skip", "hyper:finish"]) {
+      for (const channel of ["hyper:auto", "hyper:model-choices", "hyper:plan", "hyper:start", "hyper:skip", "hyper:finish"]) {
         ipcMain.removeHandler(channel)
       }
       // Closing without finishing asks again on the next launch.
