@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:" />
-    <title>Hyper AI Setup</title>
+    <title>Hyper AI — Penyiapan</title>
     <style>
       :root {
         --bg: #ffffff;
@@ -70,9 +70,9 @@
 
       <section id="step-welcome">
         <div class="list">
-          <div class="row"><div><div class="name">Yang akan disiapkan</div><div class="desc">Pilih komponen di langkah berikutnya. Semua diunduh langsung dari penerbit resminya dan bisa diulang kapan saja.</div></div></div>
+          <div class="row"><div><div class="name">Komponen Hyper AI</div><div class="desc">Komponen yang dipilih diunduh dari penerbit resminya. Mode otomatis menyiapkan semua komponen yang belum terpasang.</div></div></div>
           <div class="row"><div><div class="name">Konteks &amp; memori untuk agen</div><div class="desc">Context7 (dokumentasi library terbaru) sudah termasuk. Memori jangka panjang Hindsight dan model lokal bersifat opsional.</div></div></div>
-          <label class="row" style="cursor:pointer"><input id="unattended" type="checkbox" style="width:18px;height:18px;accent-color:var(--accent)" checked><div><div class="name">Mode praktis (tanpa konfirmasi)</div><div class="desc">Agen berjalan penuh tanpa menanyakan izin di setiap langkah — cocok bila Anda tidak ingin dipakai memilih "Izinkan" terus-menerus. Bisa diganti kapan saja.</div></div><span></span></label>
+          <label class="row" style="cursor:pointer"><input id="unattended" type="checkbox" style="width:18px;height:18px;accent-color:var(--accent)" checked><div><div class="name">Mode praktis (tanpa konfirmasi)</div><div class="desc">Hyper AI menjalankan aksi agen tanpa dialog izin berulang. Aturan izin yang Anda tetapkan tetap berlaku dan tidak diubah.</div></div><span></span></label>
         </div>
       </section>
 
@@ -88,8 +88,8 @@
         <span class="note" id="note"></span>
         <div class="actions">
           <button id="back" hidden>Kembali</button>
-          <button id="skip">Nanti saja</button>
-          <button id="next" class="primary">Lanjut</button>
+          <button id="skip">Lewati penyiapan</button>
+          <button id="next" class="primary">Lanjutkan</button>
         </div>
       </footer>
     </main>
@@ -111,13 +111,13 @@
         ;[...$("steps").children].forEach((li, i) => li.classList.toggle("on", i <= index))
         $("back").hidden = index !== 1
         $("skip").hidden = index === 2
-        $("title").textContent = ["Selamat datang di Hyper AI", "Pilih komponen", "Menyiapkan..."][index]
+        $("title").textContent = ["Selamat datang di Hyper AI", "Pilih komponen Hyper AI", "Menyiapkan Hyper AI..."][index]
         $("subtitle").textContent = [
-          "Siapkan komponen AI lokal agar Hyper AI langsung siap dipakai.",
-          "Komponen yang sudah terpasang dilewati otomatis.",
+          "Siapkan komponen agar Hyper AI langsung siap dipakai.",
+          "Komponen Hyper AI yang sudah terpasang dilewati otomatis.",
           "Biarkan jendela ini terbuka. Anda tetap bisa memakai Hyper AI sambil menunggu.",
         ][index]
-        $("next").textContent = ["Lanjut", "Pasang yang dipilih", "Menyiapkan..."][index]
+        $("next").textContent = ["Lanjutkan", "Pasang komponen", "Menyiapkan..."][index]
         $("next").disabled = index === 2
         $("note").textContent = index === 1 ? "Perkiraan ruang: " + formatSize(selectedBytes()) : ""
       }
@@ -173,7 +173,7 @@
           $("subtitle").textContent = update.failed.length
             ? "Sebagian komponen gagal dan akan dicoba lagi saat Hyper AI dibuka berikutnya."
             : "Hyper AI siap dipakai."
-          $("next").textContent = "Mulai pakai Hyper AI"
+          $("next").textContent = "Selesai — buka Hyper AI"
           $("next").disabled = false
           // Auto mode never asks for a click: close once the setup has settled.
           if (auto) setTimeout(() => api.finish(), 2500)

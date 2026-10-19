@@ -73,11 +73,11 @@ T1→T4 (F1) → T14/T15 (F5, kecil & damage-limiting) → T5/T6/T7 (F2) → T9/
 | F5 T14/T15 | ✅ | `394448e` — applyUnattended on/off idempotent + toggle wizard |
 | F2 T5–T7 | ✅ | `39c667a` — knowledge.ts: `~/Hyper-Knowledge`, sync tiap app-start, ingest langsung via hindsight `files/retain` (Docling tak dibutuhkan utk ingest), bank `general` + `project:<slug>`, idempoten via manifest; uji live: PMK & file project masuk bank, recall keluar fakta + tag `knowledge:regulasi` / `project:audit-2025` |
 | F3 T9/T10 | ✅ | `b629655` — plugin `hyper-memory` (managed): prompt user → bank `sessions` async; recall injection ke system prompt (max 8 fakta, cache per prompt); compaction menyimpan ekor transkrip. Uji live: plugin hot-reload oleh server berjalan, retain terekstraksi |
-| F3 T11 | ◑ | mental models/knowledge pages hindsight tersedia via MCP `mem`; halaman otomatis "Ringkasan Project" belum dibuat (opsional, lanjut nanti) |
+| F3 T11 | ✅ | `syncKnowledge` rebuild `projects/<slug>/Ringkasan-Project.md` dari daftar berkas berhasil-ingest + recall bank `project:<slug>`; hasil recall ditandai draf/perlu verifikasi. Berkas tanpa marker `HYPER_AI_MANAGED` tidak ditimpa; summary tidak di-ingest kembali. Self-check assert lulus |
 | F4 T12 | ✅ | `3c81805` — MCP `hyper-search` (search/mcp.mjs): rantai DDG → Bing (redirect dibalik + filter anti-bot: 1 domain/ tanpa irisan kata query) → Wikipedia; tak butuh API key; terdaftar sebagai MCP lokal via Electron-as-node |
 | F4 T13 | ✅(≈) | Browser = plugin internal upstream (`plugin-browser`, selalu aktif — sesi Hyper AI otomatis punya 45 tool browser); verifikasi penuh menunggu app final |
-| T8 | ◐ | belum |
-| T16 | ✅(≈) | semua install user-level; wizard belum diganti-nama penuh di beberapa label |
+| T8 | ✅* | `hyper fetch --source kemenkeu|djp [--limit N]` membaca JSON Feed resmi `https://jdih.kemenkeu.go.id/feed.json`, filter metadata regulasi pajak, tulis katalog bertaut sumber ke `~/Hyper-Knowledge/general/regulasi/`; uji live 5 entri lulus. Katalog bukan naskah resmi; pengguna buka sumber untuk verifikasi/unduh lalu `hyper sync`. `djp` alias: belum ditemukan feed terpisah resmi DJP |
+| T16 | ✅(≈) | Copy wizard dilokalkan/dirapikan; instalasi komponen melalui app, tanpa terminal. Aturan izin user tetap tak disentuh; teks kini menyebutnya eksplisit. Operasi tetap user-level (tak meminta privilese admin) |
 
 Catatan jaringan mesin dev: DDG diblokir TLS oleh jaringan lokal & Bing kadang
 menyetuh mode anti-bot (hasil canned) — filter memindahkan ke Wikipedia; di

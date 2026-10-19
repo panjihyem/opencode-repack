@@ -5,6 +5,8 @@
 // Offered via resources/hyper-bundle/bin and linked into ~/.local/bin.
 import { performance } from "node:perf_hooks"
 import { existsSync } from "node:fs"
+import { mkdir as mkdirAsync, readFile as readFileAsync, writeFile as writeFileAsync } from "node:fs/promises"
+import os from "node:os"
 import { spawn } from "node:child_process"
 import { fileURLToPath } from "node:url"
 import path from "node:path"
@@ -20,11 +22,11 @@ const usage = () =>
     "  sync                Pindai ~/Hyper-Knowledge, ingest berkas baru/berubah ke memori",
     "  recall <kueri>      Cari fakta di seluruh bank (opsional: --bank <nama> --limit <n>)",
     "  banks               Daftar bank memori",
+    "  fetch --source kemenkeu [--limit 20]  Simpan katalog regulasi dari feed resmi JDIH Kemenkeu",
     "  viz <job.json>      Render chart ECharts (sankey/graph/treemap/…) ke SVG/PNG di folder job",
     "",
-    "Server memori berjalan bersama aplikasi Hyper AI (tanpa aplikasi, gitu tanpa",
-    "  `hyper sync` akan melaporkan koneksi gagal — buka aplikasinya dulu).",
-    "`hyper viz` memakai Chromium milik aplikasi — bisa jalan walau aplikasi terbuka).",
+    "Server memori berjalan bersama aplikasi Hyper AI; `hyper sync` memerlukan aplikasi terbuka.",
+    "`hyper viz` memakai Chromium milik aplikasi dan bisa jalan saat aplikasi terbuka.",
   ].join("\n")
 
 const parseFlags = (args) => {
@@ -85,6 +87,49 @@ async function main() {
       await runViz(rest[0])
     } catch (error) {
       console.error(error.message)
+      process.exitCode = 1
+    }
+    return
+  }
+
+  if (command === "fetch") {
+    const flags = parseFlags(rest)
+    const sourceIndex = rest.indexOf("--source")
+    const source = sourceIndex >= 0 ? rest[sourceIndex + 1] || "" : ""
+    if (source !== "kemenkeu" && source !== "djp") {
+      console.error("sumber harus `kemenkeu` atau `djp` (DJP belum punya feed terpisah; memakai feed resmi JDIH Kemenkeu)")
+      process.exitCode = 2
+      return
+    }
+    const limit = Math.max(1, Math.min(100, flags.limit || 20))
+    try {
+      const response = await fetch("https://jdih.kemenkeu.go.id/feed.json", { signal: AbortSignal.timeout(15000) })
+      if (!response.ok) throw new Error(`JDIH feed HTTP ${response.status}`)
+      const feed = await response.json()
+      if (!Array.isArray(feed.items)) throw new Error("format feed JDIH tidak dikenal")
+      const items = feed.items.filter((item) => {
+        const title = String(item.title || "")
+        const text = `${title} ${item.content_text || item.content_html || ""}`
+        return /^(PMK|PER-)/i.test(title.trim()) || /pajak|perpajakan|pajak penghasilan|pajak pertambahan nilai/i.test(text)
+      }).slice(0, limit)
+      const root = path.join(os.homedir(), "Hyper-Knowledge", "general", "regulasi")
+      await mkdirAsync(root, { recursive: true })
+      const day = new Date().toISOString().slice(0, 10)
+      const file = path.join(root, `jdih-kemenkeu-${day}.md`)
+      const existing = existsSync(file) ? await readFileAsync(file, "utf8") : ""
+      if (existing && !existing.includes("HYPER_AI_MANAGED: JDIH catalog")) throw new Error(`menolak menimpa file user: ${file}`)
+      const lines = ["# Katalog regulasi terbaru — JDIH Kementerian Keuangan", "", "<!-- HYPER_AI_MANAGED: JDIH catalog -->", "", `Sumber feed resmi: https://jdih.kemenkeu.go.id/feed.json`, `Diambil: ${new Date().toISOString()}`, "", "> Katalog metadata dan tautan saja; bukan salinan atau pengganti naskah resmi. Buka tautan sumber untuk verifikasi/unduh naskah.", ""]
+      for (const item of items) {
+        const url = new URL(item.url || item.id)
+        if (url.protocol !== "https:" || url.hostname !== "jdih.kemenkeu.go.id") continue
+        const desc = String(item.content_text || item.content_html || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
+        lines.push(`## ${String(item.title || "Tanpa judul").trim()}`, `- Tanggal: ${item.date_modified || "-"}`, `- Ringkasan feed: ${desc}`, `- Sumber: ${url.href}`, "")
+      }
+      await writeFileAsync(file, lines.join("\n"))
+      console.log(`${items.length} entri katalog ditulis: ${file}`)
+      console.log("Jalankan `hyper sync` untuk ingest katalog; verifikasi dan unduh naskah resmi dari tautan sumber.")
+    } catch (error) {
+      console.error(`fetch JDIH gagal: ${error.message}`)
       process.exitCode = 1
     }
     return
