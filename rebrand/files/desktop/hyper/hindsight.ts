@@ -1,4 +1,4 @@
-import { chmod, cp, mkdir, rm, stat, writeFile } from "node:fs/promises"
+import { mkdir, stat, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import { manifest } from "./manifest"

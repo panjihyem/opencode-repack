@@ -41,7 +41,7 @@ type SyncResult = { ingested: string[]; failed: string[]; skipped: number; banks
 const readManifest = (file: string) =>
   readFile(file, "utf8")
     .then<Manifest>((text) => JSON.parse(text))
-    .catch(() => ({ files: {} }))
+    .catch((): Manifest => ({ files: {} }))
 
 async function ensureBank(bank: string, mission: string) {
   const response = await fetch(`${api()}/banks/${encodeURIComponent(bank)}`, {
