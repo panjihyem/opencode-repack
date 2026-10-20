@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
-import { forensicModule, officeInstalled, officePython } from "./office"
+import { caseModule, forensicModule, officeInstalled, officePython } from "./office"
 
 // Office-work skills for the agent: Excel (including formulas), reports
 // (DOCX/PPTX/PDF), charts and tax-investigation documents. Written only while
@@ -15,7 +15,7 @@ const FORENSIC_PLACEHOLDER = "__FORENSIC_PY__"
 type SkillSpec = {
   id: string
   description: string
-  body: (python: string, forensic: string) => string
+  body: (python: string, forensic: string, caseCli: string) => string
 }
 
 const skills: SkillSpec[] = [
@@ -249,6 +249,82 @@ ringkas = duckdb.sql("""
 - Sisipkan PNG Sankey/heatmap ke DOCX/LHP via \`python-docx\` (\`hyper-report\`).
 `,
   },
+  {
+    id: "hyper-case",
+    description:
+      "Menangani kasus berulang: parameter sheet per jenis kasus, validasi kelengkapan field, dan render dokumen resmi (BAP/LHP/lampiran) dari satu sumber data. Gunakan saat mengerjakan pemeriksaan yang polanya sudah pernah ada.",
+    body: (python, _forensic, caseCli) => `---
+name: hyper-case
+description: Menangani kasus berulang Hyper AI - parameter sheet per jenis kasus, validasi field wajib, dan render dokumen resmi (BAP/LHP/lampiran) dari satu sumber data. Gunakan saat mengerjakan pemeriksaan yang polanya sudah pernah ada.
+---
+
+# Kasus Berulang (Hyper AI)
+
+\`${"HYPER_AI_MANAGED"}\`
+
+## Struktur jenis kasus
+
+Setiap jenis kasus adalah satu folder di \`~/Hyper-Knowledge/cases/<jenis-kasus>/\`:
+
+- \`playbook.md\` - urutan langkah, kriteria, dan checklist
+- \`parameter.schema.json\` - field yang dibutuhkan (JSON Schema) + peta ke placeholder docx
+- \`template/*.docx\` - dokumen keluaran
+- \`contoh/\` - satu contoh kasus terisi
+
+## Perintah
+
+\`\`\`
+${python} ${caseCli} list
+${python} ${caseCli} playbook <jenis>
+${python} ${caseCli} new <jenis> [--out parameter.json]
+${python} ${caseCli} validate <jenis> [--data parameter.json]
+${python} ${caseCli} render <jenis> --data parameter.json --out dokumen/
+${python} ${caseCli} checklist <jenis> --data parameter.json
+${python} ${caseCli} mode on|off|status
+${python} ${caseCli} redact <jenis> --data parameter.json --out folder/
+${python} ${caseCli} screen --data teks.txt [--tokens tokens.json]
+${python} ${caseCli} restore --data parameter.redacted.json --tokens tokens.json --out pulih.json
+\`\`\`
+
+## Data sensitif (wajib untuk kasus nyata)
+
+Model agent berjalan di penyedia remote. Karena itu identitas tidak boleh masuk ke
+percakapan, sekalipun mode kasus aktif.
+
+1. \`mode on\` - mematikan plugin memori otomatis, membuat Hindsight tidak memakai
+   router remote, dan menolak alat yang menghubungi pihak luar (\`webfetch\`,
+   \`websearch\`, Context7, pencarian web). \`mode off\` mencabut persis itu.
+2. \`redact\` - menghasilkan \`parameter.redacted.json\` (token \`[[NAMA-1]]\` dan
+   sejenisnya) plus \`tokens.json\` bermode 0600.
+3. Kerjakan analisis dan penulisan memakai **sheet redaksi**. Jangan pernah
+   mengirim isi \`tokens.json\` ke mana pun, jangan menempelkannya ke jawaban.
+4. \`restore\` dijalankan **lokal** saat merender dokumen, supaya dokumen berisi
+   nilai asli.
+5. \`screen\` sebelum mengirim teks yang memuat data kasus. Lolos pola bukan
+   jaminan aman: nilai dan narasi tetap bisa sensitif.
+
+Mode kasus **tidak** membuat model remote aman dan **tidak** menutup \`shell\`
+(di sana perintah jaringan bisa keluar). Kalau sebuah tugas memerlukan data
+asli di luar render lokal, hentikan dan minta keputusan manusia.
+
+## Alur kerja wajib
+
+1. **Baca playbook** lebih dulu: \`playbook <jenis>\`. Ikuti urutan langkahnya.
+2. **Isi parameter sheet** dari data yang ada. Jangan mengarang angka, nama, atau nomor
+   peraturan. Field wajib yang tidak ada dibiarkan kosong; render ditolak sampai lengkap.
+3. **Validasi** sebelum merender: \`validate\`. Field wajib yang kosong memblokir render.
+4. **Render**: \`render\`. Angka pada dokumen, lampiran, dan tabel berasal dari satu sumber.
+5. **Periksa \`[ISI]\`** dan nilai sumber pada dokumen sebelum ditandatangani.
+   Field statistik yang belum tersedia ditandai \`[ISI]\`.
+6. **Checklist** untuk melihat langkah yang belum terpenuhi.
+
+## Aturan
+
+- Nomor pasal wajib berasal dari berkas regulasi atau bank memori. Tanpa sumber, biarkan \`[ISI]\`.
+- Angka harus berasal dari analisis lokal (DuckDB / \`forensic.py\`), bukan diketik ulang.
+- Simpan parameter sheet di folder project kasus, bukan di \`general\`.
+`,
+  },
 ]
 
 /** Writes the office skills next to the other Hyper AI skills; reports which were written/skipped/kept. */
@@ -256,6 +332,7 @@ export async function applyOfficeSkills(configDir: string, dataDir: string) {
   if (!(await officeInstalled(dataDir))) return ["skipped"] as const
   const python = officePython(dataDir)
   const forensic = forensicModule(dataDir)
+  const caseCli = caseModule(dataDir)
   const results: string[] = []
   for (const spec of skills) {
     const dir = path.join(configDir, "skill", spec.id)
@@ -266,7 +343,7 @@ export async function applyOfficeSkills(configDir: string, dataDir: string) {
       continue
     }
     await mkdir(dir, { recursive: true })
-    await writeFile(file, spec.body(python, forensic).split(FORENSIC_PLACEHOLDER).join(forensic))
+    await writeFile(file, spec.body(python, forensic, caseCli).split(FORENSIC_PLACEHOLDER).join(forensic))
     results.push("written")
   }
   return results

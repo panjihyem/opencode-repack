@@ -12,11 +12,25 @@ import { manifest } from "./manifest"
 const MANAGED = "HYPER_AI_MANAGED"
 
 /** Writes the managed agent plugin; a user-authored file is never replaced. */
-export async function applySessionMemoryPlugin(configDir: string) {
+export async function applySessionMemoryPlugin(configDir: string, enabled = true) {
   const dir = path.join(configDir, "plugin")
   const file = path.join(dir, "hyper-memory.ts")
   const existing = await readFile(file, "utf8").catch(() => undefined)
   if (existing && !existing.includes(MANAGED)) return "kept" as const
+  if (!enabled) {
+    // Case mode: the plugin keeps its slot but does nothing. Automatic retain
+    // and recall are exactly the paths that would push case text off the
+    // machine, so they are removed rather than filtered.
+    await mkdir(dir, { recursive: true })
+    await writeFile(
+      file,
+      `// ${MANAGED} - disabled while case mode is on (hyper-case mode on).
+// No prompt is retained, no recall is injected, no transcript is uploaded.
+export default { id: "hyper-memory", setup: async () => {} }
+`,
+    )
+    return "disabled" as const
+  }
   const port = manifest.hindsight.port
   const body = `// ${MANAGED} — persistent local memory for every session.
 export default {

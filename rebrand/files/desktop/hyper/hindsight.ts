@@ -5,6 +5,7 @@ import { manifest } from "./manifest"
 import { executable } from "./platform"
 import { launch, listening, run } from "./process"
 import type { Report } from "./process"
+import type { RouterTarget } from "./router"
 import { ensureUv } from "./uv"
 
 const hindsight = manifest.hindsight
@@ -85,30 +86,69 @@ async function patchPostgresOpenSSL(dataDir: string) {
   ).catch(() => undefined)
 }
 
+/**
+ * Environment for the memory server.
+ *
+ * Remote first: the MiniMax model that ships with OpenCode, reached through the
+ * router the user already configured, with the other router models as failover
+ * members. The local model is only used when no router credential exists —
+ * memory never silently falls back to it while the router is reachable.
+ */
+export function hindsightEnv(router?: RouterTarget, offlineModel?: string): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {
+    PYTHONUTF8: "1",
+    // Neither model enforces a JSON schema strictly, so the schema travels in
+    // the prompt and the provider answers with plain JSON.
+    HINDSIGHT_API_LLM_STRICT_SCHEMA: "false",
+    HINDSIGHT_API_LLM_TEMPERATURE: "none",
+    HINDSIGHT_API_LLM_TIMEOUT: String(hindsight.llm.timeout),
+    HINDSIGHT_API_LLM_MAX_RETRIES: String(hindsight.llm.maxRetries),
+  }
+  if (!router) {
+    env.HINDSIGHT_API_LLM_PROVIDER = hindsight.offline.provider
+    env.HINDSIGHT_API_LLM_BASE_URL = hindsight.offline.baseUrl
+    env.HINDSIGHT_API_LLM_MODEL = offlineModel ?? hindsight.offline.model
+    return env
+  }
+  const headers = JSON.stringify({ Accept: "application/json" })
+  env.HINDSIGHT_API_LLM_PROVIDER = hindsight.llm.provider
+  env.HINDSIGHT_API_LLM_BASE_URL = router.baseURL
+  env.HINDSIGHT_API_LLM_API_KEY = router.apiKey
+  env.HINDSIGHT_API_LLM_MODEL = hindsight.llm.model
+  env.HINDSIGHT_API_LLM_DEFAULT_HEADERS = headers
+  env.HINDSIGHT_API_LLM_STRATEGY = JSON.stringify({ mode: "failover" })
+  hindsight.llm.failover.forEach((model, index) => {
+    const base = `HINDSIGHT_API_LLM_${index + 1}_`
+    env[`${base}PROVIDER`] = hindsight.llm.provider
+    env[`${base}BASE_URL`] = router.baseURL
+    env[`${base}API_KEY`] = router.apiKey
+    env[`${base}MODEL`] = model
+    env[`${base}DEFAULT_HEADERS`] = headers
+  })
+  // Consolidation runs its own chain: a fast member first, the reasoning model
+  // as fallback.
+  env.HINDSIGHT_API_CONSOLIDATION_LLM_PROVIDER = hindsight.llm.provider
+  env.HINDSIGHT_API_CONSOLIDATION_LLM_BASE_URL = router.baseURL
+  env.HINDSIGHT_API_CONSOLIDATION_LLM_API_KEY = router.apiKey
+  env.HINDSIGHT_API_CONSOLIDATION_LLM_MODEL = hindsight.llm.consolidation.model
+  env.HINDSIGHT_API_CONSOLIDATION_LLM_DEFAULT_HEADERS = headers
+  hindsight.llm.consolidation.failover.forEach((model, index) => {
+    const base = `HINDSIGHT_API_CONSOLIDATION_LLM_${index + 1}_`
+    env[`${base}PROVIDER`] = hindsight.llm.provider
+    env[`${base}BASE_URL`] = router.baseURL
+    env[`${base}API_KEY`] = router.apiKey
+    env[`${base}MODEL`] = model
+    env[`${base}DEFAULT_HEADERS`] = headers
+  })
+  return env
+}
+
 /** Starts the local memory server unless one already answers on its port. */
-export async function startHindsight(dataDir: string, logDir: string, model = hindsight.llm.model) {
+export async function startHindsight(dataDir: string, logDir: string, router?: RouterTarget, offlineModel?: string) {
   if (await listening(hindsight.port, hindsight.host)) return undefined
   await patchPostgresOpenSSL(dataDir)
   const root = hindsightRoot(dataDir)
-  const env: NodeJS.ProcessEnv = {
-    PYTHONUTF8: "1",
-    HINDSIGHT_API_LLM_PROVIDER: hindsight.llm.provider,
-    HINDSIGHT_API_LLM_BASE_URL: hindsight.llm.baseUrl,
-    HINDSIGHT_API_LLM_MODEL: model,
-    HINDSIGHT_API_LLM_STRICT_SCHEMA: "true",
-    HINDSIGHT_API_LLM_TIMEOUT: "300",
-    HINDSIGHT_API_LLM_TEMPERATURE: "none",
-  }
-  if (model.startsWith("qwen")) {
-    // Reasoning mode makes each extraction call take minutes and trips client
-    // timeouts, so it is switched off. The template kwargs are Qwen-specific;
-    // other model families reject unknown kwargs.
-    env.HINDSIGHT_API_LLM_REASONING_EFFORT = "none"
-    env.HINDSIGHT_API_LLM_EXTRA_BODY = JSON.stringify({
-      reasoning_effort: "none",
-      chat_template_kwargs: { enable_thinking: false },
-    })
-  }
+  const env = hindsightEnv(router, offlineModel)
   return launch(
     serverBinary(root),
     ["--host", hindsight.host, "--port", String(hindsight.port)],

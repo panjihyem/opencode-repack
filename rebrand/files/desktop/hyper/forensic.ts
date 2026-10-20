@@ -282,8 +282,13 @@ def _case_stats(con):
     }
 
 
-def _starter_template(kind, stats):
-    """Bangun templat dokumen (python-docx) ber-tag jinja untuk docxtpl."""
+def _starter_template(kind):
+    """Bangun templat dokumen (python-docx) ber-tag jinja untuk docxtpl.
+
+    Angka kasus disisipkan saat render lewat tag '{{ statistik.* }}' - bukan
+    dibekukan saat templat dibuat — sehingga satu templat bisa dipakai ulang
+    untuk banyak kasus.
+    """
     from docx import Document
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Pt
@@ -336,11 +341,11 @@ def _starter_template(kind, stats):
         line(f"1. Dasar: {{{{ dasar }}}}")
         line(f"2. Maksud: {{{{ maksud }}}}")
         line("3. Hasil penelitian:")
-        line(f"   - Jumlah transaksi yang diteliti: {stats['transaksi_jumlah']} transaksi")
-        line(f"   - Periode: {stats['tanggal_mulai']} s.d. {stats['tanggal_selesai']}")
-        line(f"   - Total nominal: Rp {stats['nominal_total']}")
-        line(f"   - Jumlah rekening terlibat: {stats['rekening_jumlah']}")
-        line(f"   - Ditemukan pola siklus aliran dana: {stats['siklus_jumlah']} siklus")
+        line("   - Jumlah transaksi yang diteliti: {{ statistik.transaksi_jumlah }} transaksi")
+        line("   - Periode: {{ statistik.tanggal_mulai }} s.d. {{ statistik.tanggal_selesai }}")
+        line("   - Total nominal: Rp {{ statistik.nominal_total }}")
+        line("   - Jumlah rekening terlibat: {{ statistik.rekening_jumlah }}")
+        line("   - Ditemukan pola siklus aliran dana: {{ statistik.siklus_jumlah }} siklus")
         line("   {{ hasil }}")
         line("4. Simpulan: {{ simpulan }}")
         line("5. Usul/Rekomendasi: {{ usul }}")
@@ -379,7 +384,7 @@ def cmd_docgen(args):
     else:
         from tempfile import NamedTemporaryFile
 
-        starter = _starter_template(args.kind, stats)
+        starter = _starter_template(args.kind)
         with NamedTemporaryFile(suffix=".docx", delete=False) as handle:
             temp = handle.name
         starter.save(temp)

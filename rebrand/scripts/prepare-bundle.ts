@@ -6,7 +6,7 @@
 // (see the extraResources rule in apply.ts). The packages are plain JavaScript,
 // so one bundle serves every platform.
 
-import { chmod, rename, rm } from "node:fs/promises"
+import { chmod, cp, mkdir, rename, rm } from "node:fs/promises"
 import path from "node:path"
 import { $ } from "bun"
 import { manifest } from "./../files/desktop/hyper/manifest"
@@ -34,6 +34,15 @@ for (const component of [manifest.context7, manifest.viz]) {
 await $`cp -R ${path.join(import.meta.dir, "../files/desktop/wizard")} ${path.join(root, "wizard")}`
 await $`cp -R ${path.join(import.meta.dir, "../files/desktop/search")} ${path.join(root, "search")}`
 console.log("bundled setup wizard + search MCP")
+
+// The recurring-case module ships as loose Python files: the installer copies
+// them next to forensic.py, so the .py files stay the single source of truth.
+await mkdir(path.join(root, "office", "lib", "case"), { recursive: true })
+await Promise.all(
+  ["case.py", "cli.py", "pseudonym.py", "casemode.py"].map((name) =>
+    cp(path.join(import.meta.dir, "../files/desktop/hyper/case", name), path.join(root, "office/lib/case", name)),
+  ),
+)
 
 // The `hyper` CLI shares the knowledge module with the app: compile it as a
 // standalone ESM (electron-free) plus the thin launcher that drives it. Bun's

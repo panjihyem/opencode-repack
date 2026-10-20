@@ -22,35 +22,37 @@ export const manifest = {
     python: "3.12",
     host: "127.0.0.1",
     port: 8888,
-    llm: { provider: "lmstudio", baseUrl: "http://localhost:1234/v1", model: "qwen3.5-9b" },
+    // Remote-first: the memory server runs on the MiniMax model that ships with
+    // OpenCode, reached through the router the user already configured (the
+    // "ocg/" route). The local model is never used for memory — it stays an
+    // offline alternative for the agent only.
+    llm: {
+      provider: "openai",
+      // Primary member of the chain; the same model id OpenCode itself uses.
+      model: "ocg/minimax-m3.1-flash-free",
+      // Failover members, tried in order when the primary is unreachable. The
+      // upstream free route intermittently answers "api_key_expired", so a
+      // second member keeps memory extraction running.
+      failover: ["cx/gpt-6-luna", "ocg/mimo-v2.6-flash"],
+      // Consolidation merges raw facts into observations: a summarisation job,
+      // not a reasoning one. It gets its own chain so the backlog drains fast
+      // instead of waiting on the reasoning model's latency.
+      consolidation: { model: "cx/gpt-6-luna", failover: ["ocg/mimo-v2.6-flash"] },
+      timeout: 300,
+      maxRetries: 2,
+    },
+    // Offline alternative: only used when no router credential is configured.
+    offline: { provider: "lmstudio", baseUrl: "http://localhost:1234/v1", model: "spark-x2.5-4b" },
   },
   lmstudio: { version: "0.4.25-1", port: 1234, jitUnloadSeconds: 900 },
   models: [
-    // Per-tier defaults, picked by physical RAM (see tieredModel in components).
-    // Sizes are the exact byte counts of the pinned Q4_K_M quantizations.
     {
-      id: "qwen3.5-9b",
-      tier: "full",
-      publisher: "unsloth",
-      repo: "Qwen3.5-9B-GGUF",
-      file: "Qwen3.5-9B-Q4_K_M.gguf",
-      bytes: 5680522464,
-    },
-    {
-      id: "qwen3.5-4b",
+      id: "spark-x2.5-4b",
       tier: "lite",
-      publisher: "unsloth",
-      repo: "Qwen3.5-4B-GGUF",
-      file: "Qwen3.5-4B-Q4_K_M.gguf",
-      bytes: 2740937888,
-    },
-    {
-      id: "lfm2.5-2.6b",
-      tier: "nano",
-      publisher: "LiquidAI",
-      repo: "LFM2.5-2.6B-GGUF",
-      file: "LFM2.5-2.6B-Q4_K_M.gguf",
-      bytes: 1674455040,
+      publisher: "XHToken",
+      repo: "Spark-X2.5-4B-GGUF",
+      file: "Spark-X2.5-4B-Q4_K_M.gguf",
+      bytes: 2600224352,
     },
   ],
   docling: { package: "docling", version: "2.140.0", python: "3.12" },

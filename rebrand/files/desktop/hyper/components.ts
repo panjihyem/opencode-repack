@@ -73,19 +73,21 @@ export const components: Component[] = [
   },
   {
     id: "lmstudio",
-    name: "LM Studio",
-    description: "Menjalankan model AI di komputer Anda (build resmi dari penerbit, tidak dimodifikasi).",
+    name: "LM Studio (alternatif offline)",
+    description:
+      "Menjalankan model AI di komputer Anda (build resmi dari penerbit, tidak dimodifikasi). Hanya dipakai sebagai cadangan saat router tidak terjangkau.",
     bytes: 0.7e9,
-    recommended: true,
+    recommended: false,
     installed: lmStudioInstalled,
     install: async (dataDir, report) => installLmStudio(dataDir, report),
   },
   {
     id: "models",
-    name: "Model lokal",
-    description: "Pilih model rekomendasi RAM atau salah satu model lain. Model aktif akan diunduh; model lama tidak dihapus.",
+    name: "Model lokal (alternatif offline)",
+    description:
+      "Pilih model yang dipakai sebagai cadangan offline. Model aktif untuk memori jangka panjang tetap model remote (MiniMax bawaan OpenCode).",
     bytes: 0,
-    recommended: true,
+    recommended: false,
     // Model choice is per-wizard, so installed state is checked against selection in provision().
     installed: async () => false,
     install: async (_dataDir, report) => installModels(report, [model.id]),
@@ -93,7 +95,8 @@ export const components: Component[] = [
   {
     id: "hindsight",
     name: "Memori Hindsight",
-    description: "Memori jangka panjang antar-sesi, berjalan lokal di 127.0.0.1:8888 dan terdaftar sebagai MCP `mem`.",
+    description:
+      "Memori jangka panjang antar-sesi, berjalan lokal di 127.0.0.1:8888 dan terdaftar sebagai MCP `mem`. Model ekstraksi faktanya diambil dari router remote, bukan model lokal.",
     bytes: 2e9,
     recommended: true,
     installed: hindsightInstalled,

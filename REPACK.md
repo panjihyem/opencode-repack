@@ -65,13 +65,33 @@ heavier local stack, each component skipped when already present:
 | Component | Source | Size |
 | --- | --- | --- |
 | LM Studio | official installer from `installers.lmstudio.ai`, unmodified (Windows x64/arm64, macOS arm64, Linux x64/arm64) | ~0.6-1.3 GB |
-| Qwen3.5 9B (Q4_K_M) | Hugging Face `unsloth/Qwen3.5-9B-GGUF`, into `~/.lmstudio/models` | 5.7 GB |
+| Spark X2.5 4B (Q4_K_M) | Hugging Face `XHToken/Spark-X2.5-4B-GGUF`, into `~/.lmstudio/models` | 2.6 GB |
 | Hindsight memory | `hindsight-api` from PyPI into a private uv-managed Python environment (CPU wheels), started with the app on 127.0.0.1:8888 and registered as MCP `mem` | ~2 GB |
 
 Versions and URLs are pinned in `rebrand/files/desktop/hyper/manifest.ts`.
 Nothing third-party is redistributed inside the installer: everything else is
 downloaded from its publisher on the user's machine. Reopen the wizard with
 `--hyper-setup`; logs are in `<userData>/hyper-bundle/logs`.
+
+## Models: remote first, local as the offline alternative
+
+The agent and the memory server both run on a **remote** model by default:
+
+- The agent uses the MiniMax model that ships with OpenCode
+  (`opencode/minimax-m3.1-flash-free`), set as the default model in the user's
+  OpenCode config.
+- The memory server (Hindsight) uses the same MiniMax model through the router
+  the user already configured for OpenCode (`rebrand/files/desktop/hyper/router.ts`
+  reads its `baseURL` and credential from `opencode.json`). The chain is
+  `ocg/minimax-m3.1-flash-free` first, then `cx/gpt-6-luna` as failover; the
+  consolidation chain gets the same failover member. Hyper AI stores no
+  credential of its own — the router's is read at start time.
+
+The local model (LM Studio) is an **offline alternative only**: it is not
+offered as recommended in the wizard, and its server starts only when no
+router credential is configured or the user turns the offline mode on. The
+memory server never falls back to it while the router is reachable.
+
 
 Tests: `cd rebrand && bun test` (unit), and
 `rebrand/test/e2e/wizard.e2e.cjs` drives the real wizard in Electron (needs a

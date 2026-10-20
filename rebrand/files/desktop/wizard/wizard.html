@@ -71,8 +71,9 @@
       <section id="step-welcome">
         <div class="list">
           <div class="row"><div><div class="name">Komponen Hyper AI</div><div class="desc">Komponen yang dipilih diunduh dari penerbit resminya. Mode otomatis menyiapkan semua komponen yang belum terpasang.</div></div></div>
-          <div class="row"><div><div class="name">Konteks &amp; memori untuk agen</div><div class="desc">Context7 (dokumentasi library terbaru) sudah termasuk. Memori jangka panjang Hindsight dan model lokal bersifat opsional.</div></div></div>
+          <div class="row"><div><div class="name">Konteks &amp; memori untuk agen</div><div class="desc">Context7 (dokumentasi library terbaru) sudah termasuk. Memori jangka panjang Hindsight memakai model remote (MiniMax bawaan OpenCode) lewat router yang sudah terkonfigurasi.</div></div></div>
           <label class="row" style="cursor:pointer"><input id="unattended" type="checkbox" style="width:18px;height:18px;accent-color:var(--accent)" checked><div><div class="name">Mode praktis (tanpa konfirmasi)</div><div class="desc">Hyper AI menjalankan aksi agen tanpa dialog izin berulang. Aturan izin yang Anda tetapkan tetap berlaku dan tidak diubah.</div></div><span></span></label>
+          <label class="row" style="cursor:pointer"><input id="offline" type="checkbox" style="width:18px;height:18px;accent-color:var(--accent)"><div><div class="name">Model lokal sebagai alternatif offline</div><div class="desc">Nyalakan bila Hyper AI perlu tetap bisa bekerja tanpa koneksi ke router. Model lokal hanya dipakai sebagai cadangan; memori jangka panjang tetap memakai model remote.</div></div><span></span></label>
         </div>
       </section>
 
@@ -150,8 +151,8 @@
         select.addEventListener("change", () => {
           const model = models.find((item) => item.id === select.value)
           $("model-hint").textContent = model?.installed
-            ? "Model ini sudah diunduh. Model aktif Hindsight mengikuti pilihan ini setelah aplikasi dibuka ulang."
-            : "Model ini akan diunduh. Model sebelumnya tidak dihapus. Model aktif Hindsight berubah setelah aplikasi dibuka ulang."
+            ? "Model ini sudah diunduh dan dipakai sebagai alternatif offline."
+            : "Model ini akan diunduh dan dipakai sebagai alternatif offline. Model sebelumnya tidak dihapus."
           $("note").textContent = "Perkiraan ruang: " + formatSize(selectedBytes())
         })
       }
@@ -221,7 +222,7 @@
         show(2)
         running = true
         $("note").textContent = ""
-        await api.start(ids, { unattended: true, modelId: $("model-select").value })
+        await api.start(ids, { unattended: true, modelId: $("model-select").value, offline: $("offline").checked })
       }
 
       $("next").addEventListener("click", async () => {
@@ -230,10 +231,11 @@
         if (step === 1) {
           const ids = selectedIds()
           const unattended = $("unattended").checked
+          const offline = $("offline").checked
           renderProgress(ids)
           show(2)
           running = true
-          await api.start(ids, { unattended, modelId: $("model-select").value })
+          await api.start(ids, { unattended, modelId: $("model-select").value, offline })
         }
       })
       $("back").addEventListener("click", () => show(0))

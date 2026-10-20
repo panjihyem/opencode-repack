@@ -64,11 +64,12 @@ description: Mengubah PDF/scan/gambar menjadi Markdown terstruktur dengan Doclin
 Jalankan converter Docling lokal via shell:
 
 \`\`\`
-\`${cli}\` --output-dir <folder-tujuan> <berkas-atau-wildcard>
+\`${cli}\` convert --output <folder-tujuan> --to md <berkas-atau-wildcard>
 \`\`\`
 
+- \`convert\` memakai \`--output\` untuk folder tujuan (bukan \`--output-dir\`), dan \`--to md\` untuk Markdown.
 - Output default Markdown per berkas, tabel diekstrak, layout dipertahankan.
-- OCR berjalan offline untuk hasil scan; unduhan model OCR pertama kali memerlukan internet, lalu tersimpan cache.
+- OCR berjalan offline untuk hasil scan (RapidOCR lokal; model diunduh sekali lalu tersimpan cache).
 - Untuk banyak halaman/berkas: kerangkum hasil teks terlebih dahulu, jangan menempel SELURUH berkas ke konteks.
 
 ## Pembuatan dokumen

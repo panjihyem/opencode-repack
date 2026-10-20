@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // HYPER_AI_MANAGED — the `hyper` command-line companion.
 // Works with or without the desktop app: `sync` re-scans ~/Hyper-Knowledge and
 // ingests into the local memory server (same contract as the app-start sync).

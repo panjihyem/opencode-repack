@@ -11,6 +11,8 @@ import { applyKnowledgeSkill, syncKnowledge } from "./knowledge"
 import { lmStudioInstalled, startLmServer, tuneLmStudio } from "./lmstudio"
 import { applySessionMemoryPlugin } from "./memory"
 import { manifest } from "./manifest"
+import { caseMode } from "./privacy"
+import { resolveRouter } from "./router"
 import { applyOfficeSkills } from "./skills"
 import { startHyperUpdates } from "./updates"
 
@@ -22,7 +24,7 @@ import { startHyperUpdates } from "./updates"
 // Failures are logged and shown in the wizard; the app never waits on this.
 // Run `--hyper-setup` to open the wizard again.
 
-type State = { wizard?: "completed" | "skipped"; unattended?: boolean; modelId?: string }
+type State = { wizard?: "completed" | "skipped"; unattended?: boolean; modelId?: string; offline?: boolean }
 
 const dataDir = () => path.join(app.getPath("userData"), "hyper-bundle")
 const logDir = () => path.join(dataDir(), "logs")
@@ -57,18 +59,26 @@ async function startServices(children: ChildProcess[]) {
   // approval prompts. Turning it off removes the standing grant; the user's own
   // permission rules always outrank anything written here.
   const state = await readState()
+  const privacy = await caseMode(configDir())
   await applyUnattended(configDir(), state.unattended !== false).catch((error) => log("permission", error))
   // Persistent memory plugin (managed): retains prompts and injects recall.
-  await applySessionMemoryPlugin(configDir()).catch((error) => log("memory", error))
+  // In case mode it is written as a no-op: automatic retain/recall is the path
+  // that would carry case text off the machine, so it is removed, not filtered.
+  await applySessionMemoryPlugin(configDir(), !privacy).catch((error) => log("memory", error))
   // Local web search MCP (no API key, no remote configuration).
   await registerSearch()
   // `hyper` command line companion (sync/recall without the GUI).
   await ensureHyperCli().catch((error) => log("cli", error))
-  // The memory server follows the RAM-tiered model the wizard picked, but never
-  // switches to a model that is not fully downloaded (older installs keep theirs).
+  // The memory server follows the remote route: the MiniMax model that ships
+  // with OpenCode, reached through the router the user already configured.
+  // The local model is never used for memory while that route is available.
   if (await hindsightInstalled(dataDir())) {
-    const modelId = await selectedModelId(state.modelId)
-    const child = await startHindsight(dataDir(), logDir(), modelId)
+    // Case mode: the memory server keeps running for local reads, but its
+    // consolidation never reaches the remote router. A missing local model
+    // fails the job locally instead of falling back to the remote route.
+    const router = privacy ? undefined : await resolveRouter(configDir())
+    const offlineModel = router ? undefined : await selectedModelId(state.modelId)
+    const child = await startHindsight(dataDir(), logDir(), router, offlineModel)
     if (child) children.push(child)
     await registerMemory()
     // Knowledge tree: safe to run on every start; ingestion is asynchronous
@@ -77,9 +87,15 @@ async function startServices(children: ChildProcess[]) {
       .catch((error) => log("knowledge", error))
       .then(() => applyKnowledgeSkill(configDir()).catch((error) => log("knowledge", error)))
   }
+  // The local model is an offline alternative for the agent, not the memory
+  // server: its server only starts when there is no remote route, or when the
+  // user explicitly asked for the offline mode.
   if (await lmStudioInstalled(dataDir())) {
-    await tuneLmStudio().catch((error) => log("lmstudio", error))
-    await startLmServer(logDir())
+    const router = await resolveRouter(configDir())
+    if (!router || state.offline === true) {
+      await tuneLmStudio().catch((error) => log("lmstudio", error))
+      await startLmServer(logDir())
+    }
   }
 }
 
@@ -116,9 +132,14 @@ function openWizard(auto: boolean) {
         })),
       ),
     )
-    ipcMain.handle("hyper:start", async (_event, ids: string[], opts?: { unattended?: boolean; modelId?: string }) => {
+    ipcMain.handle("hyper:start", async (_event, ids: string[], opts?: { unattended?: boolean; modelId?: string; offline?: boolean }) => {
       // Persist the agent-autonomy choice before setup runs, so services pick it up.
-      await writeState({ ...(await readState()), unattended: opts?.unattended !== false, ...(opts?.modelId ? { modelId: opts.modelId } : {}) })
+      await writeState({
+        ...(await readState()),
+        unattended: opts?.unattended !== false,
+        offline: opts?.offline === true,
+        ...(opts?.modelId ? { modelId: opts.modelId } : {}),
+      })
       const failed = await provision(ids, dataDir(), (update) => {
         if (update.type === "step") send({ ...update })
         else send(update)
