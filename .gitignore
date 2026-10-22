@@ -38,3 +38,5 @@ logs/
 tsconfig.tsbuildinfo
 /artifacts/
 *.bak
+# Credentials — never commit
+repo.txt

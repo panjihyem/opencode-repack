@@ -9,7 +9,7 @@ import { existsSync } from "node:fs"
 import { mkdir as mkdirAsync, readFile as readFileAsync, writeFile as writeFileAsync } from "node:fs/promises"
 import os from "node:os"
 import { spawn } from "node:child_process"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 import path from "node:path"
 
 const binDir = path.dirname(fileURLToPath(import.meta.url))
@@ -136,7 +136,7 @@ async function main() {
     return
   }
 
-  const knowledge = await import(bundled).catch((error) => {
+  const knowledge = await import(pathToFileURL(bundled).href).catch((error) => {
     console.error("modul knowledge gagal dimuat:", error.message)
     process.exit(1)
   })
