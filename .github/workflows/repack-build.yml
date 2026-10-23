@@ -268,6 +268,7 @@ jobs:
             packages/desktop/dist/*.deb
             packages/desktop/dist/*.rpm
             packages/desktop/dist/*.blockmap
+            packages/desktop/dist/*.yml
 
   release:
     needs: [resolve, build-cli, build-desktop]
