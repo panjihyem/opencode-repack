@@ -1,3 +1,5 @@
+import fs from "node:fs"
+import os from "node:os"
 import path from "path"
 import { describe, expect, test } from "bun:test"
 import type { ConfigDiscovery } from "@opencode/core/config/discovery"
@@ -14,6 +16,42 @@ const sources: ConfigDiscovery.Sources = {
 }
 
 describe("ConfigWatch.plan", () => {
+  test("watches an existing ancestor for a managed directory that does not exist yet", () => {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), "oc-watch-"))
+    try {
+      const missing = ConfigWatch.plan({
+        ...sources,
+        managed: [{ path: AbsolutePath.make(path.join(base, "belum-ada", "managed")), present: false }],
+      })
+      const targets = Array.from(missing.values())
+      expect(
+        targets.some((target) => target.type === "entries" && target.path === base && target.names.includes("belum-ada")),
+      ).toBe(true)
+    } finally {
+      fs.rmSync(base, { recursive: true, force: true })
+    }
+  })
+
+  test("watches bundle files when the managed directory exists but the bundle does not", () => {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), "oc-watch-"))
+    const managed = path.join(base, "managed")
+    fs.mkdirSync(managed)
+    try {
+      const plan = ConfigWatch.plan({
+        ...sources,
+        managed: [{ path: AbsolutePath.make(managed), present: false }],
+      })
+      const targets = Array.from(plan.values())
+      expect(
+        targets.some(
+          (target) => target.type === "entries" && target.path === managed && target.names.includes("bundle.json"),
+        ),
+      ).toBe(true)
+    } finally {
+      fs.rmSync(base, { recursive: true, force: true })
+    }
+  })
+
   test("groups missing candidates and keeps parent watches when roots appear", () => {
     const missing = ConfigWatch.plan(sources)
     expect(Array.from(missing.values())).toEqual([
