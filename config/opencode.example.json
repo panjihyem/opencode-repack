@@ -1,0 +1,25 @@
+{
+  "model": "ocg/deepseek-v4.1-flash",
+  "default_agent": "build",
+  "providers": {
+    "ocg": {
+      "name": "OpenCode Gateway",
+      "package": "@opencode/ai/providers/openai-compatible",
+      "settings": {
+        "baseURL": "https://llm.example.com/v1"
+      },
+      "models": {
+        "deepseek-v4.1-flash": {
+          "name": "DeepSeek V4.1 Flash"
+        }
+      }
+    }
+  },
+  "policies": [
+    {
+      "effect": "deny",
+      "action": "provider.use",
+      "resource": "cx"
+    }
+  ]
+}

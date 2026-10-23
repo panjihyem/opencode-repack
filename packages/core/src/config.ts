@@ -17,6 +17,8 @@ import { ConfigVariable } from "./config/variable.js"
 import { ConfigNormalize } from "./config/normalize.js"
 import { ConfigDiscovery } from "./config/discovery.js"
 import { ConfigWatch } from "./config/watch.js"
+import * as ManagedBundle from "./config/managed-bundle.js"
+import * as ManagedPolicy from "./config/managed-policy.js"
 import { WellKnown } from "./wellknown.js"
 import { AppProcess } from "@opencode/util/process"
 import { ChildProcess } from "effect/process"
@@ -50,6 +52,9 @@ export const Options = Schema.Struct({
   // wellknown, file, and content entries still load.
   global: Schema.optional(Schema.Boolean),
   system: Schema.optional(Schema.Union([Schema.Boolean, Schema.String])),
+  // false skips signed Hyper AI config bundles; a string points discovery at one directory
+  // (%LOCALAPPDATA%\HyperAI\managed, /etc/hyperai/managed) instead of the platform defaults.
+  managed: Schema.optional(Schema.Union([Schema.Boolean, Schema.String])),
   // false skips ~/.claude and project .claude dirs.
   claude: Schema.optional(Schema.Boolean),
   file: Schema.optional(Schema.String),
@@ -217,6 +222,41 @@ export const layer = (options?: Options) =>
         ]
       })
 
+      /**
+       * Config OTA: baca `bundle.json` + tanda tangannya, verifikasi dengan kunci publik
+       * aplikasi, lalu materialisasi (config + rahasia terenkripsi). Tanda tangan rusak
+       * atau config berbahaya berarti bundle diabaikan, bukan diterapkan.
+       */
+      const loadManagedBundle = Effect.fnUntraced(function* (directory: AbsolutePath) {
+        const bundlePath = path.join(directory, "bundle.json")
+        const signaturePath = path.join(directory, "bundle.json.sig")
+        const text = yield* fs.readFileStringSafe(bundlePath)
+        const signature = yield* fs.readFileStringSafe(signaturePath)
+        if (text === undefined || signature === undefined) return [] as Document[]
+        const bytes = Buffer.from(text.replace(/^\uFEFF/, ""), "utf-8")
+        if (!ManagedBundle.verifyBundle(bytes, signature.trim(), ManagedPolicy.publicKey())) {
+          yield* Effect.logWarning("managed config rejected: signature", { source: bundlePath })
+          return [] as Document[]
+        }
+        const enrollment = yield* fs.readFileStringSafe(path.join(directory, "enrollment"))
+        const materialized = yield* Effect.try(() =>
+          ManagedBundle.materialize(
+            ManagedBundle.decodeBundle(bytes),
+            enrollment?.trim(),
+            ManagedPolicy.allowedPackages,
+          ),
+        ).pipe(
+          Effect.catch((error) =>
+            Effect.logWarning("managed config rejected: invalid", { source: bundlePath, error }).pipe(
+              Effect.as(undefined),
+            ),
+          ),
+        )
+        if (!materialized) return [] as Document[]
+        const info = yield* parseInfo(JSON.stringify(materialized), AbsolutePath.make(bundlePath))
+        return info ? [new Document({ type: "document", path: AbsolutePath.make(bundlePath), info })] : []
+      })
+
       const load = Effect.fn("Config.load")(function* (sources: ConfigDiscovery.Sources) {
         const direct = yield* Effect.forEach(sources.direct, (filepath) => loadFile(filepath)).pipe(
           Effect.orDie,
@@ -250,6 +290,10 @@ export const layer = (options?: Options) =>
         const managed = [
           ...(sources.system?.present ? yield* loadDirectory(sources.system.path).pipe(Effect.orDie) : []),
           ...(sources.preferences ? yield* loadPreferences(sources.preferences).pipe(Effect.orDie) : []),
+          ...(yield* Effect.forEach(
+            (sources.managed ?? []).filter((source) => source.present),
+            (source) => loadManagedBundle(source.path),
+          ).pipe(Effect.orDie, Effect.map((entries) => entries.flat()))),
         ]
         const managedPolicies = managed
           .flatMap((entry) =>

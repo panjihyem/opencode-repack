@@ -20,6 +20,9 @@ import { createRoutes } from "./routes"
 import { ServerInfo } from "./server-info"
 import { Status } from "./service-status"
 import type { ServerOptions } from "./options"
+import { startConfigUpdater } from "@opencode/core/config/updater"
+import { allowedPackages, publicKey } from "@opencode/core/config/managed-policy"
+import { userManagedDirectory } from "@opencode/core/config/managed-apply"
 
 export interface Lifecycle<E = never, R = never> {
   readonly onListen: (
@@ -57,6 +60,23 @@ export const start = Effect.fn("ServerProcess.start")(function* <E, R>(
   const shutdown = yield* Latch.make()
   const status = yield* Status.make()
   const bound = yield* listen({ hostname, port })
+  // Config OTA: unduh bundle bertanda tangan; Config memuatnya dari direktori managed.
+  // Hanya channel rilis yang memeriksa; build lokal tidak menghubungi jaringan.
+  const otaChannel =
+    process.env.HYPER_CONFIG_CHANNEL ?? (options.app?.channel === "prod" ? "stable" : options.app?.channel)
+  if (
+    !process.env.HYPER_CONFIG_OTA_DISABLE &&
+    (otaChannel === "stable" || otaChannel === "beta" || otaChannel === "canary")
+  ) {
+    const updater = startConfigUpdater({
+      dir: userManagedDirectory(),
+      channel: otaChannel,
+      appVersion: options.app?.version ?? "unknown",
+      publicKey: publicKey(),
+      allowedPackages,
+    })
+    yield* Effect.addFinalizer(() => Effect.sync(() => updater.stop()))
+  }
   const localURLs = () => {
     const address = bound.server.address()
     if (address === null || typeof address === "string") return []

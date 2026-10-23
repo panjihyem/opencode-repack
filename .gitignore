@@ -40,3 +40,9 @@ tsconfig.tsbuildinfo
 *.bak
 # Credentials — never commit
 repo.txt
+
+# Hyper config OTA
+/config/secrets.json
+/control/dist/
+/control/.tmp/
+*.private.b64

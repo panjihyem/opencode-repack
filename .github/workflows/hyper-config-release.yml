@@ -1,0 +1,82 @@
+name: hyper-config-release
+
+# Config OTA: memvalidasi, menandatangani, dan menerbitkan bundle config Hyper AI.
+# Berjalan terpisah dari rilis aplikasi: config bisa berubah tanpa install ulang.
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Channel rilis
+        type: choice
+        options: [stable, beta, canary]
+        default: stable
+      version:
+        description: Nomor versi bundle (harus naik; kosong = isi config/version)
+        required: false
+      rollout:
+        description: Persentase rollout (0-100)
+        default: "100"
+      min_app_version:
+        description: Versi minimum aplikasi (kosong = tanpa batas)
+        default: ""
+  push:
+    branches: [dev]
+    paths:
+      - "config/**"
+      - ".github/workflows/hyper-config-release.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hyper-config-${{ github.event.inputs.channel || 'stable' }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      CHANNEL: ${{ github.event.inputs.channel || 'stable' }}
+      VERSION: ${{ github.event.inputs.version || '' }}
+      ROLLOUT: ${{ github.event.inputs.rollout || '100' }}
+      MIN_APP_VERSION: ${{ github.event.inputs.min_app_version || '' }}
+      CONFIG_SIGNING_KEY: ${{ secrets.CONFIG_SIGNING_KEY }}
+      CONFIG_ENROLLMENT_TOKEN: ${{ secrets.CONFIG_ENROLLMENT_TOKEN }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Uji modul inti config OTA
+        run: |
+          node control/selftest.mjs
+          node control/selftest-apply.mjs
+          node control/selftest-pipeline.mjs
+
+      - name: Bangun dan tanda tangani bundle
+        run: |
+          set -euo pipefail
+          VERSION="${VERSION:-$(cat config/version)}"
+          if [ ! -f config/opencode.json ]; then
+            echo "config/opencode.json belum ada" >&2
+            exit 1
+          fi
+          ARGS=(--config config/opencode.json --version "$VERSION" --channel "$CHANNEL" --rollout "$ROLLOUT" --out "dist/config/$CHANNEL")
+          if [ -n "$MIN_APP_VERSION" ]; then ARGS+=(--min-app-version "$MIN_APP_VERSION"); fi
+          if [ -f config/secrets.json ]; then ARGS+=(--secrets config/secrets.json); fi
+          node control/build-bundle.mjs "${ARGS[@]}"
+          node control/verify-bundle.mjs "dist/config/$CHANNEL/bundle.json"
+
+      - name: Terbitkan aset config (rolling release)
+        run: |
+          set -euo pipefail
+          TAG="config-$CHANNEL"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "Config $CHANNEL" --notes "Bundle config Hyper AI ($CHANNEL). Diperbarui otomatis oleh CI." --latest=false
+          fi
+          gh release upload "$TAG" "dist/config/$CHANNEL/bundle.json" "dist/config/$CHANNEL/bundle.json.sig" "dist/config/$CHANNEL/manifest.json" --clobber
+          gh release edit "$TAG" --notes "Bundle config versi $(node -p "require('./dist/config/'+'$CHANNEL'+'/manifest.json').version") (channel $CHANNEL)."
