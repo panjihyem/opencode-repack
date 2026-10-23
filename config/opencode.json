@@ -423,9 +423,6 @@
             "context": 1048576,
             "output": 524288
           }
-        },
-        "ota-proof-20261023": {
-          "name": "OTA Proof 20261023"
         }
       }
     }
