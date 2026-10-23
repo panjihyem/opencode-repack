@@ -420,15 +420,10 @@ const rules: Rule[] = [
     replace: `productName: "${NAME}"`,
     critical: true,
   },
-  {
-    file: "packages/desktop/electron-builder.config.ts",
-    find: '      target: ["AppImage", "deb", "rpm"],',
-    replace: `      target: ["AppImage", "deb", "rpm"],
-      appImage: {
-        publish: [{ provider: "github", owner: "${brand.repo.owner}", repo: "${brand.repo.name}", channel: target.cpu === "arm64" ? "latest-arm64" : "latest" }],
-      },`,
-    critical: true,
-  },
+  // NOTE: electron-builder 26 dropped `appImage` from LinuxConfiguration
+  // (scheme.json: linux has publish, not appImage) — injecting it here made
+  // every package job fail schema validation. AppImage assets publish fine
+  // through the workflow's own release step.
   {
     file: "packages/desktop/electron-builder.config.ts",
     find: 'name: "OpenCode Beta", schemes: ["opencode"]',
