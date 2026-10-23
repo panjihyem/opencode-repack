@@ -155,6 +155,9 @@ check("apply versi baru menyimpan versi lama", () => {
       "control/build-bundle.mjs",
       "--config",
       configFile,
+      // Isolasi dari config/secrets.json milik repo (CI menulisnya dari secret).
+      "--secrets",
+      "none",
       "--version",
       "6",
       "--channel",
