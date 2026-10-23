@@ -118,16 +118,21 @@ export function applyBundle(input: ApplyInput): ApplyResult {
   // versi yang tercatat tidak boleh menghalangi pemasangan ulang.
   const previous = readState(dir)
   const present = readBundle(dir)
-  const currentVersion = present ? previous?.version : undefined
   const id = installId(dir)
   const gate = shouldApply({
     bundle,
-    currentVersion,
+    currentVersion: previous?.version,
     blockedVersion: previous?.blockedVersion,
     appVersion: input.appVersion,
     installId: id,
   })
-  if (!gate.apply) return { applied: false, reason: gate.reason, version: bundle.version, dir }
+  if (!gate.apply) {
+    // Versi yang sama boleh ditulis ulang HANYA untuk memulihkan file yang hilang/terpotong;
+    // versi lebih rendah tetap ditolak agar menghapus satu file tidak menjadi jalur downgrade.
+    const repair =
+      !present && previous?.version === bundle.version && (previous?.blockedVersion ?? 0) < bundle.version
+    if (!repair) return { applied: false, reason: gate.reason, version: bundle.version, dir }
+  }
 
   // Validasi isi + dekripsi sebelum menyentuh file: bundle buruk tidak boleh menggantikan yang sehat.
   let materialized: Record<string, unknown>
@@ -146,8 +151,19 @@ export function applyBundle(input: ApplyInput): ApplyResult {
     writeAtomic(path.join(previousDir, BUNDLE_FILE), current.bytes)
     writeAtomic(path.join(previousDir, SIGNATURE_FILE), Buffer.from(current.signature, "utf-8"))
   }
-  writeAtomic(path.join(dir, BUNDLE_FILE), bundleBytes)
-  writeAtomic(path.join(dir, SIGNATURE_FILE), Buffer.from(signature.trim(), "utf-8"))
+  try {
+    writeAtomic(path.join(dir, BUNDLE_FILE), bundleBytes)
+    writeAtomic(path.join(dir, SIGNATURE_FILE), Buffer.from(signature.trim(), "utf-8"))
+  } catch (error) {
+    // Tulisan kedua bisa gagal (ACL/disk); jangan biarkan pasangan setengah jadi.
+    if (current) {
+      try {
+        writeAtomic(path.join(dir, BUNDLE_FILE), current.bytes)
+        writeAtomic(path.join(dir, SIGNATURE_FILE), Buffer.from(current.signature, "utf-8"))
+      } catch {}
+    }
+    return { applied: false, reason: `gagal menulis: ${(error as Error).message}`, version: bundle.version, dir }
+  }
 
   // Pasangan bundle+tanda tangan ditulis dua langkah; kalau hasil akhirnya tidak cocok
   // (disk penuh, ACL, tulisan kedua gagal), pulihkan pasangan lama alih-alih meninggalkan

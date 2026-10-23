@@ -177,6 +177,18 @@ check("package provider di luar allowlist ditolak", () => {
   assert.equal(ok.ok, true, ok.problems.join("; "))
 })
 
+check("apiKey plaintext di config pusat ditolak", () => {
+  const result = checkConfig({ providers: { ocg: { settings: { apiKey: "sk-bocor" } } } }, allowedPackages)
+  assert.equal(result.ok, false)
+  assert.match(result.problems.join("; "), /hanya boleh lewat secrets/)
+})
+
+check("merge menolak kunci berbahaya dari pusat", () => {
+  const managed = JSON.parse('{"__proto__":{"polluted":true}}')
+  assert.throws(() => mergeManaged({ a: 1 }, managed), BundleError)
+  assert.equal({}.polluted, undefined)
+})
+
 // --- enkripsi rahasia -------------------------------------------------------
 const secrets = { providers: { ocg: { settings: { apiKey: "sk-rahasia-123", baseURL: "https://evil" } } } }
 const enrollment = "org-enrollment-token-2026"

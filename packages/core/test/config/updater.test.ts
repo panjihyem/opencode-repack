@@ -101,6 +101,45 @@ describe("config OTA updater", () => {
     ),
   )
 
+  it.live("menghapus .sig tidak membuka downgrade, tetapi versi sama dipulihkan", () =>
+    Effect.acquireDisposable(Effect.promise(() => tmpdir())).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.promise(async () => {
+          const dir = path.join(tmp.path, "managed")
+          const options = {
+            dir,
+            channel: "stable" as const,
+            appVersion: "2.1.0",
+            publicKey,
+            allowedPackages: [],
+            baseUrl: `http://localhost:${server.port}`,
+          }
+          const current = signed(9)
+          state.bytes = current.bytes
+          state.signature = current.signature
+          state.etag = '"v9"'
+          expect((await checkForConfigUpdate(options)).status).toBe("applied")
+
+          await fs.rm(path.join(dir, "bundle.json.sig"))
+          const older = signed(8)
+          state.bytes = older.bytes
+          state.signature = older.signature
+          state.etag = '"v8"'
+          const downgrade = await checkForConfigUpdate(options)
+          expect(downgrade.status).toBe("skipped")
+          expect(readState(dir)?.version).toBe(9)
+
+          state.bytes = current.bytes
+          state.signature = current.signature
+          state.etag = '"v9-lagi"'
+          const repair = await checkForConfigUpdate(options)
+          expect(repair.status).toBe("applied")
+          await fs.access(path.join(dir, "bundle.json.sig"))
+        }),
+      ),
+    ),
+  )
+
   it.live("bundle dari channel lain ditolak", () =>
     Effect.acquireDisposable(Effect.promise(() => tmpdir())).pipe(
       Effect.flatMap((tmp) =>

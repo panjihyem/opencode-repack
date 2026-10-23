@@ -32,6 +32,26 @@ describe("ConfigWatch.plan", () => {
     }
   })
 
+  test("watches bundle files when the managed directory exists but the bundle does not", () => {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), "oc-watch-"))
+    const managed = path.join(base, "managed")
+    fs.mkdirSync(managed)
+    try {
+      const plan = ConfigWatch.plan({
+        ...sources,
+        managed: [{ path: AbsolutePath.make(managed), present: false }],
+      })
+      const targets = Array.from(plan.values())
+      expect(
+        targets.some(
+          (target) => target.type === "entries" && target.path === managed && target.names.includes("bundle.json"),
+        ),
+      ).toBe(true)
+    } finally {
+      fs.rmSync(base, { recursive: true, force: true })
+    }
+  })
+
   test("groups missing candidates and keeps parent watches when roots appear", () => {
     const missing = ConfigWatch.plan(sources)
     expect(Array.from(missing.values())).toEqual([

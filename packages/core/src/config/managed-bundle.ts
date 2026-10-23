@@ -164,6 +164,13 @@ export function checkConfig(config: Record<string, unknown>, allowedPackages?: r
         }
         if (provider.settings !== undefined && (typeof provider.settings !== "object" || Array.isArray(provider.settings)))
           problems.push(`providers.${id}.settings wajib objek`)
+        // Rahasia wajib lewat amplop terenkripsi: config ini di-commit dan dipublikasikan.
+        if (isRecord(provider.settings)) {
+          for (const key of ["apiKey", "authorization"]) {
+            if (typeof provider.settings[key] === "string")
+              problems.push(`providers.${id}.settings.${key} hanya boleh lewat secrets terenkripsi`)
+          }
+        }
         // `models.<id>.package` juga specifier impor (model resolver menjalankan npm add + import).
         if (provider.models !== undefined) {
           if (!isRecord(provider.models)) problems.push(`providers.${id}.models wajib objek`)
@@ -245,8 +252,12 @@ function deriveKey(secret: string, salt: Buffer): Buffer {
 export function mergeManaged<T>(base: T, managed: T): T {
   if (Array.isArray(base) || Array.isArray(managed)) return managed
   if (!isRecord(base) || !isRecord(managed)) return managed
-  const out: Record<string, unknown> = { ...base }
+  const out: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(base)) {
+    if (!UNSAFE_KEYS.has(key)) out[key] = value
+  }
   for (const [key, value] of Object.entries(managed)) {
+    if (UNSAFE_KEYS.has(key)) throw new BundleError(`kunci ${key} tidak diizinkan`)
     const prev = out[key]
     out[key] = isRecord(prev) && isRecord(value) ? mergeManaged(prev, value) : value
   }

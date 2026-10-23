@@ -79,7 +79,7 @@ jobs:
           VERSION="${VERSION:-$(cat config/version)}"
           rm -rf /tmp/last && mkdir -p /tmp/last
           if gh release view "config-$CHANNEL" >/dev/null 2>&1; then
-            gh release download "config-$CHANNEL" -p manifest.json -D /tmp/last || true
+            gh release download "config-$CHANNEL" -p manifest.json -D /tmp/last
           fi
           if [ -f /tmp/last/manifest.json ]; then
             LAST=$(node -p "require('/tmp/last/manifest.json').version")

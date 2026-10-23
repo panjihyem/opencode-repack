@@ -31,12 +31,13 @@ export function plan(sources: ConfigDiscovery.Sources) {
   ]
   const files = [
     ...(sources.system ? [sources.system.path] : []),
-    ...(sources.managed ?? []).flatMap((source) => [
-      // Menonton direktori yang belum ada gagal (ENOENT) dan tidak dicoba ulang, sehingga
-      // bundle pertama tidak akan memicu reload. Tonton leluhur yang benar-benar ada.
-      source.present ? source.path : firstMissing(source.path),
-      ...(source.present ? ConfigDiscovery.managedBundleFiles.map((name) => path.join(source.path, name)) : []),
-    ]),
+    ...(sources.managed ?? []).flatMap((source) =>
+      // Direktori ada: tonton ketiga berkasnya agar bundle pertama/berikutnya memicu reload.
+      // Direktori belum ada: menontonnya gagal (ENOENT), jadi tonton bagian pertama yang belum ada.
+      fs.existsSync(source.path)
+        ? [source.path, ...ConfigDiscovery.managedBundleFiles.map((name) => path.join(source.path, name))]
+        : [firstMissing(source.path)],
+    ),
     ...sources.direct,
     ...sources.project.map((root) => root.path),
     ...sources.claude,

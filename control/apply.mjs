@@ -33,6 +33,7 @@ const result = applyBundle({
   publicKey: key,
   allowedPackages,
   appVersion: args["app-version"] ?? "manual",
+  expectedChannel: args.channel ?? "stable",
   enrollment,
 })
 console.log(JSON.stringify({ ...result, state: readState(dir) }, null, 2))

@@ -8,11 +8,16 @@
  */
 const DEFAULT_PUBLIC_KEY = "MCowBQYDK2VwAyEA6MmMQqlYGmpQo2ccbJ1u7RQiTPecvpNzMsQDaaPIxGM="
 
+// Ditanam saat build rilis (vite `define`). `typeof` aman ketika build lokal/uji tidak mendefinisikannya.
+declare const OPENCODE_CHANNEL: string | undefined
+const buildChannel = typeof OPENCODE_CHANNEL === "string" ? OPENCODE_CHANNEL : undefined
+
 export function publicKey() {
-  // Override hanya untuk build lokal/uji: build rilis tidak boleh bisa diarahkan
-  // ke kunci penyerang lewat variabel lingkungan.
-  const channel = process.env.OPENCODE_CHANNEL ?? "local"
-  if (channel !== "local") return DEFAULT_PUBLIC_KEY
+  // Override lingkungan hanya untuk build lokal/uji. Build rilis memakai kunci yang
+  // ditanam di binary; env pengguna tidak boleh mengarahkannya ke kunci penyerang.
+  if (buildChannel !== undefined && buildChannel !== "local") return DEFAULT_PUBLIC_KEY
+  if (process.env.OPENCODE_CHANNEL !== undefined && process.env.OPENCODE_CHANNEL !== "local")
+    return DEFAULT_PUBLIC_KEY
   return process.env.HYPER_CONFIG_PUBLIC_KEY ?? DEFAULT_PUBLIC_KEY
 }
 
