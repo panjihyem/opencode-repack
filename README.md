@@ -1,129 +1,120 @@
 <p align="center">
-  <a href="https://opencode.ai">
-    <picture>
-      <source srcset="packages/console/app/src/asset/logo-ornate-dark.svg" media="(prefers-color-scheme: dark)">
-      <source srcset="packages/console/app/src/asset/logo-ornate-light.svg" media="(prefers-color-scheme: light)">
-      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="OpenCode logo">
-    </picture>
-  </a>
-</p>
-<p align="center">The open source AI coding agent.</p>
-<p align="center">
-  <a href="https://opencode.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
-  <a href="https://www.npmjs.com/package/@opencode/cli"><img alt="npm" src="https://img.shields.io/npm/v/@opencode/cli?style=flat-square" /></a>
-  <a href="https://github.com/anomalyco/opencode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/anomalyco/opencode/publish.yml?style=flat-square&branch=dev" /></a>
+  <img src="rebrand/assets/icons/icon.png" alt="Hyper AI" width="120" />
 </p>
 
-<p align="center">
-  <a href="README.md">English</a> |
-  <a href="README.zh.md">简体中文</a> |
-  <a href="README.zht.md">繁體中文</a> |
-  <a href="README.ko.md">한국어</a> |
-  <a href="README.de.md">Deutsch</a> |
-  <a href="README.es.md">Español</a> |
-  <a href="README.fr.md">Français</a> |
-  <a href="README.it.md">Italiano</a> |
-  <a href="README.da.md">Dansk</a> |
-  <a href="README.ja.md">日本語</a> |
-  <a href="README.pl.md">Polski</a> |
-  <a href="README.ru.md">Русский</a> |
-  <a href="README.bs.md">Bosanski</a> |
-  <a href="README.ar.md">العربية</a> |
-  <a href="README.no.md">Norsk</a> |
-  <a href="README.br.md">Português (Brasil)</a> |
-  <a href="README.th.md">ไทย</a> |
-  <a href="README.tr.md">Türkçe</a> |
-  <a href="README.uk.md">Українська</a> |
-  <a href="README.bn.md">বাংলা</a> |
-  <a href="README.gr.md">Ελληνικά</a> |
-  <a href="README.vi.md">Tiếng Việt</a>
-</p>
+<h1 align="center">Hyper AI</h1>
 
-[![OpenCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://opencode.ai)
+<p align="center">OpenCode, repacked as <strong>Hyper AI</strong>: branded desktop installers for Windows, macOS and Linux, with signed configuration updates.</p>
+
+<p align="center">
+  <a href="https://github.com/panjihyem/opencode-repack/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/panjihyem/opencode-repack?style=flat-square" /></a>
+  <a href="https://github.com/panjihyem/opencode-repack/actions/workflows/repack-build.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/panjihyem/opencode-repack/repack-build.yml?style=flat-square" /></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/panjihyem/opencode-repack?style=flat-square" /></a>
+</p>
 
 ---
 
-### Installation
+## What this is
 
-```bash
-# YOLO
-curl -fsSL https://opencode.ai/install | bash
+Hyper AI is a **repack** of [OpenCode](https://github.com/anomalyco/opencode): the upstream source is
+checked out unchanged at build time, then a small overlay adds the product name, logo, installers
+and the pieces Hyper AI ships on top. Hyper AI `X.Y.Z` is built from upstream `vX.Y.Z`.
 
-# Package managers
-npm i -g @opencode/cli@latest      # or bun/pnpm/yarn
-scoop install opencode             # Windows
-choco install opencode             # Windows
-brew install anomalyco/tap/opencode # macOS and Linux (recommended, always up to date)
-brew install opencode              # macOS and Linux (official brew formula, updated less)
-sudo pacman -S opencode            # Arch Linux (Stable)
-paru -S opencode-bin               # Arch Linux (Latest from AUR)
-mise use -g opencode               # Any OS
-nix run nixpkgs#opencode           # or github:anomalyco/opencode for latest dev branch
+What the overlay adds:
+
+- **Desktop installers** for Windows, macOS and Linux (x64 and arm64), plus standalone CLI archives.
+- **Auto-update** that points at this repository's releases, not the upstream channel.
+- **Config OTA**: LLM providers, model list and credentials can be updated from a signed bundle
+  without reinstalling the app. Bundles are Ed25519-signed, API keys are encrypted with
+  AES-256-GCM, and a bundle that fails verification is ignored as a whole.
+- **Ready-to-use extras**: Context7 is vendored and registered as an MCP server on first launch; a
+  first-run wizard can install the optional local stack (LM Studio, a small local model, Hindsight
+  memory). Nothing third-party is redistributed inside the installer; components are downloaded
+  from their publishers.
+
+Details, caveats and the full component list: [`REPACK.md`](REPACK.md).
+
+## Install
+
+Download from the [latest release](https://github.com/panjihyem/opencode-repack/releases/latest):
+
+| Platform | Architecture | Asset |
+| --- | --- | --- |
+| Windows | x64 | `hyper-ai-desktop-win-x64.exe` |
+| Windows | arm64 | `hyper-ai-desktop-win-arm64.exe` |
+| macOS | Apple Silicon | `hyper-ai-desktop-mac-arm64.dmg` |
+| macOS | Intel | `hyper-ai-desktop-mac-x64.dmg` |
+| Linux | x64 | `hyper-ai-desktop-linux-x86_64.AppImage` / `.deb` / `.rpm` |
+| Linux | arm64 | `hyper-ai-desktop-linux-arm64.AppImage` / `.deb` / `.rpm` |
+
+Standalone CLI (no desktop app): `hyper-ai-windows-<arch>.zip`, `hyper-ai-darwin-<arch>.tar.gz`,
+`hyper-ai-linux-<arch>.tar.gz` (musl variants included).
+
+Builds are unsigned unless release signing secrets are configured. Unsigned macOS builds need
+right-click → **Open** on first launch; Windows may show a SmartScreen prompt.
+
+## Configuration updates (OTA)
+
+The app checks GitHub Releases for a signed bundle on the `stable`, `beta` or `canary` channel and
+loads it **above** the user's own config, so a centrally managed provider or model wins. The bundle
+cannot introduce code: `plugins`, `skills`, `instructions`, `commands`, `mcp`, `formatter`, `lsp`,
+`experimental`, and provider packages outside the allowlist are rejected even when correctly signed.
+
+Encrypted credentials require an **enrollment token** provisioned by the administrator, stored next
+to the bundle and never written by the updater:
+
+| Platform | Managed directory |
+| --- | --- |
+| Windows | `%LOCALAPPDATA%\HyperAI\managed` |
+| macOS | `~/Library/Application Support/HyperAI/managed` |
+| Linux | `$XDG_CONFIG_HOME/hyperai/managed` (default `~/.config/hyperai/managed`) |
+
+Without the token, a bundle that carries secrets is rejected entirely; a bundle without secrets
+(config only) still applies. Releases are staged with a rollout percentage, and a machine can be
+returned to its previous bundle with `node control/apply.mjs --rollback --dir <managed dir>` (the
+previous bundle is kept and re-verified). Publishing flow, signing keys and the CLI live in
+[`control/README.md`](control/README.md) and [`config/README.md`](config/README.md).
+
+## Repository layout
+
+| Path | Purpose |
+| --- | --- |
+| `rebrand/` | Everything this repack owns: identity, find/replace rules, shipped files, icons, verification. |
+| `config/` | Central config (providers, models) signed and published by CI. |
+| `control/` | Build, verify, apply and self-test the signed config bundles. |
+| `.github/workflows/repack-build.yml` | Builds the installers for all platforms and publishes a release. |
+| `.github/workflows/hyper-config-release.yml` | Signs and publishes the config bundle. |
+| `packages/` | Upstream source mirror, kept browsable and used for local tests. **Not** what the installer is built from. |
+
+## Build
+
+Installers are built by CI, not locally:
+
+1. run **repack-build** from the Actions tab (empty `upstream_ref` = newest upstream tag), or
+   `repack-sync` dispatches it when upstream publishes a new release;
+2. optionally run **hyper-config-release** to publish a new signed config bundle.
+
+Against a local upstream checkout:
+
+```sh
+git clone https://github.com/anomalyco/opencode /tmp/opencode
+git checkout v2.1.4   # inside the clone
+bun rebrand/apply.ts /tmp/opencode
+cd /tmp/opencode/packages/cli && bun run script/build.ts --single
+bun rebrand/verify.ts packages/cli/dist/cli-linux-x64/bin/opencode
 ```
 
-> [!TIP]
-> Remove versions older than 0.1.x before installing.
+`rebrand/apply.ts` is idempotent. Rules marked critical abort the build when upstream rewrites the
+text they target, so a release never silently loses a feature.
 
-### Desktop App (BETA)
+Tests: `cd rebrand && bun test`; config OTA: `node control/selftest.mjs`,
+`node --import ./control/ts-resolve-register.mjs control/selftest-apply.mjs`,
+`node control/selftest-pipeline.mjs`.
 
-OpenCode is also available as a desktop application. Download directly from the [releases page](https://github.com/anomalyco/opencode/releases) or [opencode.ai/download](https://opencode.ai/download).
+## Upstream, license and attribution
 
-| Platform              | Download                           |
-| --------------------- | ---------------------------------- |
-| macOS (Apple Silicon) | `opencode-desktop-mac-arm64.dmg`   |
-| macOS (Intel)         | `opencode-desktop-mac-x64.dmg`     |
-| Windows               | `opencode-desktop-windows-x64.exe` |
-| Linux                 | `.deb`, `.rpm`, or `.AppImage`     |
-
-```bash
-# macOS (Homebrew)
-brew install --cask opencode-desktop
-# Windows (Scoop)
-scoop bucket add extras; scoop install extras/opencode-desktop
-```
-
-#### Installation Directory
-
-The install script respects the following priority order for the installation path:
-
-1. `$OPENCODE_INSTALL_DIR` - Custom installation directory
-2. `$XDG_BIN_DIR` - XDG Base Directory Specification compliant path
-3. `$HOME/bin` - Standard user binary directory (if it exists or can be created)
-4. `$HOME/.opencode/bin` - Default fallback
-
-```bash
-# Examples
-OPENCODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://opencode.ai/install | bash
-XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://opencode.ai/install | bash
-```
-
-### Agents
-
-OpenCode includes two built-in agents you can switch between with the `Tab` key.
-
-- **build** - Default, full-access agent for development work
-- **plan** - Read-only agent for analysis and code exploration
-  - Denies file edits by default
-  - Asks permission before running bash commands
-  - Ideal for exploring unfamiliar codebases or planning changes
-
-Also included is a **general** subagent for complex searches and multistep tasks.
-This is used internally and can be invoked using `@general` in messages.
-
-Learn more about [agents](https://opencode.ai/docs/agents).
-
-### Documentation
-
-For more info on how to configure OpenCode, [**head over to our docs**](https://opencode.ai/docs).
-
-### Contributing
-
-If you're interested in contributing to OpenCode, please read our [contributing docs](./CONTRIBUTING.md) before submitting a pull request.
-
-### Building on OpenCode
-
-If you are working on a project that's related to OpenCode and is using "opencode" as part of its name, for example "opencode-dashboard" or "opencode-mobile", please add a note to your README to clarify that it is not built by the OpenCode team and is not affiliated with us in any way.
-
----
-
-**Join our community** [Discord](https://discord.gg/opencode) | [X.com](https://x.com/opencode)
+Hyper AI is built on [OpenCode](https://github.com/anomalyco/opencode), licensed under the MIT
+License; see [`LICENSE`](LICENSE). Upstream documentation and translated README files
+(`README.<locale>.md`) are inherited unchanged. Hyper AI is an independent repack and is not
+affiliated with or endorsed by Anomaly Innovations or the OpenCode maintainers. Model providers
+(including any gateway configured through OTA) are used under their own terms.
