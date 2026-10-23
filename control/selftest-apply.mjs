@@ -176,10 +176,35 @@ await check("rollback dua kali gagal dengan pesan jelas", () => {
   assert.match(result.reason, /tidak ada bundle sebelumnya/)
 })
 
-await check("anti-rollback setelah rollback: versi 3 boleh lagi", () => {
+await check("versi yang di-rollback tidak bisa kembali", () => {
   const dir = path.join(root, "kasus-1")
-  const result = apply(dir, 3)
+  const blocked = apply(dir, 3)
+  assert.equal(blocked.applied, false)
+  assert.match(blocked.reason, /versi rollback/)
+  assert.equal(readState(dir).version, 2)
+})
+
+await check("versi lebih baru dari rollback tetap diterima", () => {
+  const dir = path.join(root, "kasus-1")
+  const result = apply(dir, 4)
   assert.equal(result.applied, true, result.reason)
+  assert.equal(readState(dir).version, 4)
+})
+
+await check("bundle dengan channel lain ditolak", () => {
+  const dir = path.join(root, "kasus-channel")
+  const { bytes, signature } = sign(bundle(1, { channel: "beta" }))
+  const result = applyBundle({
+    dir,
+    bundleBytes: bytes,
+    signature,
+    publicKey,
+    allowedPackages,
+    appVersion: "2.1.0",
+    expectedChannel: "stable",
+  })
+  assert.equal(result.applied, false)
+  assert.match(result.reason, /channel beta tidak sesuai stable/)
 })
 
 await check("direktori managed per platform", () => {

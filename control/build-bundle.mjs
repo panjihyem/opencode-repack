@@ -1,7 +1,7 @@
 // Bangun bundle config OTA: validasi -> (opsional) enkripsi rahasia -> tanda tangan Ed25519.
 // Jalankan: node control/build-bundle.mjs --version 7 --channel stable
 import { register } from "node:module"
-import { createHash } from "node:crypto"
+import { createHash, createPrivateKey, createPublicKey } from "node:crypto"
 import fs from "node:fs"
 import path from "node:path"
 
@@ -9,7 +9,7 @@ register("./ts-resolve.mjs", import.meta.url)
 const { checkConfig, encryptSecrets, sha256Hex, signBundle } = await import(
   "../packages/core/src/config/managed-bundle.ts"
 )
-const { allowedPackages, publicKey: appPublicKey } = await import("../packages/core/src/config/managed-policy.ts")
+const { allowedPackages } = await import("../packages/core/src/config/managed-policy.ts")
 
 const args = parseArgs(process.argv.slice(2))
 const configPath = path.resolve(args.config ?? "config/opencode.json")
@@ -56,10 +56,10 @@ const bytes = Buffer.from(JSON.stringify(bundle, null, 2), "utf-8")
 const signature = signBundle(bytes, signingKey)
 const digest = sha256Hex(bytes)
 
-const fingerprint = createHash("sha256")
-  .update(Buffer.from(appPublicKey(), "base64"))
-  .digest("hex")
-  .slice(0, 16)
+const signingPublic = createPublicKey(
+  createPrivateKey({ key: Buffer.from(signingKey, "base64"), format: "der", type: "pkcs8" }),
+).export({ format: "der", type: "spki" })
+const fingerprint = createHash("sha256").update(signingPublic).digest("hex").slice(0, 16)
 
 const manifest = {
   version,

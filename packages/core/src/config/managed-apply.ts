@@ -12,7 +12,15 @@
 import { createHash, randomBytes } from "node:crypto"
 import fs from "node:fs"
 import path from "node:path"
-import { BundleError, decodeBundle, materialize, shouldApply, verifyBundle, type Bundle } from "./managed-bundle.js"
+import {
+  BundleError,
+  decodeBundle,
+  materialize,
+  shouldApply,
+  verifyBundle,
+  type Bundle,
+  type Channel,
+} from "./managed-bundle.js"
 
 export const BUNDLE_FILE = "bundle.json"
 export const SIGNATURE_FILE = "bundle.json.sig"
@@ -27,6 +35,8 @@ export interface State {
   readonly appVersion: string
   readonly channel: string
   readonly installId: string
+  /** Versi yang pernah di-rollback; tidak boleh terpasang lagi. */
+  readonly blockedVersion?: number
 }
 
 export interface ApplyInput {
@@ -36,6 +46,8 @@ export interface ApplyInput {
   readonly publicKey: string
   readonly allowedPackages: readonly string[]
   readonly appVersion: string
+  /** Tolak bundle yang channel-nya tidak sesuai (mis. aset beta di channel stable). */
+  readonly expectedChannel?: Channel
   readonly enrollment?: string
   /** Untuk uji deterministik; default waktu sekarang. */
   readonly now?: Date
@@ -94,11 +106,24 @@ export function applyBundle(input: ApplyInput): ApplyResult {
     return { applied: false, reason: `bundle rusak: ${(error as Error).message}`, dir }
   }
 
+  if (input.expectedChannel && bundle.channel !== input.expectedChannel)
+    return {
+      applied: false,
+      reason: `channel ${bundle.channel} tidak sesuai ${input.expectedChannel}`,
+      version: bundle.version,
+      dir,
+    }
+
+  // State bisa tertinggal saat file bundle dihapus (antivirus/cleanup); dalam kondisi itu
+  // versi yang tercatat tidak boleh menghalangi pemasangan ulang.
   const previous = readState(dir)
+  const present = readBundle(dir)
+  const currentVersion = present ? previous?.version : undefined
   const id = installId(dir)
   const gate = shouldApply({
     bundle,
-    currentVersion: previous?.version,
+    currentVersion,
+    blockedVersion: previous?.blockedVersion,
     appVersion: input.appVersion,
     installId: id,
   })
@@ -123,6 +148,19 @@ export function applyBundle(input: ApplyInput): ApplyResult {
   }
   writeAtomic(path.join(dir, BUNDLE_FILE), bundleBytes)
   writeAtomic(path.join(dir, SIGNATURE_FILE), Buffer.from(signature.trim(), "utf-8"))
+
+  // Pasangan bundle+tanda tangan ditulis dua langkah; kalau hasil akhirnya tidak cocok
+  // (disk penuh, ACL, tulisan kedua gagal), pulihkan pasangan lama alih-alih meninggalkan
+  // config pusat dalam keadaan tidak terbaca.
+  const written = readBundle(dir)
+  if (!written || !verifyBundle(written.bytes, written.signature, publicKey)) {
+    if (current) {
+      writeAtomic(path.join(dir, BUNDLE_FILE), current.bytes)
+      writeAtomic(path.join(dir, SIGNATURE_FILE), Buffer.from(current.signature, "utf-8"))
+    }
+    return { applied: false, reason: "gagal menulis pasangan bundle+tanda tangan", version: bundle.version, dir }
+  }
+
   const state: State = {
     version: bundle.version,
     sha256: createHash("sha256").update(bundleBytes).digest("hex"),
@@ -130,6 +168,7 @@ export function applyBundle(input: ApplyInput): ApplyResult {
     appVersion: input.appVersion,
     channel: bundle.channel,
     installId: id,
+    ...(previous?.blockedVersion === undefined ? {} : { blockedVersion: previous.blockedVersion }),
   }
   writeAtomic(path.join(dir, STATE_FILE), Buffer.from(JSON.stringify(state, null, 2), "utf-8"))
   // materialized hanya dipakai untuk memastikan config+rahasia valid; hasilnya tidak ditulis.
@@ -157,6 +196,7 @@ export function rollback(dir: string, publicKey: string): ApplyResult {
   }
   writeAtomic(path.join(dir, BUNDLE_FILE), bytes)
   writeAtomic(path.join(dir, SIGNATURE_FILE), Buffer.from(signature, "utf-8"))
+  const active = readState(dir)
   const state: State = {
     version: bundle.version,
     sha256: createHash("sha256").update(bytes).digest("hex"),
@@ -164,6 +204,8 @@ export function rollback(dir: string, publicKey: string): ApplyResult {
     appVersion: "rollback",
     channel: bundle.channel,
     installId: installId(dir),
+    // Versi yang baru saja ditinggalkan tidak boleh kembali hanya karena asetnya masih ada.
+    blockedVersion: Math.max(active?.blockedVersion ?? 0, active?.version ?? 0),
   }
   writeAtomic(path.join(dir, STATE_FILE), Buffer.from(JSON.stringify(state, null, 2), "utf-8"))
   fs.rmSync(previousDir, { recursive: true, force: true })
@@ -182,11 +224,10 @@ function writeAtomic(file: string, bytes: Uint8Array) {
       const code = (error as NodeJS.ErrnoException).code
       if (code !== "EPERM" && code !== "EACCES" && code !== "EBUSY") throw error
       if (attempt === 7) {
-        fs.copyFileSync(tmp, file)
         fs.rmSync(tmp, { force: true })
-        return
+        throw error
       }
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20)
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25)
     }
   }
 }

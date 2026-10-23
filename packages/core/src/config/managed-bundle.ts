@@ -40,11 +40,10 @@ export interface Bundle {
   readonly rollout?: number
   readonly config: Record<string, unknown>
   readonly secrets?: Envelope | null
-  readonly secretsDigest?: string
 }
 
 const INFO = "hyper-config-secrets-v1"
-const MAX_BUNDLE_BYTES = 2 * 1024 * 1024
+export const MAX_BUNDLE_BYTES = 2 * 1024 * 1024
 
 /** Top-level yang boleh datang dari pusat. Sisanya ditolak (bukan diabaikan diam-diam). */
 const ALLOWED_TOP = new Set([
@@ -58,15 +57,29 @@ const ALLOWED_TOP = new Set([
   "websearch",
   "tool_output",
   "watcher",
-  "formatter",
-  "lsp",
   "media",
   "share",
   "update",
 ])
 
-/** Config pusat tidak boleh menjadi jalur eksekusi kode. */
-const FORBIDDEN_TOP = new Set(["plugins", "skills", "instructions", "commands", "mcp", "references", "experimental"])
+/**
+ * Config pusat tidak boleh menjadi jalur eksekusi kode. `formatter` dan `lsp` sengaja
+ * tidak diizinkan karena keduanya membawa `command: string[]` yang dijalankan proses.
+ */
+const FORBIDDEN_TOP = new Set([
+  "plugins",
+  "skills",
+  "instructions",
+  "commands",
+  "mcp",
+  "references",
+  "experimental",
+  "formatter",
+  "lsp",
+])
+
+/** Kunci objek yang bisa mengubah prototipe saat di-merge. */
+const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"])
 
 export class BundleError extends Error {}
 
@@ -142,12 +155,34 @@ export function checkConfig(config: Record<string, unknown>, allowedPackages?: r
           continue
         }
         const provider = raw as Record<string, unknown>
+        for (const key of Object.keys(provider)) {
+          if (UNSAFE_KEYS.has(key)) problems.push(`providers.${id}.${key} tidak diizinkan`)
+        }
         if (provider.package !== undefined) {
           if (typeof provider.package !== "string" || !allowedPackages?.includes(provider.package))
             problems.push(`providers.${id}.package tidak ada di allowlist`)
         }
         if (provider.settings !== undefined && (typeof provider.settings !== "object" || Array.isArray(provider.settings)))
           problems.push(`providers.${id}.settings wajib objek`)
+        // `models.<id>.package` juga specifier impor (model resolver menjalankan npm add + import).
+        if (provider.models !== undefined) {
+          if (!isRecord(provider.models)) problems.push(`providers.${id}.models wajib objek`)
+          else {
+            for (const [modelID, rawModel] of Object.entries(provider.models)) {
+              if (UNSAFE_KEYS.has(modelID)) {
+                problems.push(`providers.${id}.models.${modelID} tidak diizinkan`)
+                continue
+              }
+              if (!isRecord(rawModel)) continue
+              for (const key of Object.keys(rawModel)) {
+                if (UNSAFE_KEYS.has(key)) problems.push(`providers.${id}.models.${modelID}.${key} tidak diizinkan`)
+              }
+              const pkg = rawModel.package
+              if (pkg !== undefined && (typeof pkg !== "string" || !allowedPackages?.includes(pkg)))
+                problems.push(`providers.${id}.models.${modelID}.package tidak ada di allowlist`)
+            }
+          }
+        }
       }
     }
   }
@@ -227,7 +262,8 @@ export function inRollout(bundle: Bundle, installId: string): boolean {
   const percent = bundle.rollout ?? 100
   if (percent >= 100) return true
   if (percent <= 0) return false
-  const bucket = createHash("sha256").update(`${installId}:${bundle.version}`).digest()[0] % 100
+  // Modulo 64-bit agar sebaran merata (byte pertama % 100 bias ke nilai rendah).
+  const bucket = Number(createHash("sha256").update(`${installId}:${bundle.version}`).digest().readBigUInt64BE(0) % 100n)
   return bucket < percent
 }
 
@@ -244,6 +280,8 @@ export function compareVersions(a: string, b: string): number {
 export interface GateInput {
   readonly bundle: Bundle
   readonly currentVersion?: number
+  /** Versi yang pernah di-rollback: jangan dipasang lagi walau asetnya masih dipublikasikan. */
+  readonly blockedVersion?: number
   readonly appVersion: string
   readonly installId: string
 }
@@ -252,6 +290,8 @@ export interface GateInput {
 export function shouldApply(input: GateInput): { apply: boolean; reason: string } {
   if (input.currentVersion !== undefined && input.bundle.version <= input.currentVersion)
     return { apply: false, reason: `versi ${input.bundle.version} <= terpasang ${input.currentVersion}` }
+  if (input.blockedVersion !== undefined && input.bundle.version <= input.blockedVersion)
+    return { apply: false, reason: `versi ${input.bundle.version} <= versi rollback ${input.blockedVersion}` }
   if (input.bundle.minAppVersion && compareVersions(input.appVersion, input.bundle.minAppVersion) < 0)
     return { apply: false, reason: `butuh aplikasi >= ${input.bundle.minAppVersion}` }
   if (!inRollout(input.bundle, input.installId)) return { apply: false, reason: "belum masuk rollout" }

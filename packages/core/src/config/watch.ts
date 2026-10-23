@@ -1,9 +1,26 @@
 export * as ConfigWatch from "./watch.js"
 
+import fs from "node:fs"
 import path from "path"
 import { FSUtil } from "@opencode/util/fs-util"
 import type { Watcher } from "../filesystem/watcher.js"
 import { ConfigDiscovery } from "./discovery.js"
+
+/**
+ * Bagian pertama dari path yang belum ada (nenek moyangnya sudah ada). Menonton path
+ * ini sebagai kandidat entri membuat pembuatan direktori terdeteksi, lalu reconcile
+ * berikutnya menambah watch lebih dalam.
+ */
+function firstMissing(target: string) {
+  let current = target
+  for (let depth = 0; depth < 6; depth++) {
+    const parent = path.dirname(current)
+    if (parent === current) return current
+    if (fs.existsSync(parent)) return current
+    current = parent
+  }
+  return current
+}
 
 export function plan(sources: ConfigDiscovery.Sources) {
   const directories = [
@@ -15,8 +32,10 @@ export function plan(sources: ConfigDiscovery.Sources) {
   const files = [
     ...(sources.system ? [sources.system.path] : []),
     ...(sources.managed ?? []).flatMap((source) => [
-      source.path,
-      ...ConfigDiscovery.managedBundleFiles.map((name) => path.join(source.path, name)),
+      // Menonton direktori yang belum ada gagal (ENOENT) dan tidak dicoba ulang, sehingga
+      // bundle pertama tidak akan memicu reload. Tonton leluhur yang benar-benar ada.
+      source.present ? source.path : firstMissing(source.path),
+      ...(source.present ? ConfigDiscovery.managedBundleFiles.map((name) => path.join(source.path, name)) : []),
     ]),
     ...sources.direct,
     ...sources.project.map((root) => root.path),

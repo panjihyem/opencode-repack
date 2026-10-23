@@ -46,3 +46,4 @@ repo.txt
 /control/dist/
 /control/.tmp/
 *.private.b64
+private.b64

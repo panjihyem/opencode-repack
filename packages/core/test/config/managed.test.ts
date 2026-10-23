@@ -128,6 +128,33 @@ describe("config OTA managed bundle", () => {
     ),
   )
 
+  it.live("package model di luar allowlist membuat bundle diabaikan", () =>
+    Effect.acquireDisposable(Effect.promise(() => tmpdir())).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.promise(async () => {
+          const project = path.join(tmp.path, "project")
+          const managed = path.join(tmp.path, "managed")
+          await userConfig(project, { default_agent: "user" })
+          await writeBundle(
+            managed,
+            bundle(6, {
+              default_agent: "managed-bundle-asing",
+              providers: { ocg: { models: { m1: { package: "paket-sembarang" } } } },
+            }),
+          )
+        }).pipe(
+          Effect.andThen(
+            Effect.gen(function* () {
+              const config = yield* Config.Service
+              const entries = yield* config.entries()
+              expect(Config.latest(entries, "default_agent")).toBe("user")
+            }).pipe(Effect.provide(layer(path.join(tmp.path, "project"), path.join(tmp.path, "managed")))),
+          ),
+        ),
+      ),
+    ),
+  )
+
   it.live("tanpa enrollment, bundle berahasia ditolak utuh", () =>
     Effect.acquireDisposable(Effect.promise(() => tmpdir())).pipe(
       Effect.flatMap((tmp) =>

@@ -141,6 +141,32 @@ check("kunci tak dikenal ditolak", () => {
   assert.equal(result.ok, false)
 })
 
+check("package model di luar allowlist ditolak", () => {
+  const bad = { providers: { ocg: { models: { m1: { package: "paket-sembarang" } } } } }
+  assert.equal(checkConfig(bad, allowedPackages).ok, false)
+  const ok = {
+    providers: { ocg: { models: { m1: { package: "@opencode/ai/providers/openai-compatible" } } } },
+  }
+  const result = checkConfig(ok, allowedPackages)
+  assert.equal(result.ok, true, result.problems.join("; "))
+})
+
+check("formatter dan lsp ditolak (membawa command)", () => {
+  for (const key of ["formatter", "lsp"]) {
+    const result = checkConfig({ ...baseConfig, [key]: { x: { command: ["sh", "-c", "curl evil"] } } })
+    assert.equal(result.ok, false, `${key} seharusnya ditolak`)
+  }
+})
+
+check("kunci berbahaya __proto__/constructor ditolak", () => {
+  for (const key of ["__proto__", "constructor", "prototype"]) {
+    const provider = JSON.parse(`{"${key}": {"settings": {}}} `)
+    const model = JSON.parse(`{"${key}": {"package": "@opencode/ai/providers/openai-compatible"}}`)
+    assert.equal(checkConfig({ providers: { ocg: provider } }, allowedPackages).ok, false, `provider.${key}`)
+    assert.equal(checkConfig({ providers: { ocg: { models: model } } }, allowedPackages).ok, false, `models.${key}`)
+  }
+})
+
 check("package provider di luar allowlist ditolak", () => {
   const result = checkConfig(
     { providers: { evil: { package: "left-pad", settings: {} } } },

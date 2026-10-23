@@ -14,10 +14,10 @@ const keys = generateKeyPairSync("ed25519")
 const privateKey = keys.privateKey.export({ format: "der", type: "pkcs8" }).toString("base64")
 const publicKey = keys.publicKey.export({ format: "der", type: "spki" }).toString("base64")
 
-function signed(version: number) {
+function signed(version: number, channel: "stable" | "beta" = "stable") {
   const value = {
     version,
-    channel: "stable",
+    channel,
     rollout: 100,
     config: { default_agent: `managed-${version}` },
   }
@@ -67,6 +67,60 @@ describe("config OTA updater", () => {
           expect(second.status).toBe("up-to-date")
           expect(readState(dir)?.version).toBe(1)
           await fs.access(path.join(dir, "etag-stable.json"))
+        }),
+      ),
+    ),
+  )
+
+  it.live("304 dengan file lokal hilang mengunduh ulang", () =>
+    Effect.acquireDisposable(Effect.promise(() => tmpdir())).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.promise(async () => {
+          const first = signed(7)
+          state.bytes = first.bytes
+          state.signature = first.signature
+          state.etag = '"v7"'
+          const dir = path.join(tmp.path, "managed")
+          const options = {
+            dir,
+            channel: "stable" as const,
+            appVersion: "2.1.0",
+            publicKey,
+            allowedPackages: [],
+            baseUrl: `http://localhost:${server.port}`,
+          }
+          expect((await checkForConfigUpdate(options)).status).toBe("applied")
+          await fs.rm(path.join(dir, "bundle.json"))
+          await fs.rm(path.join(dir, "bundle.json.sig"))
+          const recovered = await checkForConfigUpdate(options)
+          expect(recovered.status).toBe("applied")
+          await fs.access(path.join(dir, "bundle.json"))
+          await fs.access(path.join(dir, "bundle.json.sig"))
+        }),
+      ),
+    ),
+  )
+
+  it.live("bundle dari channel lain ditolak", () =>
+    Effect.acquireDisposable(Effect.promise(() => tmpdir())).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.promise(async () => {
+          const beta = signed(8, "beta")
+          state.bytes = beta.bytes
+          state.signature = beta.signature
+          state.etag = '"v8-beta"'
+          const dir = path.join(tmp.path, "managed")
+          const result = await checkForConfigUpdate({
+            dir,
+            channel: "stable",
+            appVersion: "2.1.0",
+            publicKey,
+            allowedPackages: [],
+            baseUrl: `http://localhost:${server.port}`,
+          })
+          expect(result.status).toBe("skipped")
+          expect(result.reason).toContain("channel beta")
+          expect(readState(dir)).toBeUndefined()
         }),
       ),
     ),

@@ -6,8 +6,15 @@
  */
 import fs from "node:fs"
 import path from "node:path"
-import { applyBundle, BUNDLE_FILE, SIGNATURE_FILE, readState, type ApplyResult } from "./managed-apply.js"
-import type { Channel } from "./managed-bundle.js"
+import {
+  applyBundle,
+  BUNDLE_FILE,
+  SIGNATURE_FILE,
+  readBundle,
+  readState,
+  type ApplyResult,
+} from "./managed-apply.js"
+import { MAX_BUNDLE_BYTES, type Channel } from "./managed-bundle.js"
 
 export interface UpdaterOptions {
   readonly dir: string
@@ -48,20 +55,32 @@ export async function checkForConfigUpdate(options: UpdaterOptions): Promise<Che
   const cacheFile = path.join(options.dir, `etag-${options.channel}.json`)
   const cache = readCache(cacheFile)
 
+  const get = (headers: Record<string, string>) =>
+    request(`${base}/bundle.json`, { headers, redirect: "follow", signal: AbortSignal.timeout(30_000) })
+
   let bundleResponse: Response
   try {
-    bundleResponse = await request(`${base}/bundle.json`, {
-      headers: cache.etag ? { "If-None-Match": cache.etag } : {},
-      redirect: "follow",
-    })
+    bundleResponse = await get(cache.etag ? { "If-None-Match": cache.etag } : {})
+    // 304 hanya berarti "sama" kalau file lokal masih lengkap. Bila pengguna/antivirus
+    // menghapusnya, buang cache dan unduh ulang supaya config pusat tidak hilang diam-diam.
+    if (bundleResponse.status === 304 && (!readBundle(options.dir) || !readState(options.dir))) {
+      fs.rmSync(cacheFile, { force: true })
+      bundleResponse = await get({})
+    }
   } catch (error) {
     return { status: "error", reason: `gagal mengunduh: ${(error as Error).message}` }
   }
   if (bundleResponse.status === 304) return { status: "up-to-date", reason: "304 not modified", version: cache.version }
   if (!bundleResponse.ok) return { status: "error", reason: `HTTP ${bundleResponse.status} pada bundle` }
+  const declared = Number(bundleResponse.headers.get("content-length") ?? "0")
+  if (declared > MAX_BUNDLE_BYTES) return { status: "error", reason: "bundle melebihi batas ukuran" }
 
   const bundleBytes = new Uint8Array(await bundleResponse.arrayBuffer())
-  const signatureResponse = await request(`${base}/bundle.json.sig`, { redirect: "follow" })
+  if (bundleBytes.byteLength > MAX_BUNDLE_BYTES) return { status: "error", reason: "bundle melebihi batas ukuran" }
+  const signatureResponse = await request(`${base}/bundle.json.sig`, {
+    redirect: "follow",
+    signal: AbortSignal.timeout(30_000),
+  })
   if (!signatureResponse.ok) return { status: "error", reason: `HTTP ${signatureResponse.status} pada tanda tangan` }
   const signature = (await signatureResponse.text()).trim()
   const enrollment = options.enrollment ?? readFile(path.join(options.dir, "enrollment"))
@@ -73,6 +92,7 @@ export async function checkForConfigUpdate(options: UpdaterOptions): Promise<Che
     publicKey: options.publicKey,
     allowedPackages: options.allowedPackages,
     appVersion: options.appVersion,
+    expectedChannel: options.channel,
     enrollment,
     now: options.now?.(),
   })
@@ -80,6 +100,8 @@ export async function checkForConfigUpdate(options: UpdaterOptions): Promise<Che
 
   if (!result.applied) {
     if (result.reason === "tanda tangan tidak valid") return { status: "error", reason: result.reason }
+    // Simpan ETag juga saat dilewati (rollout/versi) agar tidak mengunduh ulang tiap siklus.
+    writeCache(cacheFile, { etag: bundleResponse.headers.get("etag") ?? undefined, version: result.version })
     return { status: "skipped", reason: result.reason, version: result.version }
   }
   writeCache(cacheFile, { etag: bundleResponse.headers.get("etag") ?? undefined, version: result.version })

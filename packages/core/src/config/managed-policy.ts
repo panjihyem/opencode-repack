@@ -6,8 +6,14 @@
  * Rotasi: tambahkan kunci baru di sini, rilis aplikasi, lalu mulai menandatangani
  * dengan kunci baru. `HYPER_CONFIG_PUBLIC_KEY` menimpa nilai ini untuk pengujian.
  */
+const DEFAULT_PUBLIC_KEY = "MCowBQYDK2VwAyEA6MmMQqlYGmpQo2ccbJ1u7RQiTPecvpNzMsQDaaPIxGM="
+
 export function publicKey() {
-  return process.env.HYPER_CONFIG_PUBLIC_KEY ?? "MCowBQYDK2VwAyEA6MmMQqlYGmpQo2ccbJ1u7RQiTPecvpNzMsQDaaPIxGM="
+  // Override hanya untuk build lokal/uji: build rilis tidak boleh bisa diarahkan
+  // ke kunci penyerang lewat variabel lingkungan.
+  const channel = process.env.OPENCODE_CHANNEL ?? "local"
+  if (channel !== "local") return DEFAULT_PUBLIC_KEY
+  return process.env.HYPER_CONFIG_PUBLIC_KEY ?? DEFAULT_PUBLIC_KEY
 }
 
 /**

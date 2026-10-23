@@ -15,7 +15,7 @@ on:
         description: Nomor versi bundle (harus naik; kosong = isi config/version)
         required: false
       rollout:
-        description: Persentase rollout (0-100)
+        description: Persentase rollout (0-100); manual boleh 100
         default: "100"
       min_app_version:
         description: Versi minimum aplikasi (kosong = tanpa batas)
@@ -36,13 +36,18 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # Lingkungan berproteksi: batasi siapa yang boleh menjalankan job yang memegang
+    # CONFIG_SIGNING_KEY (Settings > Environments > config-release > required reviewers).
+    environment: config-release
     env:
       CHANNEL: ${{ github.event.inputs.channel || 'stable' }}
       VERSION: ${{ github.event.inputs.version || '' }}
-      ROLLOUT: ${{ github.event.inputs.rollout || '100' }}
+      # Push ke dev memakai rollout kecil; naikkan manual setelah terverifikasi.
+      ROLLOUT: ${{ github.event.inputs.rollout || '10' }}
       MIN_APP_VERSION: ${{ github.event.inputs.min_app_version || '' }}
       CONFIG_SIGNING_KEY: ${{ secrets.CONFIG_SIGNING_KEY }}
       CONFIG_ENROLLMENT_TOKEN: ${{ secrets.CONFIG_ENROLLMENT_TOKEN }}
+      CONFIG_SECRETS_JSON: ${{ secrets.CONFIG_SECRETS_JSON }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
@@ -51,18 +56,45 @@ jobs:
         with:
           node-version: "24"
 
+      - name: Siapkan rahasia dari secret (bila ada)
+        run: |
+          set -euo pipefail
+          if [ -n "${CONFIG_SECRETS_JSON:-}" ]; then
+            printf '%s' "$CONFIG_SECRETS_JSON" > config/secrets.json
+          fi
+          if [ -f config/secrets.required ] && [ ! -f config/secrets.json ]; then
+            echo "config/secrets.required ada, tetapi secret CONFIG_SECRETS_JSON kosong" >&2
+            exit 1
+          fi
+
       - name: Uji modul inti config OTA
         run: |
           node control/selftest.mjs
-          node control/selftest-apply.mjs
+          node --import ./control/ts-resolve-register.mjs control/selftest-apply.mjs
           node control/selftest-pipeline.mjs
+
+      - name: Tolak versi yang tidak naik
+        run: |
+          set -euo pipefail
+          VERSION="${VERSION:-$(cat config/version)}"
+          rm -rf /tmp/last && mkdir -p /tmp/last
+          if gh release view "config-$CHANNEL" >/dev/null 2>&1; then
+            gh release download "config-$CHANNEL" -p manifest.json -D /tmp/last || true
+          fi
+          if [ -f /tmp/last/manifest.json ]; then
+            LAST=$(node -p "require('/tmp/last/manifest.json').version")
+            if [ "$VERSION" -le "$LAST" ]; then
+              echo "versi bundle $VERSION harus lebih besar dari $LAST" >&2
+              exit 1
+            fi
+          fi
 
       - name: Bangun dan tanda tangani bundle
         run: |
           set -euo pipefail
           VERSION="${VERSION:-$(cat config/version)}"
           if [ ! -f config/opencode.json ]; then
-            echo "config/opencode.json belum ada" >&2
+            echo "config/opencode.json belum ada (salin dari config/opencode.example.json)" >&2
             exit 1
           fi
           ARGS=(--config config/opencode.json --version "$VERSION" --channel "$CHANNEL" --rollout "$ROLLOUT" --out "dist/config/$CHANNEL")
@@ -79,4 +111,4 @@ jobs:
             gh release create "$TAG" --title "Config $CHANNEL" --notes "Bundle config Hyper AI ($CHANNEL). Diperbarui otomatis oleh CI." --latest=false
           fi
           gh release upload "$TAG" "dist/config/$CHANNEL/bundle.json" "dist/config/$CHANNEL/bundle.json.sig" "dist/config/$CHANNEL/manifest.json" --clobber
-          gh release edit "$TAG" --notes "Bundle config versi $(node -p "require('./dist/config/'+'$CHANNEL'+'/manifest.json').version") (channel $CHANNEL)."
+          gh release edit "$TAG" --notes "Bundle config versi $(node -p "require('./dist/config/$CHANNEL/manifest.json').version") (channel $CHANNEL)."

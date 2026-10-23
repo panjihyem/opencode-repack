@@ -54,7 +54,9 @@ node control/verify-bundle.mjs dist/config/stable/bundle.json
 
 ## Rahasia
 
-- `config/secrets.json` **tidak pernah** masuk repo.
+- `config/secrets.json` **tidak pernah** masuk repo. Di CI, isinya diberikan lewat secret
+  `CONFIG_SECRETS_JSON` (workflow menuliskannya sementara). `config/secrets.required` menandai
+  bahwa rilis wajib menyertakan rahasia.
 - API key dienkripsi AES-256-GCM dengan kunci turunan HKDF-SHA256 dari `CONFIG_ENROLLMENT_TOKEN`.
 - Yang ditulis ke disk adalah bundle terenkripsi; API key tidak pernah tersimpan plaintext.
 - Tanpa token pendaftaran, bundle berahasia ditolak seluruhnya (bukan diterapkan sebagian).
@@ -66,6 +68,15 @@ node control/verify-bundle.mjs dist/config/stable/bundle.json
 - `--rollout 10`: hanya ~10% instalasi (hash `installId:versi`) yang menerapkan; sisanya menunggu versi berikutnya.
 - Rollback manual: `node control/apply.mjs --rollback --dir <managed-dir>` — memverifikasi tanda tangan bundle sebelumnya.
 - Kill switch: kirim bundle baru dengan `policies` (mis. `deny provider.use`), bukan menghapus config pengguna.
+
+## Proteksi CI
+
+- Job berjalan di environment `config-release`; isi required reviewers agar kunci penandatangan
+  tidak bisa dipakai oleh siapa pun yang bisa push ke `dev`.
+- Versi bundle wajib naik: CI membandingkan dengan `manifest.json` terakhir dan menolak versi lama.
+- Push ke `dev` memakai rollout 10%; jalankan `workflow_dispatch` untuk menaikkan ke 100 setelah
+  terverifikasi. Siapa pun yang bisa mengubah workflow bisa mencetak secret, jadi review perubahan
+  `.github/workflows/` dan `control/` seperti perubahan kode rilis.
 
 ## Setup kunci
 
@@ -84,8 +95,8 @@ di luar allowlist — semuanya jalur eksekusi kode. Config bertanda tangan pun t
 ## Uji
 
 ```bash
-node control/selftest.mjs              # 31 cek: tanda tangan, enkripsi, allowlist, gate
-node control/selftest-apply.mjs        # 14 cek: tulis atomik, rollback, tanpa plaintext
+node control/selftest.mjs              # 34 cek: tanda tangan, enkripsi, allowlist, gate
+node --import ./control/ts-resolve-register.mjs control/selftest-apply.mjs   # 16 cek: tulis atomik, rollback, tanpa plaintext
 node control/selftest-pipeline.mjs     # 11 cek: build -> verify -> apply -> rollback lewat CLI
 cd packages/core && bun test test/config/managed.test.ts test/config/updater.test.ts
 ```
