@@ -176,6 +176,15 @@ await check("rollback dua kali gagal dengan pesan jelas", () => {
   assert.match(result.reason, /tidak ada bundle sebelumnya/)
 })
 
+await check("versi aktif bisa direparasi setelah file hilang", () => {
+  const dir = path.join(root, "kasus-1")
+  fs.rmSync(path.join(dir, "bundle.json"), { force: true })
+  fs.rmSync(path.join(dir, "bundle.json.sig"), { force: true })
+  const result = apply(dir, 2)
+  assert.equal(result.applied, true, result.reason)
+  assert.equal(readState(dir).version, 2)
+})
+
 await check("versi yang di-rollback tidak bisa kembali", () => {
   const dir = path.join(root, "kasus-1")
   const blocked = apply(dir, 3)

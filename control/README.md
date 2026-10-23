@@ -95,8 +95,8 @@ di luar allowlist — semuanya jalur eksekusi kode. Config bertanda tangan pun t
 ## Uji
 
 ```bash
-node control/selftest.mjs              # 36 cek: tanda tangan, enkripsi, allowlist, gate
-node --import ./control/ts-resolve-register.mjs control/selftest-apply.mjs   # 16 cek: tulis atomik, rollback, tanpa plaintext
+node control/selftest.mjs              # 37 cek: tanda tangan, enkripsi, allowlist, gate
+node --import ./control/ts-resolve-register.mjs control/selftest-apply.mjs   # 17 cek: tulis atomik, rollback, tanpa plaintext
 node control/selftest-pipeline.mjs     # 11 cek: build -> verify -> apply -> rollback lewat CLI
 cd packages/core && bun test test/config/managed.test.ts test/config/updater.test.ts
 ```

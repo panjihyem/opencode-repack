@@ -100,6 +100,9 @@ export async function checkForConfigUpdate(options: UpdaterOptions): Promise<Che
 
   if (!result.applied) {
     if (result.reason === "tanda tangan tidak valid") return { status: "error", reason: result.reason }
+    // Kegagalan menulis bukan keputusan kebijakan: jangan simpan ETag, agar siklus
+    // berikutnya mencoba lagi alih-alih menganggap dirinya sudah mutakhir.
+    if (result.reason.startsWith("gagal menulis")) return { status: "error", reason: result.reason, version: result.version }
     // Simpan ETag juga saat dilewati (rollout/versi) agar tidak mengunduh ulang tiap siklus.
     writeCache(cacheFile, { etag: bundleResponse.headers.get("etag") ?? undefined, version: result.version })
     return { status: "skipped", reason: result.reason, version: result.version }

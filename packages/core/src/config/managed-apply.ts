@@ -129,8 +129,7 @@ export function applyBundle(input: ApplyInput): ApplyResult {
   if (!gate.apply) {
     // Versi yang sama boleh ditulis ulang HANYA untuk memulihkan file yang hilang/terpotong;
     // versi lebih rendah tetap ditolak agar menghapus satu file tidak menjadi jalur downgrade.
-    const repair =
-      !present && previous?.version === bundle.version && (previous?.blockedVersion ?? 0) < bundle.version
+    const repair = !present && previous?.version === bundle.version
     if (!repair) return { applied: false, reason: gate.reason, version: bundle.version, dir }
   }
 
@@ -145,11 +144,15 @@ export function applyBundle(input: ApplyInput): ApplyResult {
 
   fs.mkdirSync(dir, { recursive: true })
   const current = readBundle(dir)
-  if (current) {
+  const currentBytes = readIfPresent(path.join(dir, BUNDLE_FILE))
+  if (currentBytes) {
+    // Simpan bundle lama walau tanda tangannya sudah rusak: isi yang bisa dibaca lebih
+    // berguna daripada tidak ada cadangan sama sekali.
     const previousDir = path.join(dir, PREVIOUS_DIR)
     fs.mkdirSync(previousDir, { recursive: true })
-    writeAtomic(path.join(previousDir, BUNDLE_FILE), current.bytes)
-    writeAtomic(path.join(previousDir, SIGNATURE_FILE), Buffer.from(current.signature, "utf-8"))
+    writeAtomic(path.join(previousDir, BUNDLE_FILE), currentBytes)
+    if (current) writeAtomic(path.join(previousDir, SIGNATURE_FILE), Buffer.from(current.signature, "utf-8"))
+    else fs.rmSync(path.join(previousDir, SIGNATURE_FILE), { force: true })
   }
   try {
     writeAtomic(path.join(dir, BUNDLE_FILE), bundleBytes)
@@ -226,6 +229,14 @@ export function rollback(dir: string, publicKey: string): ApplyResult {
   writeAtomic(path.join(dir, STATE_FILE), Buffer.from(JSON.stringify(state, null, 2), "utf-8"))
   fs.rmSync(previousDir, { recursive: true, force: true })
   return { applied: true, reason: "rollback", version: bundle.version, dir }
+}
+
+function readIfPresent(file: string) {
+  try {
+    return fs.readFileSync(file)
+  } catch {
+    return undefined
+  }
 }
 
 function writeAtomic(file: string, bytes: Uint8Array) {

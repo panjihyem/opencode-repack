@@ -180,7 +180,23 @@ check("package provider di luar allowlist ditolak", () => {
 check("apiKey plaintext di config pusat ditolak", () => {
   const result = checkConfig({ providers: { ocg: { settings: { apiKey: "sk-bocor" } } } }, allowedPackages)
   assert.equal(result.ok, false)
-  assert.match(result.problems.join("; "), /hanya boleh lewat secrets/)
+  assert.match(result.problems.join("; "), /hanya boleh .*secrets/)
+})
+
+check("header sensitif literal ditolak, rujukan env diterima", () => {
+  assert.equal(checkConfig({ providers: { ocg: { headers: { Authorization: "Bearer sk-x" } } } }, allowedPackages).ok, false)
+  assert.equal(
+    checkConfig({ providers: { ocg: { models: { m: { headers: { "x-api-key": "sk-x" } } } } } }, allowedPackages).ok,
+    false,
+  )
+  assert.equal(
+    checkConfig({ providers: { ocg: { settings: { headers: { authorization: "Bearer sk" } } } } }, allowedPackages).ok,
+    false,
+  )
+  const envHeader = { providers: { ocg: { headers: { Authorization: "{env:OCG_TOKEN}" } } } }
+  assert.equal(checkConfig(envHeader, allowedPackages).ok, true)
+  const envKey = { providers: { ocg: { settings: { apiKey: "{env:OCG_KEY}" } } } }
+  assert.equal(checkConfig(envKey, allowedPackages).ok, true)
 })
 
 check("merge menolak kunci berbahaya dari pusat", () => {

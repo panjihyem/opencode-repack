@@ -81,6 +81,24 @@ const FORBIDDEN_TOP = new Set([
 /** Kunci objek yang bisa mengubah prototipe saat di-merge. */
 const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"])
 
+/** Nilai rahasia hanya boleh berupa rujukan env, bukan string literal. */
+const ENV_REF = /^\{env:[A-Za-z_][A-Za-z0-9_]*\}$/
+const SECRET_HEADER = /authorization|cookie|x-api-key|api-key|token|secret|password/i
+
+/** Header bernama sensitif tidak boleh membawa nilai literal (akan ikut terbit di repo/release). */
+function checkHeaders(value: unknown, path: string, problems: string[]) {
+  if (value === undefined) return
+  if (!isRecord(value)) {
+    problems.push(`${path} wajib objek`)
+    return
+  }
+  for (const [name, header] of Object.entries(value)) {
+    if (UNSAFE_KEYS.has(name)) problems.push(`${path}.${name} tidak diizinkan`)
+    if (typeof header === "string" && SECRET_HEADER.test(name) && !ENV_REF.test(header))
+      problems.push(`${path}.${name} hanya boleh {env:NAMA} atau lewat secrets terenkripsi`)
+  }
+}
+
 export class BundleError extends Error {}
 
 function b64decode(value: string): Buffer {
@@ -167,10 +185,13 @@ export function checkConfig(config: Record<string, unknown>, allowedPackages?: r
         // Rahasia wajib lewat amplop terenkripsi: config ini di-commit dan dipublikasikan.
         if (isRecord(provider.settings)) {
           for (const key of ["apiKey", "authorization"]) {
-            if (typeof provider.settings[key] === "string")
-              problems.push(`providers.${id}.settings.${key} hanya boleh lewat secrets terenkripsi`)
+            const value = provider.settings[key]
+            if (typeof value === "string" && !ENV_REF.test(value))
+              problems.push(`providers.${id}.settings.${key} hanya boleh {env:NAMA} atau lewat secrets terenkripsi`)
           }
         }
+        checkHeaders(provider.headers, `providers.${id}.headers`, problems)
+        if (isRecord(provider.settings)) checkHeaders(provider.settings.headers, `providers.${id}.settings.headers`, problems)
         // `models.<id>.package` juga specifier impor (model resolver menjalankan npm add + import).
         if (provider.models !== undefined) {
           if (!isRecord(provider.models)) problems.push(`providers.${id}.models wajib objek`)
@@ -184,6 +205,7 @@ export function checkConfig(config: Record<string, unknown>, allowedPackages?: r
               for (const key of Object.keys(rawModel)) {
                 if (UNSAFE_KEYS.has(key)) problems.push(`providers.${id}.models.${modelID}.${key} tidak diizinkan`)
               }
+              checkHeaders(rawModel.headers, `providers.${id}.models.${modelID}.headers`, problems)
               const pkg = rawModel.package
               if (pkg !== undefined && (typeof pkg !== "string" || !allowedPackages?.includes(pkg)))
                 problems.push(`providers.${id}.models.${modelID}.package tidak ada di allowlist`)
