@@ -18,6 +18,16 @@ git. It is applied to a fresh upstream checkout at build time instead.
 | `.github/workflows/repack-build.yml` | Builds Windows, Linux and macOS and publishes a release. |
 | `.github/workflows/repack-sync.yml` | Detects new upstream releases (and mirrors upstream `dev`). |
 
+## Config OTA
+
+The signed-config feature lives in `rebrand/files/core/config/` (bundle
+verification, updater, platform directories) and is wired in by the critical
+rules at the end of `rebrand/apply.ts`. Those rules patch `core/src/config.ts`,
+`config/discovery.ts`, `config/watch.ts`, `server/src/process.ts` and
+`server/src/handlers/config.ts`; a missing anchor aborts the build rather than
+shipping an app that silently ignores OTA config. `config/` in this repository
+holds what `.github/workflows/hyper-config-release.yml` signs and publishes.
+
 ## Staying current with upstream
 
 `repack-sync` runs every 6 hours. When upstream publishes a new `vX.Y.Z` tag

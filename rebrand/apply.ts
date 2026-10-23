@@ -578,6 +578,261 @@ const rules: Rule[] = [
     critical: true,
   },
   { file: "packages/desktop/resources/linux/opencode-desktop.desktop", find: "Name=OpenCode", replace: `Name=${NAME}` },
+
+  // ---- Config OTA ---------------------------------------------------------
+  // The build checks out upstream fresh, so the managed-config modules and the
+  // hooks that load them live here and are re-applied every time. Every rule is
+  // critical: a silent miss would ship an installer without the OTA feature.
+  {
+    file: "packages/core/src/config.ts",
+    find: 'import { ConfigWatch } from "./config/watch.js"',
+    replace: `import { ConfigWatch } from "./config/watch.js"
+import * as ManagedBundle from "./config/managed-bundle.js"
+import * as ManagedPolicy from "./config/managed-policy.js"`,
+    critical: true,
+  },
+  {
+    file: "packages/core/src/config.ts",
+    find: `  global: Schema.optional(Schema.Boolean),
+  system: Schema.optional(Schema.Union([Schema.Boolean, Schema.String])),`,
+    replace: `  global: Schema.optional(Schema.Boolean),
+  system: Schema.optional(Schema.Union([Schema.Boolean, Schema.String])),
+  // false skips signed Hyper AI config bundles; a string points discovery at one directory
+  // (%LOCALAPPDATA%\\HyperAI\\managed, /etc/hyperai/managed) instead of the platform defaults.
+  managed: Schema.optional(Schema.Union([Schema.Boolean, Schema.String])),`,
+    critical: true,
+  },
+  {
+    file: "packages/core/src/config.ts",
+    find: `      const load = Effect.fn("Config.load")(function* (sources: ConfigDiscovery.Sources) {`,
+    replace: `      /**
+       * Config OTA: baca \`bundle.json\` + tanda tangannya, verifikasi dengan kunci publik
+       * aplikasi, lalu materialisasi (config + rahasia terenkripsi). Tanda tangan rusak
+       * atau config berbahaya berarti bundle diabaikan, bukan diterapkan.
+       */
+      const loadManagedBundle = Effect.fnUntraced(function* (directory: AbsolutePath) {
+        const bundlePath = path.join(directory, "bundle.json")
+        const signaturePath = path.join(directory, "bundle.json.sig")
+        const text = yield* fs.readFileStringSafe(bundlePath)
+        const signature = yield* fs.readFileStringSafe(signaturePath)
+        if (text === undefined || signature === undefined) return [] as Document[]
+        const bytes = Buffer.from(text.replace(/^\\uFEFF/, ""), "utf-8")
+        if (!ManagedBundle.verifyBundle(bytes, signature.trim(), ManagedPolicy.publicKey())) {
+          yield* Effect.logWarning("managed config rejected: signature", { source: bundlePath })
+          return [] as Document[]
+        }
+        const enrollment = yield* fs.readFileStringSafe(path.join(directory, "enrollment"))
+        const materialized = yield* Effect.try(() =>
+          ManagedBundle.materialize(
+            ManagedBundle.decodeBundle(bytes),
+            enrollment?.trim(),
+            ManagedPolicy.allowedPackages,
+          ),
+        ).pipe(
+          Effect.catch((error) =>
+            Effect.logWarning("managed config rejected: invalid", { source: bundlePath, error }).pipe(
+              Effect.as(undefined),
+            ),
+          ),
+        )
+        if (!materialized) return [] as Document[]
+        const info = yield* parseInfo(JSON.stringify(materialized), AbsolutePath.make(bundlePath))
+        return info ? [new Document({ type: "document", path: AbsolutePath.make(bundlePath), info })] : []
+      })
+
+      const load = Effect.fn("Config.load")(function* (sources: ConfigDiscovery.Sources) {`,
+    critical: true,
+  },
+  {
+    file: "packages/core/src/config.ts",
+    find: `          ...(sources.preferences ? yield* loadPreferences(sources.preferences).pipe(Effect.orDie) : []),`,
+    replace: `          ...(sources.preferences ? yield* loadPreferences(sources.preferences).pipe(Effect.orDie) : []),
+          ...(yield* Effect.forEach(
+            (sources.managed ?? []).filter((source) => source.present),
+            (source) => loadManagedBundle(source.path),
+          ).pipe(Effect.orDie, Effect.map((entries) => entries.flat()))),`,
+    critical: true,
+  },
+  {
+    file: "packages/core/src/config/discovery.ts",
+    find: `  readonly preferences?: AbsolutePath`,
+    replace: `  readonly preferences?: AbsolutePath
+  /**
+   * Config OTA Hyper AI: direktori dengan \`bundle.json\` + \`bundle.json.sig\`.
+   * Dimuat setelah system/MDM sehingga menang atas config pengguna.
+   */
+  readonly managed?: readonly { readonly path: AbsolutePath; readonly present: boolean }[]`,
+    critical: true,
+  },
+  {
+    file: "packages/core/src/config/discovery.ts",
+    find: `/** Platform system configuration directory`,
+    replace: `/** Direktori managed per platform; pengguna lebih dulu, mesin sesudahnya (mesin menang). */
+export function managedDirectories(platform: NodeJS.Platform = process.platform, env: NodeJS.ProcessEnv = process.env) {
+  if (platform === "darwin")
+    return [
+      path.join(env.HOME || os.homedir(), "Library", "Application Support", "HyperAI", "managed"),
+      "/Library/Application Support/HyperAI/managed",
+    ].map((directory) => AbsolutePath.make(directory))
+  if (platform === "win32")
+    return [
+      path.join(env.LOCALAPPDATA || path.join(env.USERPROFILE || "", "AppData", "Local"), "HyperAI", "managed"),
+      path.join(env.ProgramData || "C:\\\\ProgramData", "HyperAI", "managed"),
+    ].map((directory) => AbsolutePath.make(directory))
+  return [
+    path.join(env.XDG_CONFIG_HOME || path.join(env.HOME || "", ".config"), "hyperai", "managed"),
+    "/etc/hyperai/managed",
+  ].map((directory) => AbsolutePath.make(directory))
+}
+
+/** Berkas bundle yang dibaca dari setiap direktori managed. */
+export const managedBundleFiles = ["bundle.json", "bundle.json.sig", "enrollment"] as const
+
+/** Platform system configuration directory`,
+    critical: true,
+  },
+  {
+    file: "packages/core/src/config/discovery.ts",
+    find: `  return {
+    system: globalEnabled && system ? { path: system, present: yield* fs.isDir(system) } : undefined,
+    preferences,`,
+    replace: `  // Config OTA: bundle bertanda tangan yang ditulis updater aplikasi.
+  const managed = globalEnabled && options?.managed !== false
+    ? yield* Effect.forEach(
+        typeof options?.managed === "string" ? [AbsolutePath.make(path.resolve(options.managed))] : managedDirectories(),
+        (directory) =>
+          fs.isFile(path.join(directory, "bundle.json")).pipe(Effect.map((present) => ({ path: directory, present }))),
+      )
+    : []
+
+  return {
+    system: globalEnabled && system ? { path: system, present: yield* fs.isDir(system) } : undefined,
+    preferences,
+    managed,`,
+    critical: true,
+  },
+  {
+    file: "packages/core/src/config/watch.ts",
+    find: `import path from "path"
+import { FSUtil } from "@opencode/util/fs-util"
+import type { Watcher } from "../filesystem/watcher.js"
+import type { ConfigDiscovery } from "./discovery.js"`,
+    replace: `import fs from "node:fs"
+import path from "path"
+import { FSUtil } from "@opencode/util/fs-util"
+import type { Watcher } from "../filesystem/watcher.js"
+import { ConfigDiscovery } from "./discovery.js"
+
+/**
+ * Bagian pertama dari path yang belum ada (nenek moyangnya sudah ada). Menonton path
+ * ini sebagai kandidat entri membuat pembuatan direktori terdeteksi, lalu reconcile
+ * berikutnya menambah watch lebih dalam.
+ */
+function firstMissing(target: string) {
+  let current = target
+  for (let depth = 0; depth < 6; depth++) {
+    const parent = path.dirname(current)
+    if (parent === current) return current
+    if (fs.existsSync(parent)) return current
+    current = parent
+  }
+  return current
+}`,
+    critical: true,
+  },
+  {
+    file: "packages/core/src/config/watch.ts",
+    find: `    ...(sources.system?.present ? [sources.system.path] : []),`,
+    replace: `    ...(sources.system?.present ? [sources.system.path] : []),
+    ...(sources.managed ?? []).filter((source) => source.present).map((source) => source.path),`,
+    critical: true,
+  },
+  {
+    file: "packages/core/src/config/watch.ts",
+    find: `    ...(sources.system ? [sources.system.path] : []),`,
+    replace: `    ...(sources.system ? [sources.system.path] : []),
+    ...(sources.managed ?? []).flatMap((source) =>
+      // Direktori ada: tonton ketiga berkasnya agar bundle pertama/berikutnya memicu reload.
+      // Direktori belum ada: menontonnya gagal (ENOENT), jadi tonton bagian pertama yang belum ada.
+      fs.existsSync(source.path)
+        ? [source.path, ...ConfigDiscovery.managedBundleFiles.map((name) => path.join(source.path, name))]
+        : [firstMissing(source.path)],
+    ),`,
+    critical: true,
+  },
+  {
+    file: "packages/server/src/process.ts",
+    find: `import type { ServerOptions } from "./options"`,
+    replace: `import type { ServerOptions } from "./options"
+import { startConfigUpdater } from "@opencode/core/config/updater"
+import { allowedPackages, publicKey } from "@opencode/core/config/managed-policy"
+import { userManagedDirectory } from "@opencode/core/config/managed-apply"`,
+    critical: true,
+  },
+  {
+    file: "packages/server/src/process.ts",
+    find: `  const bound = yield* listen({ hostname, port })`,
+    replace: `  const bound = yield* listen({ hostname, port })
+  // Config OTA: unduh bundle bertanda tangan; Config memuatnya dari direktori managed.
+  // Hanya channel rilis yang memeriksa; build lokal tidak menghubungi jaringan.
+  const otaChannel =
+    process.env.HYPER_CONFIG_CHANNEL ?? (options.app?.channel === "prod" ? "stable" : options.app?.channel)
+  if (
+    !process.env.HYPER_CONFIG_OTA_DISABLE &&
+    (otaChannel === "stable" || otaChannel === "beta" || otaChannel === "canary")
+  ) {
+    const updater = startConfigUpdater({
+      dir: userManagedDirectory(),
+      channel: otaChannel,
+      appVersion: options.app?.version ?? "unknown",
+      publicKey: publicKey(),
+      allowedPackages,
+    })
+    yield* Effect.addFinalizer(() => Effect.sync(() => updater.stop()))
+  }`,
+    critical: true,
+  },
+  {
+    file: "packages/server/src/handlers/config.ts",
+    find: `import { Config } from "@opencode/core/config"
+import { ShellSelect } from "@opencode/core/shell/select"
+import { Effect } from "effect"`,
+    replace: `import { Config } from "@opencode/core/config"
+import { ShellSelect } from "@opencode/core/shell/select"
+import { Document, Info, type Entry } from "@opencode/schema/config"
+import { Effect } from "effect"`,
+    critical: true,
+  },
+  {
+    file: "packages/server/src/handlers/config.ts",
+    find: `export const ConfigHandler = HttpApiBuilder.group(Api, "server.config", (handlers) =>`,
+    replace: `/**
+ * \`config.get\` melayani UI/SDK, bukan provider yang benar-benar memanggil model.
+ * API key yang berasal dari config OTA (maupun config pengguna) tidak boleh ikut
+ * terkirim ke klien: cukup penanda bahwa nilainya ada.
+ */
+function redact(entry: Entry): Entry {
+  if (entry.type !== "document" || !entry.info.providers) return entry
+  const providers = Object.fromEntries(
+    Object.entries(entry.info.providers).map(([id, provider]) => {
+      if (!provider.settings || typeof provider.settings.apiKey !== "string") return [id, provider]
+      return [id, { ...provider, settings: { ...provider.settings, apiKey: "***" } }]
+    }),
+  )
+  return new Document({ type: "document", path: entry.path, info: new Info({ ...entry.info, providers }) })
+}
+
+export const ConfigHandler = HttpApiBuilder.group(Api, "server.config", (handlers) =>`,
+    critical: true,
+  },
+  {
+    file: "packages/server/src/handlers/config.ts",
+    find: `    .handle("config.get", () => Config.Service.use((config) => config.entries()))`,
+    replace: `    .handle("config.get", () =>
+      Config.Service.use((config) => config.entries().pipe(Effect.map((entries) => entries.map(redact)))),
+    )`,
+    critical: true,
+  },
 ]
 
 // Files this repack owns outright: shipped under rebrand/files and copied over
@@ -600,6 +855,13 @@ const writes: Write[] = [
       create: true,
     }),
   ),
+  // Config OTA: signed bundle loading, updater, and platform directories.
+  ...["managed-bundle", "managed-apply", "managed-policy", "updater"].map((name) => ({
+    file: `packages/core/src/config/${name}.ts`,
+    source: `core/config/${name}.ts`,
+    critical: true,
+    create: true,
+  })),
 ]
 
 // Directories copied verbatim over upstream (icons are binary).
@@ -621,6 +883,11 @@ const checks: Array<{ file: string; contains: string }> = [
   { file: "packages/desktop/src/main/constants.ts", contains: brand.appId },
   { file: "packages/desktop/src/main/desktop.ts", contains: "startHyperBundle" },
   { file: "packages/desktop/electron-builder.config.ts", contains: "hyper-bundle" },
+  { file: "packages/core/src/config.ts", contains: "loadManagedBundle" },
+  { file: "packages/core/src/config/discovery.ts", contains: "managedDirectories" },
+  { file: "packages/core/src/config/watch.ts", contains: "firstMissing" },
+  { file: "packages/server/src/process.ts", contains: "startConfigUpdater" },
+  { file: "packages/server/src/handlers/config.ts", contains: "function redact" },
 ]
 
 const cache = new Map<string, string>()
