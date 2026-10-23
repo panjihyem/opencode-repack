@@ -46,15 +46,15 @@ const rules: Rule[] = [
   },
   {
     file: "packages/tui/src/app.tsx",
-    find: 'renderer.setTerminalTitle("OpenCode")',
-    replace: `renderer.setTerminalTitle("${NAME}")`,
+    find: 'setTerminalTitle(renderer, "OpenCode")',
+    replace: `setTerminalTitle(renderer, "${NAME}")`,
     min: 2,
   },
   { file: "packages/tui/src/app.tsx", find: 'title: "Update OpenCode"', replace: `title: "Update ${NAME}"` },
   {
     file: "packages/tui/src/mini/runtime.lifecycle.ts",
-    find: 'renderer.setTerminalTitle("OpenCode")',
-    replace: `renderer.setTerminalTitle("${NAME}")`,
+    find: 'setTerminalTitle(renderer, "OpenCode")',
+    replace: `setTerminalTitle(renderer, "${NAME}")`,
   },
   {
     file: "packages/tui/src/mini/footer.permission.tsx",
@@ -301,8 +301,8 @@ const rules: Rule[] = [
   { file: "packages/tui/src/component/logo.tsx", find: "gap={1}", replace: "gap={2}", critical: true },
   {
     file: "packages/tui/src/util/presentation.ts",
-    find: "${bold}opencode -s ${input.sessionID}",
-    replace: `\${bold}${CLI} -s \${input.sessionID}`,
+    find: "`opencode -s ${input.session.sessionID}`",
+    replace: "`" + CLI + " -s ${input.session.sessionID}`",
     critical: true,
   },
   { file: "packages/tui/src/util/presentation.ts", find: "${left} ${right}", replace: "${left}  ${right}" },
@@ -475,7 +475,7 @@ const rules: Rule[] = [
     file: "packages/desktop/electron-builder.config.ts",
     find: "fpm: [metainfoFpm(appId), legacyDesktopEntryFpm]",
     replace: "fpm: [metainfoFpm(appId)]",
-    min: 2,
+    min: 1,
     critical: true,
   },
 
