@@ -31,8 +31,16 @@ What the overlay adds:
   first-run wizard can install the optional local stack (LM Studio, a small local model, Hindsight
   memory). Nothing third-party is redistributed inside the installer; components are downloaded
   from their publishers.
+- **Setup intro and consent**: before any component is downloaded, the wizard explains what runs
+  locally and what is sent to cloud models, and requires accepting the bundled Terms, Privacy Policy
+  and third-party licences. Declining or closing records no consent and starts no setup.
+- **Case handling**: `hyper-case` provides local redaction/tokenisation, a screen step, restore for
+  local rendering, and a case mode that denies web/Context7 integrations and disables automatic
+  memory while keeping cloud providers and local analysis tools available. This is explicit
+  per-case protection, not automatic anonymisation of every prompt.
 
-Details, caveats and the full component list: [`REPACK.md`](REPACK.md).
+Details, caveats and the full component list: [`REPACK.md`](REPACK.md). Security contact:
+`info@talentabangsa.com`.
 
 ## Install
 

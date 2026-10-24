@@ -1,4 +1,4 @@
-name: repack-build
+﻿name: repack-build
 run-name: "Hyper AI build ${{ inputs.upstream_ref || 'latest' }}"
 
 # Builds the Hyper AI repack from an *upstream* OpenCode tag: the upstream
@@ -24,6 +24,10 @@ on:
         required: false
         default: false
         type: boolean
+      version:
+        description: "App version override for a repack patch (empty = upstream tag version)"
+        required: false
+        type: string
   workflow_call:
     inputs:
       upstream_ref:
@@ -37,6 +41,9 @@ on:
         required: false
         default: false
         type: boolean
+      version:
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -63,6 +70,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REQUESTED: ${{ inputs.upstream_ref }}
           FORCE: ${{ inputs.force }}
+          VERSION_OVERRIDE: ${{ inputs.version }}
         run: |
           ref="$REQUESTED"
           if [ -z "$ref" ]; then
@@ -73,6 +81,7 @@ jobs:
           fi
           [ -n "$ref" ] || { echo "could not resolve an upstream release tag"; exit 1; }
           version="${ref#v}"
+          if [ -n "$VERSION_OVERRIDE" ]; then version="$VERSION_OVERRIDE"; fi
           tag="hyper-v${version}"
           skip=false
           if [ "$FORCE" != "true" ] && gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
