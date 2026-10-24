@@ -5,6 +5,7 @@ import path from "node:path"
 import type { ChildProcess } from "node:child_process"
 import { components, modelChoices, provision, selectedModelId } from "./components"
 import { applyServers, applyUnattended, managed } from "./config"
+import { consentValid, consentVersion, readDocs, type Consent, type DocName } from "./consent"
 import { applyDocSkill } from "./docling"
 import { hindsightInstalled, startHindsight } from "./hindsight"
 import { applyKnowledgeSkill, syncKnowledge } from "./knowledge"
@@ -24,28 +25,47 @@ import { startHyperUpdates } from "./updates"
 // Failures are logged and shown in the wizard; the app never waits on this.
 // Run `--hyper-setup` to open the wizard again.
 
-type State = { wizard?: "completed" | "skipped"; unattended?: boolean; modelId?: string; offline?: boolean }
+type State = {
+  wizard?: "completed" | "skipped"
+  unattended?: boolean
+  modelId?: string
+  offline?: boolean
+  consent?: Consent
+}
 
 const dataDir = () => path.join(app.getPath("userData"), "hyper-bundle")
 const logDir = () => path.join(dataDir(), "logs")
 const configDir = () => path.join(process.env.XDG_CONFIG_HOME ?? path.join(os.homedir(), ".config"), "opencode")
 // HYPER_AI_BUNDLE_ROOT lets the end-to-end test run an unpackaged app against a prepared bundle.
 const bundleRoot = () => process.env.HYPER_AI_BUNDLE_ROOT ?? path.join(process.resourcesPath, "hyper-bundle")
+const wizardDir = () => path.join(bundleRoot(), "wizard")
 const stateFile = () => path.join(dataDir(), "state.json")
+const docsNow = () => readDocs(wizardDir())
 
 export async function startHyperBundle() {
   if (!app.isPackaged && !process.env.HYPER_AI_BUNDLE_ROOT) return
   const children: ChildProcess[] = []
   app.once("will-quit", () => children.forEach((child) => child.kill()))
+
+  // Consent is checked in the main process, not only by the wizard button: a
+  // closed window must not start downloads or local services.
+  const docs = await docsNow()
+  if (!consentValid((await readState()).consent, docs)) {
+    await openWizard(false)
+    if (!consentValid((await readState()).consent, await docsNow())) {
+      await log("consent", "setup needs accepted terms before services start")
+      return
+    }
+  }
+
   startHyperUpdates((message) => log("updates", message))
 
   await registerContext7()
 
   const state = await readState()
   const recovery = process.argv.includes("--hyper-setup")
-  // First launch is fully automatic: the wizard pre-selects every component and
-  // starts provisioning without a single click, so one installer is all a user
-  // needs. --hyper-setup reopens the same window in manual mode for recovery.
+  // First launch shows the intro/consent and component choices; nothing is
+  // downloaded until the user accepts and confirms. --hyper-setup reopens it.
   if (!state.wizard || recovery) await openWizard(!recovery)
 
   // Services run on every launch once installed, not only right after setup.
@@ -102,9 +122,9 @@ async function startServices(children: ChildProcess[]) {
 function openWizard(auto: boolean) {
   return new Promise<void>((resolve) => {
     const window = new BrowserWindow({
-      width: 680,
-      height: 560,
-      resizable: false,
+      width: 760,
+      height: 680,
+      resizable: true,
       title: "Hyper AI — Penyiapan",
       autoHideMenuBar: true,
       webPreferences: {
@@ -119,6 +139,33 @@ function openWizard(auto: boolean) {
 
     ipcMain.handle("hyper:auto", () => auto)
     ipcMain.handle("hyper:model-choices", () => modelChoices())
+    ipcMain.handle("hyper:docs", async () => {
+      const docs = await docsNow()
+      return {
+        version: consentVersion(docs),
+        terms: { hash: docs.terms.hash },
+        privacy: { hash: docs.privacy.hash },
+        licenses: { hash: docs.licenses.hash },
+      }
+    })
+    ipcMain.handle("hyper:doc", async (_event, name: DocName) => {
+      const docs = await docsNow()
+      const doc = docs[name]
+      return doc ? { text: doc.text, hash: doc.hash } : { text: "", hash: "" }
+    })
+    ipcMain.handle("hyper:consent", async (_event, payload?: { terms?: string; privacy?: string }) => {
+      const docs = await docsNow()
+      if (payload?.terms !== docs.terms.hash || payload?.privacy !== docs.privacy.hash)
+        return { ok: false, error: "docs-changed" }
+      const consent: Consent = {
+        version: consentVersion(docs),
+        terms: docs.terms.hash,
+        privacy: docs.privacy.hash,
+        at: new Date().toISOString(),
+      }
+      await writeState({ ...(await readState()), consent })
+      return { ok: true, version: consent.version }
+    })
     ipcMain.handle("hyper:plan", () =>
       Promise.all(
         components.map(async (item) => ({
@@ -133,10 +180,13 @@ function openWizard(auto: boolean) {
       ),
     )
     ipcMain.handle("hyper:start", async (_event, ids: string[], opts?: { unattended?: boolean; modelId?: string; offline?: boolean }) => {
+      // The renderer cannot start provisioning without a current acceptance.
+      const docs = await docsNow()
+      if (!consentValid((await readState()).consent, docs)) return { ok: false, error: "consent" }
       // Persist the agent-autonomy choice before setup runs, so services pick it up.
       await writeState({
         ...(await readState()),
-        unattended: opts?.unattended !== false,
+        unattended: opts?.unattended === true,
         offline: opts?.offline === true,
         ...(opts?.modelId ? { modelId: opts.modelId } : {}),
       })
@@ -152,12 +202,23 @@ function openWizard(auto: boolean) {
           ? `Setup belum lengkap (${failed.join(", ")}). Ulangi dengan --hyper-setup.`
           : "Semuanya siap. Hyper AI siap dipakai.",
       }).show()
+      return { ok: true, failed }
     })
     ipcMain.handle("hyper:skip", () => window.close())
     ipcMain.handle("hyper:finish", () => window.close())
 
     window.on("closed", async () => {
-      for (const channel of ["hyper:auto", "hyper:model-choices", "hyper:plan", "hyper:start", "hyper:skip", "hyper:finish"]) {
+      for (const channel of [
+        "hyper:auto",
+        "hyper:model-choices",
+        "hyper:docs",
+        "hyper:doc",
+        "hyper:consent",
+        "hyper:plan",
+        "hyper:start",
+        "hyper:skip",
+        "hyper:finish",
+      ]) {
         ipcMain.removeHandler(channel)
       }
       // Closing without finishing asks again on the next launch.
