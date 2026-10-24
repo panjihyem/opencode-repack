@@ -125,6 +125,7 @@ jobs:
           echo "bun=bun-v$(bun --version)" >> "$GITHUB_OUTPUT"
           BUN_COMPILE_RELEASE="bun-v$(bun --version)" ./packages/cli/script/build.ts
         env:
+          PROD: "true"
           OPENCODE_CHANNEL: latest
           OPENCODE_VERSION: ${{ needs.resolve.outputs.version }}
           GH_TOKEN: ${{ github.token }}

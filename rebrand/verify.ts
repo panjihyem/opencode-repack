@@ -84,6 +84,7 @@ if (desktopDist) {
     "wizard/LICENSES.md",
     "wizard/case.html",
     "wizard/case-preload.cjs",
+    "office/lib/case/selfcheck.py",
   ]
   const normalized = files.map((entry) => entry.replace(/\\/g, "/"))
   for (const file of expected) {

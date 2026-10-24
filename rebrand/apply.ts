@@ -65,27 +65,37 @@ const rules: Rule[] = [
   {
     file: "packages/desktop/src/renderer/platform/index.ts",
     find: "    runDesktopMenuAction: createDesktopMenuAction(api),",
-    replace: "    runDesktopMenuAction: createDesktopMenuAction(api),\n    desktop: { caseSecure: () => api.caseSecure() },",
+    replace: "    runDesktopMenuAction: createDesktopMenuAction(api),\n    caseSecure: () => api.caseSecure(),",
     critical: true,
   },
   {
-    file: "packages/gui-extensions/src/updater/renderer.tsx",
-    find: 'import { updaterAction } from "./action"',
-    replace: 'import { updaterAction } from "./action"\nimport { TitlebarItem } from "@opencode/gui-extensions/sdk"',
+    file: "packages/app/src/runtime/platform/platform.tsx",
+    find: "        platform: \"desktop\"\n        os?: DesktopOS",
+    replace: "        platform: \"desktop\"\n        caseSecure?(): void\n        os?: DesktopOS",
     critical: true,
   },
   {
-    file: "packages/gui-extensions/src/updater/renderer.tsx",
-    find: "  whatsNew(ctx)",
-    replace: `  whatsNew(ctx)
-  ctx.add(TitlebarItem, {
-    id: "hyper-case-secure",
-    placement: "titlebar",
-    label: "Kasus Secure",
-    title: "Mulai Kasus Sensitif",
-    icon: "shield",
-    run: () => ctx.desktop && ctx.desktop.caseSecure(),
-  })`,
+    file: "packages/app/src/shell/titlebar/titlebar.tsx",
+    find: 'import { TitlebarItem } from "@opencode/gui-extensions/sdk"',
+    replace: 'import { TitlebarItem } from "@opencode/gui-extensions/sdk"\nimport { ShieldCheck } from "lucide-solid"',
+    critical: true,
+  },
+  {
+    file: "packages/app/src/shell/titlebar/titlebar.tsx",
+    find: "                    <TitlebarItems items={titlebarItems} />",
+    replace: `                    <Show when={platform.platform === "desktop"}>
+                      <button
+                        type="button"
+                        class="me-2 inline-flex h-7 items-center gap-1 rounded-full border border-v2-border-border-muted px-2 text-xs text-v2-text-text-base hover:bg-v2-background-bg-layer-02 focus-visible:outline-none"
+                        aria-label="Mulai Kasus Sensitif"
+                        title="Mulai Kasus Sensitif"
+                        onClick={() => platform.caseSecure?.()}
+                      >
+                        <ShieldCheck size={14} />
+                        <span>Kasus Secure</span>
+                      </button>
+                    </Show>
+                    <TitlebarItems items={titlebarItems} />`,
     critical: true,
   },
   // ---- TUI: terminal title / dialogs -------------------------------------
