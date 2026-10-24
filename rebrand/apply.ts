@@ -847,7 +847,7 @@ const writes: Write[] = [
   // First-run provisioning for the desktop app (see rebrand/files/desktop/hyper).
   // Every module that hyper/*.ts imports relatively must be listed here or the
   // bundler fails with UNRESOLVED_IMPORT (router/privacy were missing once).
-  ...["bundle", "components", "config", "docling", "download", "forensic", "hindsight", "knowledge", "lmstudio", "manifest", "memory", "office", "platform", "privacy", "process", "router", "skills", "updates", "uv"].map(
+  ...["bundle", "components", "config", "consent", "docling", "download", "forensic", "hindsight", "knowledge", "lmstudio", "manifest", "memory", "office", "platform", "privacy", "process", "router", "skills", "updates", "uv"].map(
     (name) => ({
       file: `packages/desktop/src/main/hyper/${name}.ts`,
       source: `desktop/hyper/${name}.ts`,
