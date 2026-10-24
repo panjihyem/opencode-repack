@@ -126,6 +126,7 @@ jobs:
           BUN_COMPILE_RELEASE="bun-v$(bun --version)" ./packages/cli/script/build.ts
         env:
           PROD: "true"
+          OPENCODE_ARTIFACT: cli
           OPENCODE_CHANNEL: latest
           OPENCODE_VERSION: ${{ needs.resolve.outputs.version }}
           GH_TOKEN: ${{ github.token }}
