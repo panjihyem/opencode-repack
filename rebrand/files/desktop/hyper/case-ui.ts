@@ -178,6 +178,13 @@ export function registerCaseUi(deps: {
   const python = deps.python
   const run = deps.runPython ?? runPython
   const approvedOutputs = new Set<string>()
+  let prepareTail: Promise<void> = Promise.resolve()
+  const serializeCaseAction = (action: () => Promise<unknown>) => {
+    const previous = prepareTail
+    let release!: () => void
+    prepareTail = new Promise<void>((resolve) => { release = resolve })
+    return previous.then(action).finally(release)
+  }
   const channels = [
     "hyper:case:status",
     "hyper:case:list",
@@ -214,6 +221,7 @@ export function registerCaseUi(deps: {
     return result.canceled ? null : result.filePaths[0] ?? null
   })
   deps.ipcMain.handle("hyper:case:prepare", async (_event, input: { kind?: string; file?: string; output?: string }) => {
+    return serializeCaseAction(async () => {
     if (!input || typeof input.kind !== "string" || typeof input.file !== "string" || typeof input.output !== "string")
       throw new CaseUiError("Pilih jenis kasus, file parameter, dan folder hasil terlebih dahulu.")
     const cases = await listCases(cli, python, run)
@@ -231,6 +239,7 @@ export function registerCaseUi(deps: {
     approvedOutputs.add(path.resolve(result.output))
     await deps.log("case-ui", `redacted ${path.basename(result.source)} -> ${result.output}`).catch(() => undefined)
     return result
+    })
   })
   deps.ipcMain.handle("hyper:case:open-output", async (_event, output: string) => {
     if (typeof output !== "string" || !path.isAbsolute(output) || !approvedOutputs.has(path.resolve(output)))
@@ -239,7 +248,7 @@ export function registerCaseUi(deps: {
     if (error) throw new CaseUiError(`Folder hasil gagal dibuka: ${error}`)
     return ""
   })
-  deps.ipcMain.handle("hyper:case:deactivate", async (event) => {
+  deps.ipcMain.handle("hyper:case:deactivate", async (event) => serializeCaseAction(async () => {
     const win = deps.BrowserWindow.fromWebContents(event.sender)
     const confirmation = await deps.dialog.showMessageBox(win ?? undefined, {
       type: "warning",
@@ -253,7 +262,7 @@ export function registerCaseUi(deps: {
     const disabled = await deactivateCaseMode(cli, python)
     await deps.setCaseMode(false)
     return disabled
-  })
+  }))
   deps.ipcMain.handle("hyper:case:close", (event) => deps.onClose(event.sender))
   return () => {
     for (const channel of channels) deps.ipcMain.removeHandler(channel)

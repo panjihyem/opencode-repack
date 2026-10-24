@@ -109,6 +109,64 @@ describe("Hyper Case Secure UI flow", () => {
     await rm(root, { recursive: true, force: true })
   })
 
+  test("serializes concurrent prepare actions to keep case mode on for active redaction", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "hyper-case-ui-"))
+    const input = path.join(root, "parameter.json")
+    const outputA = path.join(root, "hasil-a")
+    const outputB = path.join(root, "hasil-b")
+    await writeFile(input, JSON.stringify({ wp: { npwp: "12.345.678.9-123.456" } }))
+    await Promise.all([mkdir(outputA), mkdir(outputB)])
+    const handlers = new Map<string, (...args: any[]) => unknown>()
+    const ipcMain = { removeHandler: (key: string) => handlers.delete(key), handle: (key: string, fn: (...args: any[]) => unknown) => handlers.set(key, fn) }
+    let mode = false
+    let active = 0
+    let maxActive = 0
+    let releaseFirst!: () => void
+    let reachedFirst!: () => void
+    const firstRedact = new Promise<void>((resolve) => { reachedFirst = resolve })
+    const barrier = new Promise<void>((resolve) => { releaseFirst = resolve })
+    const runPython = async (_python: string, args: string[]) => {
+      if (args[1] === "list") return { stdout: JSON.stringify({ cases: [{ id: "uji", title: "Uji" }] }), stderr: "" }
+      if (args[1] === "validate") return { stdout: JSON.stringify({ valid: true, field_wajib_kosong: [], tipe_salah: [] }), stderr: "" }
+      if (args[1] === "mode" && args[2] === "status") return { stdout: JSON.stringify({ case_mode: mode }), stderr: "" }
+      if (args[1] === "mode" && args[2] === "on") { mode = true; return { stdout: JSON.stringify({ case_mode: true }), stderr: "" } }
+      if (args[1] === "mode" && args[2] === "off") { mode = false; return { stdout: JSON.stringify({ case_mode: false }), stderr: "" } }
+      if (args[1] === "redact") {
+        active++
+        maxActive = Math.max(maxActive, active)
+        const stage = args[args.indexOf("--out") + 1]
+        if (stage.includes("hasil-a")) { reachedFirst(); await barrier }
+        await writeFile(path.join(stage, "parameter.redacted.json"), "{}")
+        await writeFile(path.join(stage, "tokens.json"), "SENSITIVE")
+        active--
+        return { stdout: JSON.stringify({ ok: true }), stderr: "" }
+      }
+      throw new Error("unexpected command")
+    }
+    registerCaseUi({
+      ipcMain: ipcMain as any,
+      BrowserWindow: { fromWebContents: () => undefined } as any,
+      dialog: {} as any,
+      shell: { openPath: async () => "" } as any,
+      app: {} as any,
+      cli: "cli.py",
+      python: "python",
+      runPython,
+      log: async () => undefined,
+      setCaseMode: async () => undefined,
+      onClose: () => undefined,
+    })
+    const prepare = handlers.get("hyper:case:prepare")!
+    const first = prepare({}, { kind: "uji", file: input, output: outputA })
+    await firstRedact
+    const second = prepare({}, { kind: "uji", file: input, output: outputB })
+    releaseFirst()
+    await Promise.all([first, second])
+    expect(maxActive).toBe(1)
+    expect(mode).toBe(true)
+    await rm(root, { recursive: true, force: true })
+  })
+
   test("rolls back generated artifacts if policy state persistence fails", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "hyper-case-ui-"))
     const input = path.join(root, "parameter.json")
