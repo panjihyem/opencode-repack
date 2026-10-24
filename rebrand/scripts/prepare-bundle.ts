@@ -33,7 +33,11 @@ for (const component of [manifest.context7, manifest.viz]) {
 // The search MCP server is the same: plain JavaScript, one bundle every OS.
 await $`cp -R ${path.join(import.meta.dir, "../files/desktop/wizard")} ${path.join(root, "wizard")}`
 await $`cp -R ${path.join(import.meta.dir, "../files/desktop/search")} ${path.join(root, "search")}`
-console.log("bundled setup wizard + search MCP")
+// Security quickstart ships as well: the packaged app can point users at it
+// without a network request.
+await mkdir(path.join(root, "docs"), { recursive: true })
+await cp(path.join(import.meta.dir, "../docs/SECURITY-QUICKSTART.md"), path.join(root, "docs", "SECURITY-QUICKSTART.md"))
+console.log("bundled setup wizard + search MCP + security quickstart")
 
 // The recurring-case module ships as loose Python files: the installer copies
 // them next to forensic.py, so the .py files stay the single source of truth.

@@ -70,6 +70,21 @@ if (desktopDist) {
   const ok = installers.length > 0 && named.length === installers.length
   if (!ok) bad++
   console.log(`${ok ? "OK  " : "FAIL"} desktop installers named ${CLI}-desktop-*: ${installers.join(", ") || "(none)"}`)
+
+  // The case module and its quickstart must travel inside the app bundle.
+  const bundle = path.join(desktopDist, "hyper-bundle")
+  const expected = [
+    "office/lib/case/case.py",
+    "office/lib/case/cli.py",
+    "office/lib/case/pseudonym.py",
+    "office/lib/case/casemode.py",
+    "docs/SECURITY-QUICKSTART.md",
+  ]
+  for (const file of expected) {
+    const exists = files.some((entry) => path.join(desktopDist, entry) === path.join(bundle, file))
+    if (!exists) bad++
+    console.log(`${exists ? "OK  " : "MISS"} bundled: ${file}`)
+  }
 }
 
 console.log(`\nproblems: ${bad}`)
