@@ -30,7 +30,7 @@ check("source content hash verified unchanged", /sourceHash !== afterHash/.test(
 check("screen failure removes artifacts", /rm\(redactedPath, \{ force: true \}\)/.test(main) && /tokenPath/.test(main))
 check("native confirmation before turning mode off", /Akhiri Mode Kasus Secure\?/.test(main) && /cancelId: 0/.test(main))
 check("titlebar button is contributed in app chrome", /packages\/app\/src\/shell\/titlebar\/titlebar\.tsx/.test(apply) && /Kasus Secure/.test(apply))
-check("titlebar icon import is overlaid", /ShieldCheck/.test(apply))
+check("titlebar uses built-in lock icon", /Icon name="lock"/.test(apply))
 check("titlebar IPC is handled in main process", /ipcMain\.handle\("hyper:case:open"/.test(bundle))
 check("preload caseSecure channel exists", /caseSecure\(\): void/.test(apply) && /caseSecure: \(\) => ipcRenderer\.invoke/.test(apply))
 check("desktop bridge implements typed caseSecure", /caseSecure: \(\) => api\.caseSecure\(\)/.test(apply) && /caseSecure\(\): void/.test(apply))
