@@ -1,7 +1,7 @@
 import { BrowserWindow } from "electron"
 import type { IpcMain, App, dialog as Dialog, shell as Shell } from "electron"
 import { createHash } from "node:crypto"
-import { chmod, mkdir, readFile, readdir, realpath, rm, stat } from "node:fs/promises"
+import { chmod, link, mkdir, mkdtemp, readFile, readdir, realpath, rm, stat } from "node:fs/promises"
 import path from "node:path"
 import { spawn } from "node:child_process"
 
@@ -96,8 +96,9 @@ export async function redactCase(
   const outputStat = await stat(realOutput).catch(() => undefined)
   if (!outputStat?.isDirectory()) throw new CaseUiError("Pilih folder hasil kosong yang tersedia.")
   const [sourceRealPath, outputRealPath] = await Promise.all([realpath(realSource), realpath(realOutput)])
-  if (outputRealPath === path.dirname(sourceRealPath))
-    throw new CaseUiError("Pilih folder hasil terpisah dari folder file sumber.")
+  const sourceRelativeToOutput = path.relative(outputRealPath, sourceRealPath)
+  if (outputRealPath === path.dirname(sourceRealPath) || (sourceRelativeToOutput !== ".." && !sourceRelativeToOutput.startsWith(`..${path.sep}`) && !path.isAbsolute(sourceRelativeToOutput)))
+    throw new CaseUiError("Pilih folder hasil terpisah yang tidak memuat file sumber.")
   const sourceHash = await readFile(realSource).then(BunlessHash)
   const validation = await inspectParameter(cli, python, kind, realSource, run)
   if (!validation.valid) return { ok: false as const, validation, source: realSource, output: realOutput }
@@ -109,21 +110,41 @@ export async function redactCase(
   await activateCaseMode(cli, python, run)
   const redactedPath = path.join(realOutput, "parameter.redacted.json")
   const tokenPath = path.join(realOutput, "tokens.json")
+  const staging = await mkdtemp(path.join(realOutput, ".hyper-case-"))
+  const stagedRedacted = path.join(staging, "parameter.redacted.json")
+  const stagedTokenMap = path.join(staging, "tokens.json")
+  let publishedRedacted = false
+  let publishedTokenMap = false
+  let modeEnabled = false
   try {
-    const { stdout } = await run(python, [cli, "redact", kind, "--data", realSource, "--out", realOutput, "--json"])
+    await activateCaseMode(cli, python, run)
+    modeEnabled = true
+    const { stdout } = await run(python, [cli, "redact", kind, "--data", realSource, "--out", staging, "--json"])
     const commandResult = parseJson(stdout, "Hasil redaksi")
     if (commandResult.ok !== true) throw new CaseUiError("Pemeriksaan menemukan pola identitas pada hasil. Artefak hasil dihapus; jangan gunakan untuk analisa.")
-    const [redactedStat, tokenStat, afterHash] = await Promise.all([
-      stat(redactedPath).catch(() => undefined),
-      stat(tokenPath).catch(() => undefined),
+    const [redactedStat, tokenStat, afterHash, existing] = await Promise.all([
+      stat(stagedRedacted).catch(() => undefined),
+      stat(stagedTokenMap).catch(() => undefined),
       readFile(realSource).then(BunlessHash),
+      readdir(realOutput),
     ])
     if (!redactedStat?.isFile() || !tokenStat?.isFile()) throw new CaseUiError("Hasil redaksi tidak lengkap; jangan lanjutkan analisa.")
     if (sourceHash !== afterHash) throw new CaseUiError("File sumber berubah selama redaksi; hentikan dan periksa file asli.")
-    if (process.platform !== "win32") await chmod(tokenPath, 0o600).catch(() => undefined)
+    if (existing.some((entry) => entry !== path.basename(staging))) throw new CaseUiError("Folder hasil berubah saat redaksi. Pilih folder kosong lain.")
+    if (process.platform !== "win32") await chmod(stagedTokenMap, 0o600).catch(() => undefined)
+    await link(stagedRedacted, redactedPath)
+    publishedRedacted = true
+    await link(stagedTokenMap, tokenPath)
+    publishedTokenMap = true
   } catch (error) {
-    await Promise.all([rm(redactedPath, { force: true }), rm(tokenPath, { force: true })])
+    await Promise.all([
+      publishedRedacted ? rm(redactedPath, { force: true }) : undefined,
+      publishedTokenMap ? rm(tokenPath, { force: true }) : undefined,
+    ])
+    if (modeEnabled) await run(python, [cli, "mode", "off", "--json"]).catch(() => undefined)
     throw error
+  } finally {
+    await rm(staging, { recursive: true, force: true })
   }
   return {
     ok: true as const,
@@ -207,7 +228,7 @@ export function registerCaseUi(deps: {
       throw new CaseUiError("Hasil redaksi dihapus karena status mode tidak tersimpan. Periksa izin konfigurasi, lalu coba lagi.", { cause: error })
     }
     approvedOutputs.add(path.resolve(result.output))
-    if (result.ok) await deps.log("case-ui", `redacted ${path.basename(result.source)} -> ${result.output}`)
+    await deps.log("case-ui", `redacted ${path.basename(result.source)} -> ${result.output}`).catch(() => undefined)
     return result
   })
   deps.ipcMain.handle("hyper:case:open-output", async (_event, output: string) => {

@@ -37,9 +37,13 @@ describe("Hyper Case Secure UI flow", () => {
       if (args[1] === "validate") return { stdout: JSON.stringify({ valid: true, field_wajib_kosong: [], tipe_salah: [] }), stderr: "" }
       if (args[1] === "mode" && args[2] === "status") return { stdout: JSON.stringify({ case_mode: false }), stderr: "" }
       if (args[1] === "mode" && args[2] === "on") return { stdout: JSON.stringify({ case_mode: true }), stderr: "" }
-      await writeFile(path.join(output, "parameter.redacted.json"), "{}")
-      await writeFile(path.join(output, "tokens.json"), "SENSITIVE")
-      throw Object.assign(new Error("screen found PII"), { code: 1 })
+      if (args[1] === "redact") {
+        const stage = args[args.indexOf("--out") + 1]
+        await writeFile(path.join(stage, "parameter.redacted.json"), "{}")
+        await writeFile(path.join(stage, "tokens.json"), "SENSITIVE")
+        throw Object.assign(new Error("screen found PII"), { code: 1 })
+      }
+      throw new Error("unexpected Python command")
     }
     await expect(redactCase("cli.py", "python", "uji", input, output, fake)).rejects.toThrow()
     expect(await readdir(output)).toEqual([])
@@ -66,6 +70,19 @@ describe("Hyper Case Secure UI flow", () => {
     await rm(root, { recursive: true, force: true })
   })
 
+  test("rejects output ancestor containing source", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "hyper-case-ui-"))
+    const sourceDir = path.join(root, "cases")
+    const output = root
+    await mkdir(sourceDir)
+    const input = path.join(sourceDir, "parameter.json")
+    await writeFile(input, "{}")
+    let message = ""
+    try { await redactCase("cli.py", "python", "uji", input, output) } catch (error) { message = String(error) }
+    expect(message).toContain("tidak memuat file sumber")
+    await rm(root, { recursive: true, force: true })
+  })
+
   test("rolls back generated artifacts if policy state persistence fails", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "hyper-case-ui-"))
     const input = path.join(root, "parameter.json")
@@ -82,8 +99,9 @@ describe("Hyper Case Secure UI flow", () => {
       if (args[1] === "mode" && args[2] === "on") { mode.value = true; return { stdout: JSON.stringify({ case_mode: true }), stderr: "" } }
       if (args[1] === "mode" && args[2] === "off") { mode.value = false; return { stdout: JSON.stringify({ case_mode: false }), stderr: "" } }
       if (args[1] === "redact") {
-        await writeFile(path.join(output, "parameter.redacted.json"), "{}")
-        await writeFile(path.join(output, "tokens.json"), "SENSITIVE")
+        const stage = args[args.indexOf("--out") + 1]
+        await writeFile(path.join(stage, "parameter.redacted.json"), "{}")
+        await writeFile(path.join(stage, "tokens.json"), "SENSITIVE")
         return { stdout: JSON.stringify({ ok: true }), stderr: "" }
       }
       throw new Error("unexpected Python command")
@@ -126,7 +144,61 @@ describe("Hyper Case Secure UI flow", () => {
       setCaseMode: async () => undefined,
       onClose: () => undefined,
     })
+    await handlers.get("hyper:case:list")!()
     await expect(handlers.get("hyper:case:open-output")!({}, path.resolve("untrusted"))).rejects.toThrow("tidak dikenal")
     expect(opened).toEqual([])
+  })
+
+  test("log failure does not turn successful redaction into a UI failure", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "hyper-case-ui-"))
+    const input = path.join(root, "parameter.json")
+    const output = path.join(root, "hasil")
+    await writeFile(input, JSON.stringify({ wp: { npwp: "12.345.678.9-123.456" } }))
+    await mkdir(output)
+    const handlers = new Map<string, (...args: any[]) => unknown>()
+    const ipcMain = { removeHandler: (key: string) => handlers.delete(key), handle: (key: string, fn: (...args: any[]) => unknown) => handlers.set(key, fn) }
+    let modeEnabled = false
+    const runPython = async (_python: string, args: string[]) => {
+      if (args[1] === "list") return { stdout: JSON.stringify({ cases: [{ id: "uji", title: "Uji" }] }), stderr: "" }
+      if (args[1] === "validate") return { stdout: JSON.stringify({ valid: true, field_wajib_kosong: [], tipe_salah: [] }), stderr: "" }
+      if (args[1] === "mode" && args[2] === "on") { modeEnabled = true; return { stdout: JSON.stringify({ case_mode: true }), stderr: "" } }
+      if (args[1] === "mode" && args[2] === "off") { modeEnabled = false; return { stdout: JSON.stringify({ case_mode: false }), stderr: "" } }
+      if (args[1] === "redact") {
+        await writeFile(path.join(args[args.indexOf("--out") + 1], "parameter.redacted.json"), "{}")
+        await writeFile(path.join(args[args.indexOf("--out") + 1], "tokens.json"), "SENSITIVE")
+        return { stdout: JSON.stringify({ ok: true }), stderr: "" }
+      }
+      throw new Error("unexpected Python command")
+    }
+    registerCaseUi({
+      ipcMain: ipcMain as any,
+      BrowserWindow: { fromWebContents: () => undefined } as any,
+      dialog: {} as any,
+      shell: { openPath: async () => "" } as any,
+      app: {} as any,
+      cli: "cli.py",
+      python: "python",
+      runPython,
+      log: async () => { throw new Error("log unavailable") },
+      setCaseMode: async () => undefined,
+      onClose: () => undefined,
+    })
+    const result = await handlers.get("hyper:case:prepare")!({}, { kind: "uji", file: input, output }) as { ok: boolean }
+    expect(result.ok).toBe(true)
+    expect(await readFile(path.join(output, "tokens.json"), "utf8")).toBe("SENSITIVE")
+    expect(modeEnabled).toBe(true)
+    await rm(root, { recursive: true, force: true })
+  })
+
+  test("rejects an output ancestor that contains the source", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "hyper-case-ui-"))
+    const sourceDir = path.join(root, "cases")
+    const output = path.join(root, "hasil")
+    await mkdir(sourceDir)
+    await mkdir(output)
+    const input = path.join(sourceDir, "parameter.json")
+    await writeFile(input, "{}")
+    await expect(redactCase("cli.py", "python", "uji", input, root)).rejects.toThrow("tidak memuat file sumber")
+    await rm(root, { recursive: true, force: true })
   })
 })
