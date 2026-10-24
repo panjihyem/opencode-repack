@@ -183,8 +183,8 @@ def _cmd_screen(args) -> int:
     mapping = read_tokens(Path(args.tokens).expanduser()) if args.tokens else None
     result = screen(text, mapping)
     if not result["blocked"]:
-        print("aman menurut pola: tidak ada identitas terdeteksi")
-        print("catatan: lolos pola bukan jaminan aman; nilai dan narasi tetap bisa sensitif")
+        print("tidak ada pola identitas yang terdeteksi")
+        print("catatan: lolos pola BUKAN jaminan aman; nilai dan narasi tetap bisa sensitif")
         return 0
     print(f"DIBLOKIR: {len(result['findings'])} temuan")
     for finding in result["findings"]:
@@ -214,8 +214,9 @@ def _cmd_mode(args) -> int:
         print(f"mode kasus : {'AKTIF' if state['case_mode'] else 'nonaktif'}")
         if state["case_mode"]:
             print(f"sejak      : {state['enabled_at']}")
-            print(f"ditolak    : {', '.join(state['managed_permissions']) or '-'}")
-            print("catatan    : model agent tetap remote; pakai hyper-case redact sebelum mengirim data")
+            print(f"ditolak    : {', '.join(state['managed_policies']) or '-'}")
+            print("catatan    : model agent tetap remote dan shell tetap bisa keluar;")
+            print("             pakai hyper-case redact sebelum mengirim data kasus")
         return 0
     result = casemode.enable() if args.aksi == "on" else casemode.disable()
     print(f"mode kasus : {'AKTIF' if result['case_mode'] else 'nonaktif'}")
