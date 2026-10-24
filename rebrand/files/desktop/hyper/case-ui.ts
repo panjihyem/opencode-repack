@@ -1,7 +1,7 @@
 import { BrowserWindow } from "electron"
 import type { IpcMain, App, dialog as Dialog, shell as Shell } from "electron"
 import { createHash } from "node:crypto"
-import { chmod, mkdir, readFile, readdir, rm, stat } from "node:fs/promises"
+import { chmod, mkdir, readFile, readdir, realpath, rm, stat } from "node:fs/promises"
 import path from "node:path"
 import { spawn } from "node:child_process"
 
@@ -93,9 +93,12 @@ export async function redactCase(
   if (!sourceStat?.isFile()) throw new CaseUiError("Pilih file parameter kasus yang tersedia.")
   if (!DATA_EXTENSIONS.has(path.extname(realSource).toLowerCase()))
     throw new CaseUiError("Untuk alur ini pilih parameter kasus JSON. PDF asli jangan dikirim ke chat.")
+  const outputStat = await stat(realOutput).catch(() => undefined)
+  if (!outputStat?.isDirectory()) throw new CaseUiError("Pilih folder hasil kosong yang tersedia.")
+  const [sourceRealPath, outputRealPath] = await Promise.all([realpath(realSource), realpath(realOutput)])
+  if (outputRealPath === path.dirname(sourceRealPath))
+    throw new CaseUiError("Pilih folder hasil terpisah dari folder file sumber.")
   const sourceHash = await readFile(realSource).then(BunlessHash)
-  if (realOutput === realSource || realOutput.startsWith(realSource + path.sep))
-    throw new CaseUiError("Folder hasil tidak boleh menimpa atau berada di dalam file sumber.")
   const validation = await inspectParameter(cli, python, kind, realSource, run)
   if (!validation.valid) return { ok: false as const, validation, source: realSource, output: realOutput }
 
@@ -106,26 +109,22 @@ export async function redactCase(
   await activateCaseMode(cli, python, run)
   const redactedPath = path.join(realOutput, "parameter.redacted.json")
   const tokenPath = path.join(realOutput, "tokens.json")
-  let commandResult: Record<string, unknown>
   try {
     const { stdout } = await run(python, [cli, "redact", kind, "--data", realSource, "--out", realOutput, "--json"])
-    commandResult = parseJson(stdout, "Hasil redaksi")
+    const commandResult = parseJson(stdout, "Hasil redaksi")
+    if (commandResult.ok !== true) throw new CaseUiError("Pemeriksaan menemukan pola identitas pada hasil. Artefak hasil dihapus; jangan gunakan untuk analisa.")
+    const [redactedStat, tokenStat, afterHash] = await Promise.all([
+      stat(redactedPath).catch(() => undefined),
+      stat(tokenPath).catch(() => undefined),
+      readFile(realSource).then(BunlessHash),
+    ])
+    if (!redactedStat?.isFile() || !tokenStat?.isFile()) throw new CaseUiError("Hasil redaksi tidak lengkap; jangan lanjutkan analisa.")
+    if (sourceHash !== afterHash) throw new CaseUiError("File sumber berubah selama redaksi; hentikan dan periksa file asli.")
+    if (process.platform !== "win32") await chmod(tokenPath, 0o600).catch(() => undefined)
   } catch (error) {
     await Promise.all([rm(redactedPath, { force: true }), rm(tokenPath, { force: true })])
     throw error
   }
-  if (commandResult.ok !== true) {
-    await Promise.all([rm(redactedPath, { force: true }), rm(tokenPath, { force: true })])
-    throw new CaseUiError("Pemeriksaan menemukan pola identitas pada hasil. Artefak hasil dihapus; jangan gunakan untuk analisa.")
-  }
-  const [redactedStat, tokenStat, afterHash] = await Promise.all([
-    stat(redactedPath).catch(() => undefined),
-    stat(tokenPath).catch(() => undefined),
-    readFile(realSource).then(BunlessHash),
-  ])
-  if (!redactedStat?.isFile() || !tokenStat?.isFile()) throw new CaseUiError("Hasil redaksi tidak lengkap; jangan lanjutkan analisa.")
-  if (sourceHash !== afterHash) throw new CaseUiError("File sumber berubah selama redaksi; hentikan dan periksa file asli.")
-  if (process.platform !== "win32") await chmod(tokenPath, 0o600).catch(() => undefined)
   return {
     ok: true as const,
     source: realSource,
@@ -148,12 +147,15 @@ export function registerCaseUi(deps: {
   app: App
   cli: string
   python: string
+  runPython?: Runner
   log: (name: string, value: unknown) => Promise<void>
   setCaseMode: (enabled: boolean) => Promise<unknown>
   onClose: (sender: Electron.WebContents) => void
 }) {
   const cli = deps.cli
   const python = deps.python
+  const run = deps.runPython ?? runPython
+  const approvedOutputs = new Set<string>()
   const channels = [
     "hyper:case:status",
     "hyper:case:list",
@@ -167,11 +169,11 @@ export function registerCaseUi(deps: {
   for (const channel of channels) deps.ipcMain.removeHandler(channel)
 
   deps.ipcMain.handle("hyper:case:status", async () => {
-    const result = await runPython(python, [cli, "mode", "status", "--json"])
+    const result = await run(python, [cli, "mode", "status", "--json"])
     const status = parseJson(result.stdout, "Status mode kasus") as CaseStatus
     return { caseMode: status.case_mode === true, ...status }
   })
-  deps.ipcMain.handle("hyper:case:list", async () => listCases(cli, python))
+  deps.ipcMain.handle("hyper:case:list", async () => listCases(cli, python, run))
   deps.ipcMain.handle("hyper:case:pick-parameter", async (event) => {
     const win = deps.BrowserWindow.fromWebContents(event.sender)
     const result = await deps.dialog.showOpenDialog(win ?? undefined, {
@@ -192,17 +194,28 @@ export function registerCaseUi(deps: {
   deps.ipcMain.handle("hyper:case:prepare", async (_event, input: { kind?: string; file?: string; output?: string }) => {
     if (!input || typeof input.kind !== "string" || typeof input.file !== "string" || typeof input.output !== "string")
       throw new CaseUiError("Pilih jenis kasus, file parameter, dan folder hasil terlebih dahulu.")
-    const cases = await listCases(cli, python)
+    const cases = await listCases(cli, python, run)
     if (!cases.some((item) => item.id === input.kind)) throw new CaseUiError("Jenis kasus tidak tersedia di Hyper-Knowledge.")
-    const result = await redactCase(cli, python, input.kind, input.file, input.output)
+    const result = await redactCase(cli, python, input.kind, input.file, input.output, run)
     if (!result.ok) return result
-    await deps.setCaseMode(true)
+    try {
+      await deps.setCaseMode(true)
+    } catch (error) {
+      await Promise.all([rm(result.redacted, { force: true }), rm(result.tokenMap, { force: true })])
+      await run(python, [cli, "mode", "off", "--json"]).catch(() => undefined)
+      await deps.setCaseMode(false).catch(() => undefined)
+      throw new CaseUiError("Hasil redaksi dihapus karena status mode tidak tersimpan. Periksa izin konfigurasi, lalu coba lagi.", { cause: error })
+    }
+    approvedOutputs.add(path.resolve(result.output))
     if (result.ok) await deps.log("case-ui", `redacted ${path.basename(result.source)} -> ${result.output}`)
     return result
   })
   deps.ipcMain.handle("hyper:case:open-output", async (_event, output: string) => {
-    if (typeof output !== "string" || !path.isAbsolute(output)) throw new CaseUiError("Folder hasil tidak valid.")
-    return deps.shell.openPath(output)
+    if (typeof output !== "string" || !path.isAbsolute(output) || !approvedOutputs.has(path.resolve(output)))
+      throw new CaseUiError("Folder hasil tidak dikenal. Buat salinan redaksi melalui wizard terlebih dahulu.")
+    const error = await deps.shell.openPath(output)
+    if (error) throw new CaseUiError(`Folder hasil gagal dibuka: ${error}`)
+    return ""
   })
   deps.ipcMain.handle("hyper:case:deactivate", async (event) => {
     const win = deps.BrowserWindow.fromWebContents(event.sender)

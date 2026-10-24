@@ -26,7 +26,7 @@ check("user must confirm before proceeding", /Lanjut ke analisa/.test(html) && /
 check("invalid parameter permits correction", /if \(!result\.ok\) \{ \$\("prepare"\)\.disabled = false; return say/.test(html))
 check("no automatic provider request in case UI", !/fetch\(|api\.prompt|sendMessage|submitPrompt/.test(html))
 check("source file must be JSON", /DATA_EXTENSIONS/.test(main))
-check("source cannot be overwritten", /realOutput === realSource/.test(main))
+check("source parent cannot be selected as output", /outputRealPath === path\.dirname\(sourceRealPath\)/.test(main) && /folder hasil terpisah/.test(main))
 check("source content hash verified unchanged", /sourceHash !== afterHash/.test(main))
 check("screen failure removes artifacts", /rm\(redactedPath, \{ force: true \}\)/.test(main) && /tokenPath/.test(main))
 check("native confirmation before turning mode off", /Akhiri Mode Kasus Secure\?/.test(main) && /cancelId: 0/.test(main))
