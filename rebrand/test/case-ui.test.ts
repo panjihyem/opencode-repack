@@ -83,6 +83,32 @@ describe("Hyper Case Secure UI flow", () => {
     await rm(root, { recursive: true, force: true })
   })
 
+  test("leaves pre-existing case mode on when a new redaction fails", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "hyper-case-ui-"))
+    const input = path.join(root, "parameter.json")
+    const output = path.join(root, "hasil")
+    await writeFile(input, JSON.stringify({ wp: { npwp: "12.345.678.9-123.456" } }))
+    await mkdir(output)
+    let mode = true
+    const run = async (_python: string, args: string[]) => {
+      if (args[1] === "mode" && args[2] === "status") return { stdout: JSON.stringify({ case_mode: mode }), stderr: "" }
+      if (args[1] === "mode" && args[2] === "on") return { stdout: JSON.stringify({ case_mode: true }), stderr: "" }
+      if (args[1] === "mode" && args[2] === "off") { mode = false; return { stdout: JSON.stringify({ case_mode: false }), stderr: "" } }
+      if (args[1] === "validate") return { stdout: JSON.stringify({ valid: true, field_wajib_kosong: [], tipe_salah: [] }), stderr: "" }
+      if (args[1] === "redact") {
+        const stage = args[args.indexOf("--out") + 1]
+        await writeFile(path.join(stage, "parameter.redacted.json"), "partial")
+        await writeFile(path.join(stage, "tokens.json"), "SENSITIVE")
+        throw new Error("screen failed")
+      }
+      throw new Error("unexpected command")
+    }
+    await expect(redactCase("cli.py", "python", "uji", input, output, run)).rejects.toThrow()
+    expect(mode).toBe(true)
+    expect(await readdir(output)).toEqual([])
+    await rm(root, { recursive: true, force: true })
+  })
+
   test("rolls back generated artifacts if policy state persistence fails", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "hyper-case-ui-"))
     const input = path.join(root, "parameter.json")
@@ -160,6 +186,7 @@ describe("Hyper Case Secure UI flow", () => {
     let modeEnabled = false
     const runPython = async (_python: string, args: string[]) => {
       if (args[1] === "list") return { stdout: JSON.stringify({ cases: [{ id: "uji", title: "Uji" }] }), stderr: "" }
+      if (args[1] === "mode" && args[2] === "status") return { stdout: JSON.stringify({ case_mode: false }), stderr: "" }
       if (args[1] === "validate") return { stdout: JSON.stringify({ valid: true, field_wajib_kosong: [], tipe_salah: [] }), stderr: "" }
       if (args[1] === "mode" && args[2] === "on") { modeEnabled = true; return { stdout: JSON.stringify({ case_mode: true }), stderr: "" } }
       if (args[1] === "mode" && args[2] === "off") { modeEnabled = false; return { stdout: JSON.stringify({ case_mode: false }), stderr: "" } }

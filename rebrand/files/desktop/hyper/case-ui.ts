@@ -107,7 +107,8 @@ export async function redactCase(
   const before = await readdir(realOutput).catch(() => [])
   if (before.length) throw new CaseUiError("Pilih folder hasil yang kosong agar berkas lama tidak tertimpa.")
 
-  await activateCaseMode(cli, python, run)
+  const priorMode = parseJson((await run(python, [cli, "mode", "status", "--json"])).stdout, "Status mode kasus")
+  const wasModeEnabled = priorMode.case_mode === true
   const redactedPath = path.join(realOutput, "parameter.redacted.json")
   const tokenPath = path.join(realOutput, "tokens.json")
   const staging = await mkdtemp(path.join(realOutput, ".hyper-case-"))
@@ -118,7 +119,7 @@ export async function redactCase(
   let modeEnabled = false
   try {
     await activateCaseMode(cli, python, run)
-    modeEnabled = true
+    modeEnabled = !wasModeEnabled
     const { stdout } = await run(python, [cli, "redact", kind, "--data", realSource, "--out", staging, "--json"])
     const commandResult = parseJson(stdout, "Hasil redaksi")
     if (commandResult.ok !== true) throw new CaseUiError("Pemeriksaan menemukan pola identitas pada hasil. Artefak hasil dihapus; jangan gunakan untuk analisa.")
