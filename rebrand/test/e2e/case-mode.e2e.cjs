@@ -1,4 +1,4 @@
-// Uji `hyper-case mode` terhadap config OpenCode V2.
+﻿// Uji `hyper-case mode` terhadap config OpenCode V2.
 //
 // usage: node rebrand/test/e2e/case-mode.test.cjs
 const { spawnSync } = require("node:child_process")
@@ -34,9 +34,11 @@ function python() {
 const py = python()
 const work = fs.mkdtempSync(path.join(os.tmpdir(), "hyper-case-mode-"))
 const home = path.join(work, "home")
-const configDir = path.join(home, ".config", "opencode")
+const xdg = path.join(home, "xdg")
+const configDir = path.join(xdg, "opencode")
 const configFile = path.join(configDir, "opencode.json")
 const pluginFile = path.join(configDir, "plugin", "hyper-memory.ts")
+const privacyFile = path.join(configDir, "hyper", "privacy.json")
 fs.mkdirSync(path.dirname(pluginFile), { recursive: true })
 
 const userPolicy = { action: "provider.use", resource: "cx", effect: "allow" }
@@ -45,7 +47,7 @@ fs.writeFileSync(
   JSON.stringify(
     {
       model: "ocg/deepseek-v4.1-flash",
-      permission: { "*": "allow", webfetch: "deny" },
+      permission: { "*": "allow", webfetch: "deny", websearch: "deny", bash: "ask" },
       policies: [userPolicy],
     },
     null,
@@ -53,11 +55,13 @@ fs.writeFileSync(
   ) + "\n",
 )
 fs.writeFileSync(pluginFile, "// HYPER_AI_MANAGED - persistent local memory\nexport default { id: 'hyper-memory' }\n")
+fs.mkdirSync(path.dirname(privacyFile), { recursive: true })
+fs.writeFileSync(privacyFile, JSON.stringify({ managed_permissions: ["websearch"] }))
 
 const run = (action) =>
   spawnSync(py, [cli, "mode", action], {
     encoding: "utf8",
-    env: { ...process.env, HOME: home, USERPROFILE: home, XDG_CONFIG_HOME: path.join(home, ".config") },
+    env: { ...process.env, HOME: home, USERPROFILE: home, XDG_CONFIG_HOME: xdg },
   })
 
 const readConfig = () => JSON.parse(fs.readFileSync(configFile, "utf8"))
@@ -77,8 +81,8 @@ const enabled = readConfig()
 check("V2 deny policies ditambahkan (4)", ours(enabled).length === 4, JSON.stringify(ours(enabled)))
 check("policy milik user tetap ada", enabled.policies.some((rule) => rule.action === "provider.use" && rule.resource === "cx"))
 check("provider cloud tidak diblokir", !enabled.policies.some((rule) => rule.action === "provider.use" && rule.effect === "deny"))
-check("permission V1 milik user tidak dihapus", enabled.permission && enabled.permission["*"] === "allow")
-check("larangan V1 lama dibersihkan", enabled.permission && enabled.permission.webfetch === undefined)
+check("permission V1 milik user tidak dihapus", enabled.permission && enabled.permission["*"] === "allow" && enabled.permission.webfetch === "deny" && enabled.permission.bash === "ask")
+check("hanya larangan V1 tercatat yang dibersihkan", enabled.permission && enabled.permission.websearch === undefined && enabled.permission.webfetch === "deny")
 check("plugin memori dinonaktifkan", fs.readFileSync(pluginFile, "utf8").includes("disabled while case mode is on"))
 
 const onAgain = run("on")
@@ -89,7 +93,7 @@ check("mode off exits 0", off.status === 0, off.stderr || off.stdout)
 const disabled = readConfig()
 check("policy buatan mode dicabut", ours(disabled).length === 0)
 check("policy user bertahan setelah off", disabled.policies.length === 1 && disabled.policies[0].resource === "cx")
-check("permission user bertahan setelah off", disabled.permission["*"] === "allow")
+check("permission user bertahan setelah off", disabled.permission["*"] === "allow" && disabled.permission.webfetch === "deny" && disabled.permission.bash === "ask")
 check("plugin no-op dibersihkan", !fs.existsSync(pluginFile))
 
 const offAgain = run("off")

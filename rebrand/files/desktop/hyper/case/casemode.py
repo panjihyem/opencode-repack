@@ -23,9 +23,17 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-PRIVACY_FILE = Path(os.path.expanduser("~/.config/opencode/hyper/privacy.json"))
-CONFIG_FILE = Path(os.path.expanduser("~/.config/opencode/opencode.json"))
-PLUGIN_FILE = Path(os.path.expanduser("~/.config/opencode/plugin/hyper-memory.ts"))
+def _config_dir() -> Path:
+    """Sama dengan OpenCode/desktop: XDG_CONFIG_HOME bila ada, selain itu ~/.config."""
+    xdg = os.environ.get("XDG_CONFIG_HOME")
+    base = Path(xdg) if xdg else Path(os.path.expanduser("~/.config"))
+    return base / "opencode"
+
+
+CONFIG_DIR = _config_dir()
+PRIVACY_FILE = CONFIG_DIR / "hyper" / "privacy.json"
+CONFIG_FILE = CONFIG_DIR / "opencode.json"
+PLUGIN_FILE = CONFIG_DIR / "plugin" / "hyper-memory.ts"
 MANAGED = "HYPER_AI_MANAGED"
 
 # OpenCode V2: policy bersifat biner dan menang atas permission, sehingga cocok
@@ -38,17 +46,8 @@ DENY_POLICIES = [
     {"action": "tool.use", "resource": "websearch:*", "effect": "deny"},
 ]
 
-# Aturan V1 dari versi lama. Dicabut saat `on`/`off` supaya file pengguna tidak
-# menyimpan larangan yang tidak lagi ditegakkan V2.
-LEGACY_TOOLS = [
-    "webfetch",
-    "websearch",
-    "context7_resolve-library-id",
-    "context7_query-docs",
-    "hyper-search_search",
-    "opencode_list_mcp_resources",
-    "opencode_read_mcp_resource",
-]
+# Aturan V1 dari versi lama dicabut hanya bila tercatat di privacy.json
+# (`managed_permissions`); larangan milik pengguna tidak disentuh.
 
 # Plugin memori otomatis: menyalin prompt ke Hindsight, yang lalu memakai model
 # remote untuk konsolidasi. Versi no-op di bawah mempertahankan slot plugin
@@ -116,13 +115,17 @@ def _clear_plugin() -> str:
     return "dihapus"
 
 
-def _drop_legacy(config: dict) -> list[str]:
-    """Hapus larangan V1 yang pernah ditulis mode kasus versi lama."""
+def _drop_legacy(config: dict, names: list[str]) -> list[str]:
+    """Hapus larangan V1 yang pernah ditulis mode kasus versi lama.
+
+    Hanya nama yang tercatat di privacy.json yang disentuh; larangan milik
+    pengguna tidak boleh terhapus.
+    """
     permission = config.get("permission")
     removed: list[str] = []
     if not isinstance(permission, dict):
         return removed
-    for tool in LEGACY_TOOLS:
+    for tool in names:
         if permission.get(tool) == "deny":
             del permission[tool]
             removed.append(tool)
@@ -148,6 +151,7 @@ def enable() -> dict:
     if config is None:
         raise SystemExit(f"error: konfigurasi tidak ditemukan: {CONFIG_FILE}")
 
+    had_policies = "policies" in config
     policies = _policies(config)
     present = {_canonical(rule) for rule in policies if isinstance(rule, dict)}
     added: list[dict] = []
@@ -158,8 +162,10 @@ def enable() -> dict:
         policies.append(dict(rule))
         present.add(key)
         added.append(rule)
-    config["policies"] = policies
-    legacy_removed = _drop_legacy(config)
+    if had_policies or added:
+        config["policies"] = policies
+    legacy = [item for item in privacy.get("managed_permissions", []) if isinstance(item, str)]
+    legacy_removed = _drop_legacy(config, legacy)
     _write(CONFIG_FILE, config)
 
     previous = [item for item in privacy.get("managed_policies", []) if isinstance(item, str)]
@@ -170,6 +176,7 @@ def enable() -> dict:
         "enabled_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "managed_policies": managed,
         "managed_permissions": [],
+        "had_policies": had_policies,
     }
     _write(PRIVACY_FILE, privacy)
     return {
@@ -193,9 +200,18 @@ def disable() -> dict:
                 removed.append(f"{rule['action']}:{rule['resource']}")
                 continue
             kept.append(rule)
-        config["policies"] = kept
-        _drop_legacy(config)
+        if kept or "policies" in config:
+            config["policies"] = kept
+        if not kept and privacy.get("had_policies") is False:
+            config.pop("policies", None)
+        legacy = [item for item in privacy.get("managed_permissions", []) if isinstance(item, str)]
+        _drop_legacy(config, legacy)
         _write(CONFIG_FILE, config)
     plugin = _clear_plugin()
-    _write(PRIVACY_FILE, {"case_mode": False, "enabled_at": None, "managed_policies": [], "managed_permissions": []})
+    _write(PRIVACY_FILE, {
+        "case_mode": False,
+        "enabled_at": None,
+        "managed_policies": [],
+        "managed_permissions": [],
+    })
     return {"changed": removed, "plugin": plugin, **status()}
