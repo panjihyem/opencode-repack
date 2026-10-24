@@ -34,6 +34,7 @@ check("titlebar button is contributed in app chrome", /packages\/app\/src\/shell
 check("titlebar uses existing built-in icon import", /Icon name="lock"/.test(apply) && !/replace: .*import \{ Icon \} from "@opencode\/ui\/icon"/.test(apply))
 check("typed desktop API forwards caseSecure", /caseSecure\(\): void/.test(apply) && /caseSecure: \(\) => api\.caseSecure\(\)/.test(apply) && /platform\.caseSecure\?\.\(\)/.test(apply))
 check("titlebar IPC is handled in main process", /ipcMain\.handle\("hyper:case:open"/.test(bundle))
+check("case UI uses shipped CLI with existing Office Python", /cli: path\.join\(bundleRoot\(\), "office", "lib", "case", "cli\.py"\)/.test(bundle) && /python: officePython\(home\)/.test(bundle))
 check("preload caseSecure channel exists", /caseSecure\(\): void/.test(apply) && /caseSecure: \(\) => ipcRenderer\.invoke/.test(apply))
 check("desktop bridge implements typed caseSecure", /caseSecure: \(\) => api\.caseSecure\(\)/.test(apply) && /caseSecure\(\): void/.test(apply))
 check("secure window renderer sandboxed", /sandbox: true/.test(bundle) && /contextIsolation: true/.test(bundle) && /nodeIntegration: false/.test(bundle))

@@ -57,7 +57,7 @@ export async function startHyperBundle() {
     dialog,
     shell,
     app,
-    cli: caseModule(home),
+    cli: path.join(bundleRoot(), "office", "lib", "case", "cli.py"),
     python: officePython(home),
     log,
     setCaseMode: async (enabled) => {
