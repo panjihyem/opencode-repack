@@ -1,0 +1,14 @@
+{
+  "id": "0001-multi-agent-orchestration-with-data-safe-routing",
+  "uuid": "466a284c-dc71-468a-8956-2b54c1dd2120",
+  "status": "active",
+  "type": "feature",
+  "priority": "P1",
+  "created": "2026-10-24T20:48:30.239Z",
+  "updated": "2026-10-24T20:50:31.567Z",
+  "lastActivity": "2026-10-24T20:50:31.567Z",
+  "title": "Multi-agent orchestration with data-safe routing",
+  "externalLinks": {},
+  "testMode": "test-after",
+  "coverageTarget": 80
+}
