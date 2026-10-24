@@ -1,0 +1,3 @@
+{"t":"T-01","e":"claim","by":"opencode@riefky","at":"2026-10-24T20:50:31.567Z","line":"Audit existing inbox, subagents and data routes"}
+{"t":"T-01","e":"done","by":"opencode@riefky","at":"2026-10-24T20:52:00.391Z","evidence":"6ba299c; bun test test/e2e/multi-agent-baseline.test.ts (cwd rebrand): 1 pass, 0 fail","line":"Audited inbox, case routing and model boundary"}
+{"t":"T-02","e":"claim","by":"opencode@riefky","at":"2026-10-24T20:52:08.487Z","line":"Define fail-closed project routing policy"}
