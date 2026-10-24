@@ -42,6 +42,14 @@ What the overlay adds:
 Details, caveats and the full component list: [`REPACK.md`](REPACK.md). Security contact:
 `info@talentabangsa.com`.
 
+## Panduan Hyper AI
+
+- [Paparan fitur (PDF)](docs/Hyper-AI-Features.pdf): ringkasan kemampuan, batasan, dan contoh penggunaan.
+- [Panduan pengguna (PDF)](docs/Panduan-Pengguna-Hyper-AI.pdf): tutorial dari setup, project/session, prompting, knowledge, dokumen, Excel, template kasus, Hyper Case Secure, hingga koordinasi multi-agent.
+- [Sumber panduan pengguna (Markdown)](docs/Panduan-Pengguna-Hyper-AI.md): teks yang dapat diperbarui; PDF dibangun dari sumber ini dengan `docs/build_user_manual_pdf.py` menggunakan Python + ReportLab pada Windows.
+
+Untuk data sensitif, periksa model dan tool yang aktif sebelum memasukkan materi: pemrosesan file lokal atau redaksi kasus tidak otomatis mencegah prompt/konteks dikirim ke provider cloud.
+
 ## Install
 
 Download from the [latest release](https://github.com/panjihyem/opencode-repack/releases/latest):
