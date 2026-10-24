@@ -30,6 +30,8 @@ Out: menjadikan master default untuk seluruh pengguna sebelum pilot; menjamin PI
 6. **Fallback:** rule per kelas data dan kemampuan; kegagalan provider/timeout/rate limit dipetakan ke rute yang masih disetujui, dengan batas percobaan. Untuk status delivery ambigu, jangan kirim ulang payload sensitif diam-diam; stop dan lapor. Hindsight punya fallback terpisah: audit dan batasi/disable per kasus agar tidak mem-bypass aturan agen.
 7. **Release:** jalankan uji negatif dan positif dari UI/HTTP dengan data sintetis, uji overlay pada paket desktop, cek audit tidak mengandung isi sensitif; perbarui README/manual Markdown lalu render PDF dari sumber, verifikasi judul/teks. Rilis pilot opt-in dulu; perlu keputusan baru dan data uji sebelum default-on.
 
+**Gate implementasi wajib (temuan T-04):** `agent-policy.ts`, `agent-gate.ts`, dan `agent-fallback.ts` masih helper yang tidak dipanggil oleh runtime. Sebelum agen dapat diaktifkan, T-12 wajib memasang enforcement pada semua jalur model (`primary`, `compaction`, `title`, `generate`, HTTP/WebSocket), tool execution (termasuk shell/MCP/Code Mode), attachment dan child model switch, lalu membuktikan penolakan sebelum byte sensitif terkirim. Hook session model tanpa typed rejection dapat mematikan request sebagai defect, tetapi itu belum bukti tidak ada bypass; uji request nyata diperlukan. Bila hook/plugin V2 tidak mampu menutup jalur tersebut, batasi fitur ke data publik sampai ada perubahan core yang eksplisit; jangan mengklaim kasus asli aman. T-04, T-07, dan T-09 bergantung pada bukti T-12, bukan pada instruksi prompt.
+
 ## Decisions
 
 ### Asked
@@ -58,6 +60,7 @@ Out: menjadikan master default untuk seluruh pengguna sebelum pilot; menjamin PI
 
 ### T-04 Definisi agen spesialis dan bundle overlay
 - AC: AC-01, AC-02 | Files: rebrand/files/desktop/hyper/agents.ts, rebrand/files/desktop/hyper/bundle.ts, rebrand/test/e2e/agent-bundle.test.ts | Test: bun test test/e2e/agent-bundle.test.ts (cwd: rebrand)
+- Dependencies: T-12 (model/tool/attachment enforcement proven against live requests).
 
 ### T-05 Fallback terikat policy dan penanganan delivery ambigu
 - AC: AC-04 | Files: rebrand/files/desktop/hyper/agent-fallback.ts, rebrand/test/e2e/agent-fallback.test.ts | Test: bun test test/e2e/agent-fallback.test.ts (cwd: rebrand)
@@ -67,15 +70,23 @@ Out: menjadikan master default untuk seluruh pengguna sebelum pilot; menjamin PI
 
 ### T-07 Integrasi Case Secure, memory dan audit metadata
 - AC: AC-03, AC-04, AC-06 | Files: rebrand/files/desktop/hyper/case-ui.ts, rebrand/files/desktop/hyper/case/casemode.py, rebrand/files/desktop/hyper/agent-audit.ts, rebrand/test/e2e/agent-case.test.ts | Test: bun test test/e2e/agent-case.test.ts (cwd: rebrand)
+- Dependencies: T-04, T-12.
 
 ### T-08 Queue UX dan status job tanpa interupsi
 - AC: AC-05 | Files: rebrand/files/desktop/hyper/agent-queue.ts, rebrand/test/e2e/agent-queue.test.ts | Test: bun test test/e2e/agent-queue.test.ts (cwd: rebrand)
+- Dependencies: T-04, T-12. Revise Files to include actual UI/inbox integration before claim; helper-only test is insufficient.
 
 ### T-09 Alur pilot end-to-end dan pengukuran biaya/keamanan
 - AC: AC-01, AC-02, AC-03, AC-04, AC-05, AC-06 | Files: rebrand/test/e2e/multi-agent-pilot.test.ts, docs/multi-agent/pilot-results.md | Test: bun test test/e2e/multi-agent-pilot.test.ts (cwd: rebrand)
+- Dependencies: T-04, T-07, T-08, T-12. Send synthetic payload to controlled fake provider; assert exact model, denial, and absence of forbidden bytes.
 
 ### T-10 Panduan pengguna, batas fitur dan PDF
 - AC: AC-07 | Files: README.md, docs/Panduan-Pengguna-Hyper-AI.md, docs/Panduan-Pengguna-Hyper-AI.pdf, docs/multi-agent/panduan.md | Test: python docs/build_user_manual_pdf.py
+- Dependencies: T-09. Document only verified pilot behavior.
 
 ### T-11 Verify and close 0001
 - AC: AC-01, AC-02, AC-03, AC-04, AC-05, AC-06, AC-07 | Files: docs/multi-agent/release-checklist.md | Test: specweave verify 0001-multi-agent-orchestration-with-data-safe-routing
+- Dependencies: T-04, T-07, T-08, T-09, T-10, T-12; fresh-context review required.
+
+### T-12 Enforce routing on actual model and tool transport
+- AC: AC-03, AC-04 | Files: rebrand/files/desktop/hyper/agent-guard.ts, rebrand/test/e2e/agent-guard.test.ts, docs/multi-agent/guard-evidence.md | Test: bun test test/e2e/agent-guard.test.ts (cwd: rebrand)
