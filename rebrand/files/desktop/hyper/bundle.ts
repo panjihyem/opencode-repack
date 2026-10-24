@@ -78,7 +78,6 @@ export async function startHyperBundle() {
     await openCaseWindow(parent)
     return { opened: true }
   })
-  ipcMain.removeHandler("hyper:case:open")
   // Consent is checked in the main process, not only by the wizard button: a
   // closed window must not start downloads or local services.
   const docs = await docsNow()
