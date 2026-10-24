@@ -38,13 +38,27 @@ const check = (name, ok, detail = "") => {
     },
   })
   const page = await app.firstWindow()
-  await page.setViewportSize({ width: 680, height: 560 }).catch(() => undefined)
-  await page.waitForSelector("#step-welcome")
+  await page.setViewportSize({ width: 760, height: 680 }).catch(() => undefined)
   const snap = (name) => page.screenshot({ path: path.join(shots, `${name}.png`) })
+  await page.waitForSelector("#step-intro")
 
-  // Step 1: welcome
-  check("welcome step is shown", (await page.textContent("#title")).includes("Hyper AI"))
-  await snap("1-welcome")
+  // Step 0: intro + offline documents + explicit consent.
+  check("intro is shown first", (await page.textContent("#title")).includes("Hyper AI"))
+  check("next is disabled before consent", await page.isDisabled("#next"))
+  check("five advantages are shown", (await page.$$("#step-intro .advantages li")).length === 5)
+  await page.click('[data-doc="terms"]')
+  await page.waitForSelector("#docdialog[open]")
+  check("terms open offline", (await page.textContent("#doctext")).includes("info@talentabangsa.com"))
+  await page.click("#docclose")
+  await page.check("#consent")
+  check("next enabled after consent", await page.isEnabled("#next"))
+  await snap("0-intro")
+  await page.click("#next")
+
+  // Step 1: options
+  await page.waitForSelector("#step-welcome")
+  check("unattended is off by default", !(await page.isChecked("#unattended")))
+  await snap("1-options")
   await page.click("#next")
 
   // Step 2: component choice
@@ -95,6 +109,8 @@ const check = (name, ok, detail = "") => {
   await new Promise((resolve) => setTimeout(resolve, 3000))
   const state = path.join(work, "userdata", "hyper-bundle", "state.json")
   check("wizard remembered completion", fs.existsSync(state) && JSON.parse(fs.readFileSync(state, "utf8")).wizard === "completed")
+  const saved = JSON.parse(fs.readFileSync(state, "utf8"))
+  check("consent stored with document hashes", Boolean(saved.consent?.version && saved.consent?.terms && saved.consent?.privacy && saved.consent?.at))
   const config2 = JSON.parse(fs.readFileSync(path.join(home, ".config", "opencode", "opencode.json"), "utf8"))
   if (components.includes("hindsight")) check("memory MCP registered after install", config2.mcp?.servers?.mem?.url?.includes(":8888/mcp"))
 

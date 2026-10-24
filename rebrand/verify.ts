@@ -79,6 +79,9 @@ if (desktopDist) {
     "office/lib/case/pseudonym.py",
     "office/lib/case/casemode.py",
     "docs/SECURITY-QUICKSTART.md",
+    "wizard/TERMS.md",
+    "wizard/PRIVACY.md",
+    "wizard/LICENSES.md",
   ]
   for (const file of expected) {
     const exists = files.some((entry) => path.join(desktopDist, entry) === path.join(bundle, file))
