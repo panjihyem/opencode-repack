@@ -1,13 +1,13 @@
-# Ketentuan Penggunaan Hyper AI
+﻿# Ketentuan Penggunaan Hyper AI
 
-Versi: 2026-10-24 · Berlaku untuk aplikasi Hyper AI dan paket setup-nya.
+Versi: 2026-10-24 Â· Berlaku untuk aplikasi Hyper AI dan paket setup-nya.
 
 ## 1. Tentang layanan
 
 Hyper AI adalah aplikasi desktop untuk membantu pekerjaan analisa, ekstraksi
 dokumen, pembuatan dokumen, dan pengelolaan konteks. Hyper AI dibangun dari
 perangkat lunak OpenCode (lisensi MIT) dan komponen pihak ketiga lain; aplikasi
-ini dikelola oleh **Talentabangsa** ("kami").
+ini dikelola oleh **Bikinin AI** ("kami").
 
 Dengan menekan tombol persetujuan pada penyiapan, Anda menyatakan telah membaca
 dan menyetujui Ketentuan Penggunaan ini dan Kebijakan Privasi Hyper AI.
@@ -74,5 +74,5 @@ Situs: **talentabangsa.com**.
 ---
 
 Hyper AI menyertakan perangkat lunak OpenCode:
-Copyright (c) 2025 opencode — lisensi MIT. Teks lisensi lengkap ada pada
+Copyright (c) 2025 opencode â€” lisensi MIT. Teks lisensi lengkap ada pada
 Pemberitahuan Lisensi Pihak Ketiga di aplikasi.

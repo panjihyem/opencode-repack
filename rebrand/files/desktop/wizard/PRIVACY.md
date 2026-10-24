@@ -1,9 +1,9 @@
-# Kebijakan Privasi Hyper AI
+﻿# Kebijakan Privasi Hyper AI
 
-Versi: 2026-10-24 · Berlaku untuk aplikasi Hyper AI dan paket setup-nya.
+Versi: 2026-10-24 Â· Berlaku untuk aplikasi Hyper AI dan paket setup-nya.
 
 Kebijakan ini menjelaskan data apa yang diproses Hyper AI, di mana, dan untuk
-apa. Hyper AI dikelola oleh **Talentabangsa**. Kontak: **info@talentabangsa.com**.
+apa. Hyper AI dikelola oleh **Bikinin AI**. Kontak: **info@talentabangsa.com**.
 
 ## 1. Peran Anda
 
@@ -108,4 +108,4 @@ material meminta persetujuan ulang. Versi lama dapat disediakan atas permintaan.
 
 ## 11. Kontak
 
-**Talentabangsa** — info@talentabangsa.com — talentabangsa.com.
+**Bikinin AI** â€” info@talentabangsa.com â€” talentabangsa.com.

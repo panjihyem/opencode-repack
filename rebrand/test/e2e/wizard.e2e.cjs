@@ -115,6 +115,32 @@ const check = (name, ok, detail = "") => {
   if (components.includes("hindsight")) check("memory MCP registered after install", config2.mcp?.servers?.mem?.url?.includes(":8888/mcp"))
 
   await app.close().catch(() => undefined)
+
+  // Declining at the intro must not record consent or start setup.
+  const home2 = path.join(work, "home-decline")
+  fs.mkdirSync(home2, { recursive: true })
+  const app2 = await _electron.launch({
+    executablePath: electronBinary,
+    args: ["--no-sandbox", path.join(__dirname, "harness-main.cjs"), "--hyper-setup"],
+    env: {
+      ...process.env,
+      HOME: home2,
+      XDG_CONFIG_HOME: path.join(home2, ".config"),
+      E2E_USERDATA: path.join(work, "userdata-decline"),
+      E2E_BUNDLE: path.join(work, "bundle.cjs"),
+      HYPER_AI_BUNDLE_ROOT: path.join(work, "hyper-bundle"),
+    },
+  })
+  const page2 = await app2.firstWindow()
+  await page2.waitForSelector("#step-intro")
+  await page2.click("#skip", { noWaitAfter: true })
+  await new Promise((resolve) => setTimeout(resolve, 2500))
+  const declineState = path.join(work, "userdata-decline", "hyper-bundle", "state.json")
+  const declined = fs.existsSync(declineState) ? JSON.parse(fs.readFileSync(declineState, "utf8")) : {}
+  check("decline records no consent", !declined.consent)
+  check("decline starts no setup", !fs.existsSync(path.join(home2, ".config", "opencode", "opencode.json")))
+  await app2.close().catch(() => undefined)
+
   const failed = checks.filter((c) => !c.ok)
   console.log(`\n${checks.length - failed.length}/${checks.length} checks passed`)
   process.exit(failed.length ? 1 : 0)

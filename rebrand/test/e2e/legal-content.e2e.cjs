@@ -69,6 +69,16 @@ const verify = fs.readFileSync(path.join(__dirname, "..", "..", "verify.ts"), "u
 check("wizard beserta dokumen dikemas", /files\/desktop\/wizard/.test(prepare))
 check("quickstart dikemas", /SECURITY-QUICKSTART\.md/.test(prepare))
 check("verify memeriksa dokumen di paket", /wizard\/TERMS\.md/.test(verify) && /wizard\/LICENSES\.md/.test(verify))
+const brand = fs.readFileSync(path.join(__dirname, "..", "..", "brand.ts"), "utf8")
+const support = brand.match(/supportEmail:\s*"([^"]+)"/)?.[1] ?? ""
+const vendor = brand.match(/vendor:\s*"([^"]+)"/)?.[1] ?? ""
+check("kontak berasal dari brand.ts", Boolean(support) && terms.includes(support) && privacy.includes(support))
+check("operator sesuai brand.ts", Boolean(vendor) && terms.includes(vendor) && privacy.includes(vendor))
+const apache = fs.readFileSync(path.join(wizard, "APACHE-2.0.txt"), "utf8")
+const bsd = fs.readFileSync(path.join(wizard, "BSD-3-CLAUSE.txt"), "utf8")
+check("teks Apache-2.0 disertakan", /Apache License/.test(apache) && /Version 2\.0/.test(apache))
+check("teks BSD-3-Clause disertakan", /Redistribution and use in source and binary forms/.test(bsd))
+check("Licenses merujuk berkas lisensi", /APACHE-2\.0\.txt/.test(licenses) && /BSD-3-CLAUSE\.txt/.test(licenses))
 const failed = checks.filter((c) => !c.ok)
 console.log(`\n${checks.length - failed.length}/${checks.length} checks passed`)
 process.exit(failed.length ? 1 : 0)

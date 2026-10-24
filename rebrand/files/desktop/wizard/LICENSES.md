@@ -1,4 +1,4 @@
-# Pemberitahuan Lisensi Pihak Ketiga
+﻿# Pemberitahuan Lisensi Pihak Ketiga
 
 Versi: 2026-10-24.
 
@@ -46,7 +46,10 @@ SOFTWARE.
 
 Teks lengkap lisensi komponen yang diunduh tersedia pada direktori paket di
 komputer Anda (misalnya `site-packages/*.dist-info/LICENSE*`) dan pada repositori
-penerbitnya. Bila Anda mendistribusikan ulang aplikasi ini, sertakan lisensi yang
-diwajibkan masing-masing komponen.
+penerbitnya. Untuk komponen yang didistribusikan bersama aplikasi ini, teks
+Apache-2.0 dan BSD-3-Clause disertakan sebagai berkas terpisah di direktori yang
+sama (`APACHE-2.0.txt`, `BSD-3-CLAUSE.txt`); lisensi MIT OpenCode ada di atas.
+Bila Anda mendistribusikan ulang aplikasi ini, sertakan lisensi yang diwajibkan
+masing-masing komponen.
 
 Pertanyaan lisensi: **info@talentabangsa.com**.

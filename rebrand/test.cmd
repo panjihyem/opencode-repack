@@ -1,5 +1,4 @@
 @echo off
-rem Runs the overlay unit tests from the rebrand directory (bun test must not
-rem run from the repository root; bunfig rebrand/test root would break).
+rem Runs every overlay test that does not need Playwright/network.
 cd /d "%~dp0"
-bun test
+bun scripts/run-tests.ts

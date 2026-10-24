@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Notification } from "electron"
+﻿import { app, BrowserWindow, ipcMain, Notification } from "electron"
 import { chmod, mkdir, readFile, readlink, stat, symlink, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
@@ -50,7 +50,9 @@ export async function startHyperBundle() {
   // Consent is checked in the main process, not only by the wizard button: a
   // closed window must not start downloads or local services.
   const docs = await docsNow()
+  let opened = false
   if (!consentValid((await readState()).consent, docs)) {
+    opened = true
     await openWizard(false)
     if (!consentValid((await readState()).consent, await docsNow())) {
       await log("consent", "setup needs accepted terms before services start")
@@ -66,7 +68,14 @@ export async function startHyperBundle() {
   const recovery = process.argv.includes("--hyper-setup")
   // First launch shows the intro/consent and component choices; nothing is
   // downloaded until the user accepts and confirms. --hyper-setup reopens it.
-  if (!state.wizard || recovery) await openWizard(!recovery)
+  if ((!state.wizard || recovery) && !opened) await openWizard(!recovery)
+
+  // Closing the wizard before it completes must not start the managed
+  // services; the app still opens, and the next launch asks again.
+  if ((await readState()).wizard !== "completed") {
+    await log("setup", "wizard not completed; managed services stay off")
+    return
+  }
 
   // Services run on every launch once installed, not only right after setup.
   await startServices(children)
@@ -75,12 +84,12 @@ export async function startHyperBundle() {
 async function startServices(children: ChildProcess[]) {
   await applyDocSkill(configDir(), dataDir()).catch((error) => log("docs", error))
   await applyOfficeSkills(configDir(), dataDir()).catch((error) => log("skills", error))
-  // Unattended mode (chosen in the wizard, default on): the agent acts without
+  // Unattended mode (chosen in the wizard, default off): the agent acts without
   // approval prompts. Turning it off removes the standing grant; the user's own
   // permission rules always outrank anything written here.
   const state = await readState()
   const privacy = await caseMode(configDir())
-  await applyUnattended(configDir(), state.unattended !== false).catch((error) => log("permission", error))
+  await applyUnattended(configDir(), state.unattended === true).catch((error) => log("permission", error))
   // Persistent memory plugin (managed): retains prompts and injects recall.
   // In case mode it is written as a no-op: automatic retain/recall is the path
   // that would carry case text off the machine, so it is removed, not filtered.
@@ -125,7 +134,7 @@ function openWizard(auto: boolean) {
       width: 760,
       height: 680,
       resizable: true,
-      title: "Hyper AI — Penyiapan",
+      title: "Hyper AI â€” Penyiapan",
       autoHideMenuBar: true,
       webPreferences: {
         preload: path.join(bundleRoot(), "wizard", "preload.cjs"),
@@ -163,7 +172,8 @@ function openWizard(auto: boolean) {
         privacy: docs.privacy.hash,
         at: new Date().toISOString(),
       }
-      await writeState({ ...(await readState()), consent })
+      const state = await readState()
+      await writeState({ ...state, consent, unattended: state.unattended === true })
       return { ok: true, version: consent.version }
     })
     ipcMain.handle("hyper:plan", () =>
@@ -260,7 +270,7 @@ async function registerSearch() {
   }).catch((error) => log("search", error))
 }
 
-/** Job file: { charts: [{ id, spec, width, height, format? }] } — specs are ECharts options (Sankey, graph, treemap, heatmap…). */
+/** Job file: { charts: [{ id, spec, width, height, format? }] } â€” specs are ECharts options (Sankey, graph, treemap, heatmapâ€¦). */
 export async function runHyperViz(jobFile: string) {
   const exit = (code: number, message: string) => {
     process.stdout.write(`hyper-viz: ${message}\n`)
@@ -324,7 +334,7 @@ async function ensureHyperCli() {
   if (current === launcher) return
   await stat(path.join(os.homedir(), ".local", "bin")).then(
     () => symlink(launcher, link).catch(() => undefined),
-    () => log("cli", "~/.local/bin tidak ada — jalankan CLI lewat path lengkap aplikasi"),
+    () => log("cli", "~/.local/bin tidak ada â€” jalankan CLI lewat path lengkap aplikasi"),
   )
 }
 

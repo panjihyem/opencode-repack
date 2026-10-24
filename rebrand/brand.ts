@@ -10,6 +10,8 @@ export const brand = {
   scheme: "hyper-ai",
   vendor: "Bikinin AI",
   maintainerEmail: "noreply@bikinin.ai.id",
+  // Support/legal contact shown in the setup documents (user-provided).
+  supportEmail: "info@talentabangsa.com",
   repo: { owner: "panjihyem", name: "opencode-repack" },
   homepage: "https://github.com/panjihyem/opencode-repack",
   summary: "AI coding agent, repacked from OpenCode",

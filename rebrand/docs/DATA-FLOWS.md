@@ -1,4 +1,4 @@
-# Hyper AI — inventaris aliran data
+﻿# Hyper AI â€” inventaris aliran data
 
 Dokumen internal untuk menopang Ketentuan Penggunaan dan Kebijakan Privasi.
 Diperiksa dari overlay `rebrand/` pada 2026-10-24. Bila kode berubah, perbarui
@@ -8,8 +8,8 @@ dokumen ini dan naskah wizard.
 |---|---|---|---|---|
 | Model agent (cloud) | prompt, lampiran, kutipan berkas, keluaran tool | router `https://rai.talentabangsa.com/v1`, lalu penyedia model | setiap permintaan model non-lokal | `config/opencode.json`, provider `cx`/`ocg` |
 | Model lokal (cadangan) | prompt/konteks | LM Studio di komputer | bila dipilih atau router tidak tersedia | `lmstudio.ts`, `manifest.models` |
-| Memori Hindsight — simpan | fakta/percakapan | `http://127.0.0.1:8888` (lokal) | plugin memori aktif | `manifest.hindsight`, `memory.ts` |
-| Memori Hindsight — ekstraksi/konsolidasi | potongan percakapan | model remote lewat router (`ocg/minimax-m3.1-flash-free`, `cx/gpt-6-luna`, `ocg/mimo-v2.6-flash`) | saat memori memproses fakta | `manifest.hindsight.llm` |
+| Memori Hindsight â€” simpan | fakta/percakapan | `http://127.0.0.1:8888` (lokal) | plugin memori aktif | `manifest.hindsight`, `memory.ts` |
+| Memori Hindsight â€” ekstraksi/konsolidasi | potongan percakapan | model remote lewat router (`ocg/minimax-m3.1-flash-free`, `cx/gpt-6-luna`, `ocg/mimo-v2.6-flash`) | saat memori memproses fakta | `manifest.hindsight.llm` |
 | Plugin memori otomatis | prompt pengguna | Hindsight lokal | mode non-kasus | `memory.ts` |
 | Pencarian web (`hyper-search`) | kueri | DuckDuckGo, Bing, Wikipedia | tool dipanggil; dimatikan mode kasus | `files/desktop/search/mcp.mjs` |
 | Context7 | kueri dokumentasi | layanan Context7 | tool dipanggil; dimatikan mode kasus | `bundle.ts` (`registerContext7`), `skills.ts` |

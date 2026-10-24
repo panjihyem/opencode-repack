@@ -106,6 +106,10 @@ jobs:
       - name: Rebrand
         run: bun .repack/rebrand/apply.ts .
 
+      # Unit + offline e2e: case mode, redaction, consent gate, legal docs.
+      - name: Test overlay
+        run: bun .repack/rebrand/scripts/run-tests.ts
+
       - name: Build CLI (all targets)
         id: build
         run: |
