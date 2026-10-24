@@ -1,4 +1,4 @@
-﻿import { app, BrowserWindow, ipcMain, Notification } from "electron"
+﻿import { app, BrowserWindow, dialog, ipcMain, Notification, shell } from "electron"
 import { chmod, mkdir, readFile, readlink, stat, symlink, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
@@ -15,6 +15,8 @@ import { manifest } from "./manifest"
 import { caseMode } from "./privacy"
 import { resolveRouter } from "./router"
 import { applyOfficeSkills } from "./skills"
+import { caseModule, officePython } from "./office"
+import { registerCaseUi, showCaseWindow } from "./case-ui"
 import { startHyperUpdates } from "./updates"
 
 // Makes a fresh Hyper AI install usable without manual setup:
@@ -41,12 +43,42 @@ const bundleRoot = () => process.env.HYPER_AI_BUNDLE_ROOT ?? path.join(process.r
 const wizardDir = () => path.join(bundleRoot(), "wizard")
 const stateFile = () => path.join(dataDir(), "state.json")
 const docsNow = () => readDocs(wizardDir())
+let caseUiDispose: (() => void) | undefined
 
 export async function startHyperBundle() {
   if (!app.isPackaged && !process.env.HYPER_AI_BUNDLE_ROOT) return
   const children: ChildProcess[] = []
   app.once("will-quit", () => children.forEach((child) => child.kill()))
-
+  const home = path.join(app.getPath("userData"), "hyper-bundle")
+  caseUiDispose?.()
+  caseUiDispose = registerCaseUi({
+    ipcMain,
+    BrowserWindow,
+    dialog,
+    shell,
+    app,
+    cli: caseModule(home),
+    python: officePython(home),
+    log,
+    setCaseMode: async (enabled) => {
+      const file = path.join(configDir(), "hyper", "privacy.json")
+      const text = await readFile(file, "utf8").catch(() => "{}")
+      const state = JSON.parse(text)
+      await mkdir(path.dirname(file), { recursive: true })
+      await writeFile(file, JSON.stringify({ ...state, case_mode: enabled }, null, 2))
+    },
+    onClose: (sender) => {
+      const win = BrowserWindow.fromWebContents(sender)
+      if (win && !win.isDestroyed()) win.close()
+    },
+  })
+  ipcMain.removeHandler("hyper:case:open")
+  ipcMain.handle("hyper:case:open", async (event) => {
+    const parent = BrowserWindow.fromWebContents(event.sender) ?? undefined
+    await openCaseWindow(parent)
+    return { opened: true }
+  })
+  ipcMain.removeHandler("hyper:case:open")
   // Consent is checked in the main process, not only by the wizard button: a
   // closed window must not start downloads or local services.
   const docs = await docsNow()
@@ -126,6 +158,17 @@ async function startServices(children: ChildProcess[]) {
       await startLmServer(logDir())
     }
   }
+}
+
+let caseWindow: BrowserWindow | undefined
+async function openCaseWindow(parent?: InstanceType<typeof BrowserWindow>) {
+  if (caseWindow && !caseWindow.isDestroyed()) {
+    caseWindow.show()
+    caseWindow.focus()
+    return
+  }
+  caseWindow = await showCaseWindow({ BrowserWindow, bundleRoot: bundleRoot(), parent })
+  caseWindow.once("closed", () => { caseWindow = undefined })
 }
 
 function openWizard(auto: boolean) {

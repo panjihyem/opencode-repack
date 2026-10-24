@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:" />
+    <title>Hyper AI — Kasus Sensitif</title>
+    <style>
+      :root { --bg:#fff; --panel:#f4f6f9; --text:#17202e; --muted:#5b6676; --line:#dde2ea; --accent:#455c7b; --accentText:#fff; --warn:#7a4b00; --warnBg:#fff6e5; --ok:#1f7a4d; --err:#b3261e; }
+      @media(prefers-color-scheme:dark){:root{--bg:#11161f;--panel:#1a212d;--text:#e8edf5;--muted:#9aa6b8;--line:#2b3444;--accent:#8fa8cc;--accentText:#11161f;--warn:#ffcc80;--warnBg:#3a2c12;--ok:#5fcf9a;--err:#ff8a80}}
+      *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,"Segoe UI",sans-serif}
+      main{display:grid;grid-template-rows:auto 1fr auto;gap:16px;height:100vh;padding:22px 24px}
+      h1{font-size:21px;margin:0} header p{margin:4px 0;color:var(--muted)} section{overflow:auto}.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:10px}
+      .warn{background:var(--warnBg);border-color:var(--warn)} .warn strong{color:var(--warn)} .muted{color:var(--muted);font-size:12.5px}
+      label{display:block;font-weight:600;margin:10px 0 5px} select,button{font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 12px}
+      select{width:100%} button{cursor:pointer}button.primary{background:var(--accent);color:var(--accentText);border-color:var(--accent);font-weight:650}button:disabled{opacity:.5;cursor:default}
+      footer{display:flex;justify-content:space-between;align-items:center;gap:10px}.actions{display:flex;gap:8px}.status{font-weight:650}.status.on{color:var(--ok)}.status.off{color:var(--muted)}#result[hidden],#warning[hidden]{display:none}
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Mulai Kasus Sensitif</h1>
+        <p>Hyper AI akan membuat salinan kerja bertoken. Berkas asli tidak diubah.</p>
+      </header>
+      <section>
+        <div class="card"><span id="mode" class="status off">Memeriksa status…</span><div id="mode-detail" class="muted">Mode membatasi pencarian web dan mematikan memori otomatis.</div></div>
+        <div class="card warn">
+          <strong>Penting: model AI tetap memakai cloud.</strong>
+          <div class="muted">Kirim hanya file <b>parameter.redacted.json</b> untuk analisa. Jangan kirim file asli atau <b>tokens.json</b>. Mode ini tidak membatasi terminal/shell: perintah terminal masih dapat mengakses internet. Pemeriksaan pola bukan jaminan semua identitas terhapus.</div>
+        </div>
+        <div class="card">
+          <label for="kind">1. Jenis kasus</label><select id="kind"><option value="">Memuat jenis kasus…</option></select>
+          <label>2. Parameter kasus (.json)</label><div class="actions"><button id="pick-source">Pilih file…</button><span class="muted" id="source-label">Belum dipilih</span></div>
+          <label>3. Folder hasil (kosong)</label><div class="actions"><button id="pick-output">Pilih folder…</button><span class="muted" id="output-label">Belum dipilih</span></div>
+          <p class="muted">Folder hasil berisi sheet redaksi dan token map lokal. Token map dipakai untuk memulihkan identitas saat membuat dokumen akhir.</p>
+        </div>
+        <div id="result" class="card" hidden></div>
+        <div id="warning" class="card warn" hidden>Gunakan hanya salinan redaksi. Jika memilih lanjut, Hyper AI tidak mengirim file otomatis; Anda tetap memilih sendiri apa yang dimasukkan ke analisa.</div>
+        <p id="message" class="muted" role="status" aria-live="polite"></p>
+      </section>
+      <footer>
+        <button id="end-mode" hidden>Akhiri mode kasus</button>
+        <div class="actions"><button id="close">Tutup</button><button id="prepare" class="primary">Aktifkan &amp; buat salinan redaksi</button><button id="continue" class="primary" hidden>Lanjut ke analisa</button></div>
+      </footer>
+    </main>
+    <script>
+      const api = window.hyperCase
+      const $ = (id) => document.getElementById(id)
+      let source = "", output = "", result = null
+      const say = (text) => { $("message").textContent = text }
+      const status = async () => {
+        const s = await api.status()
+        $("mode").textContent = s.caseMode ? "Mode Kasus Secure aktif" : "Mode Kasus Secure belum aktif"
+        $("mode").className = "status " + (s.caseMode ? "on" : "off")
+        $("end-mode").hidden = !s.caseMode
+        if (s.caseMode) {
+          $("prepare").textContent = "Buat salinan redaksi"
+          $("mode-detail").textContent = "Mode membatasi pencarian web dan mematikan memori otomatis. Model tetap cloud; gunakan file redaksi saja."
+        }
+        return s
+      }
+      api.list().then((cases) => {
+        const select = $("kind"); select.innerHTML = ""
+        if (!cases.length) { select.add(new Option("Belum ada jenis kasus", "")); $("prepare").disabled = true; say("Minta administrator menambahkan paket jenis kasus sebelum memakai alur ini."); return }
+        select.add(new Option("Pilih jenis kasus…", ""))
+        for (const c of cases) select.add(new Option(c.title || c.id, c.id))
+      }).catch(() => { say("Daftar kasus tidak tersedia. Periksa apakah Paket Office sudah terpasang."); $("prepare").disabled = true })
+      status().catch(() => say("Status keamanan tidak dapat diperiksa. Tutup alur ini dan hubungi dukungan."))
+      $("pick-source").onclick = async () => { source = await api.pickParameter() || ""; $("source-label").textContent = source ? source.split(/[\\/]/).pop() : "Belum dipilih" }
+      $("pick-output").onclick = async () => { output = await api.pickOutput() || ""; $("output-label").textContent = output || "Belum dipilih" }
+      $("prepare").onclick = async () => {
+        const kind = $("kind").value
+        if (!kind || !source || !output) return say("Pilih jenis kasus, file parameter, dan folder hasil.")
+        $("prepare").disabled = true; say("Memeriksa parameter dan membuat salinan redaksi di komputer…")
+        try {
+          result = await api.prepare({ kind, file: source, output })
+          if (!result.ok) return say("Parameter belum lengkap. Periksa: " + [...result.validation.missing, ...result.validation.wrongType].join(", "))
+          $("result").hidden = false
+          $("result").textContent = "Salinan redaksi dibuat di: " + result.output + " — token map tidak ditampilkan."
+          $("warning").hidden = false; $("continue").hidden = false; $("prepare").hidden = true
+          await status(); say("Periksa hasil sebelum melanjutkan. Berkas asli tidak berubah.")
+        } catch { say("Redaksi gagal. Tidak ada file mentah yang dikirim. Periksa file dan ruang disk, lalu coba lagi."); $("prepare").disabled = false }
+      }
+      $("continue").onclick = async () => {
+        if (!result?.ok) return
+        await api.openOutput(result.output)
+        say("Folder hasil dibuka. Mulai analisa sendiri dengan parameter.redacted.json saja.")
+        $("continue").disabled = true
+      }
+      $("end-mode").onclick = async () => {
+        try { const r = await api.deactivate(); if (r.cancelled) return; await status(); say("Mode dimatikan. Berkas kasus tidak dihapus.") }
+        catch { say("Mode gagal dimatikan. Hubungi dukungan sebelum meneruskan pekerjaan sensitif.") }
+      }
+      $("close").onclick = () => api.close()
+    </script>
+  </body>
+</html>

@@ -54,6 +54,9 @@ def _load(path: str | None) -> dict:
 
 def _cmd_list(_args) -> int:
     cases = list_cases()
+    if getattr(_args, "json", False):
+        print(json.dumps({"cases": cases}, ensure_ascii=False))
+        return 0
     if not cases:
         print("Belum ada jenis kasus. Buat folder di ~/Hyper-Knowledge/cases/<jenis>/")
         return 0
@@ -88,6 +91,9 @@ def _cmd_new(args) -> int:
 def _cmd_validate(args) -> int:
     data = _load(args.data)
     report = validate(args.jenis, data)
+    if getattr(args, "json", False):
+        print(json.dumps(report, ensure_ascii=False))
+        return 0
     print(f"Jenis kasus : {report['jenis']}")
     print(f"Status      : {'VALID' if report['valid'] else 'BELUM LENGKAP'}")
     if report["field_wajib_kosong"]:
@@ -162,9 +168,16 @@ def _cmd_redact(args) -> int:
     outdir.mkdir(parents=True, exist_ok=True)
 
     redacted.write_text(json.dumps(redact_sheet(data, mapping), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    write_tokens(tokens, mapping, data)
-
     leaks = screen(redacted.read_text(encoding="utf-8"), mapping)
+    if getattr(args, "json", False):
+        if leaks["blocked"]:
+            redacted.unlink(missing_ok=True)
+            print(json.dumps({"ok": False, "findings": leaks["findings"]}, ensure_ascii=False))
+            return 1
+        write_tokens(tokens, mapping, data)
+        print(json.dumps({"ok": not leaks["blocked"], "redacted": str(redacted), "tokens": str(tokens), "count": len(mapping), "findings": leaks["findings"]}, ensure_ascii=False))
+        return 0
+    write_tokens(tokens, mapping, data)
     print(f"sheet redaksi : {redacted}")
     print(f"peta token    : {tokens} (0600, jangan dikirim ke mana pun)")
     print(f"nilai diganti : {len(mapping)}")
@@ -211,6 +224,9 @@ def _cmd_restore(args) -> int:
 def _cmd_mode(args) -> int:
     if args.aksi == "status":
         state = casemode.status()
+        if getattr(args, "json", False):
+            print(json.dumps(state, ensure_ascii=False))
+            return 0
         print(f"mode kasus : {'AKTIF' if state['case_mode'] else 'nonaktif'}")
         if state["case_mode"]:
             print(f"sejak      : {state['enabled_at']}")
@@ -219,6 +235,9 @@ def _cmd_mode(args) -> int:
             print("             pakai hyper-case redact sebelum mengirim data kasus")
         return 0
     result = casemode.enable() if args.aksi == "on" else casemode.disable()
+    if getattr(args, "json", False):
+        print(json.dumps(result, ensure_ascii=False))
+        return 0
     print(f"mode kasus : {'AKTIF' if result['case_mode'] else 'nonaktif'}")
     if result["changed"]:
         print(f"perubahan  : {', '.join(result['changed'])}")
@@ -237,7 +256,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="hyper-case", description="Kasus berulang Hyper AI")
     sub = parser.add_subparsers(dest="perintah", required=True)
 
-    sub.add_parser("list", help="daftar jenis kasus").set_defaults(func=_cmd_list)
+    p_list = sub.add_parser("list", help="daftar jenis kasus")
+    p_list.add_argument("--json", action="store_true")
+    p_list.set_defaults(func=_cmd_list)
 
     p_new = sub.add_parser("new", help="buat parameter sheet")
     p_new.add_argument("jenis")
@@ -248,6 +269,7 @@ def main(argv: list[str] | None = None) -> int:
     p_val = sub.add_parser("validate", help="periksa kelengkapan")
     p_val.add_argument("jenis")
     p_val.add_argument("--data")
+    p_val.add_argument("--json", action="store_true")
     p_val.set_defaults(func=_cmd_validate)
 
     p_ren = sub.add_parser("render", help="hasilkan dokumen")
@@ -270,6 +292,7 @@ def main(argv: list[str] | None = None) -> int:
     p_red.add_argument("jenis")
     p_red.add_argument("--data", required=True)
     p_red.add_argument("--out", help="folder hasil (default: folder parameter sheet)")
+    p_red.add_argument("--json", action="store_true")
     p_red.set_defaults(func=_cmd_redact)
 
     p_scr = sub.add_parser("screen", help="periksa teks sebelum dikirim")
@@ -285,6 +308,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p_mode = sub.add_parser("mode", help="saklar mode kasus")
     p_mode.add_argument("aksi", choices=["on", "off", "status"])
+    p_mode.add_argument("--json", action="store_true")
     p_mode.set_defaults(func=_cmd_mode)
 
     p_pa = sub.add_parser("path", help="lokasi folder jenis kasus")

@@ -38,6 +38,56 @@ type Rule = {
 }
 
 const rules: Rule[] = [
+  {
+    file: "packages/desktop/src/preload/index.ts",
+    find: "  getPathForFile: (file: File) => webUtils.getPathForFile(file),",
+    replace: '  getPathForFile: (file: File) => webUtils.getPathForFile(file),\n  caseSecure: () => ipcRenderer.invoke("hyper:case:open"),',
+    critical: true,
+  },
+  {
+    file: "packages/desktop/src/renderer/api.ts",
+    find: "  getPathForFile: (file) => window.electron.getPathForFile(file),",
+    replace: '  getPathForFile: (file) => window.electron.getPathForFile(file),\n  caseSecure: () => window.electron.caseSecure(),',
+    critical: true,
+  },
+  {
+    file: "packages/desktop/src/renderer/api-types.ts",
+    find: "  getPathForFile(file: File): string",
+    replace: '  getPathForFile(file: File): string\n  caseSecure(): void',
+    critical: true,
+  },
+  {
+    file: "packages/gui-extensions/src/sdk/host-apis.ts",
+    find: "export interface Desktop {\n  /** The operating system. */",
+    replace: "export interface Desktop {\n  /** Opens the local Hyper Case Secure assistant. */\n  caseSecure(): void\n  /** The operating system. */",
+    critical: true,
+  },
+  {
+    file: "packages/desktop/src/renderer/platform/index.ts",
+    find: "    runDesktopMenuAction: createDesktopMenuAction(api),",
+    replace: "    runDesktopMenuAction: createDesktopMenuAction(api),\n    desktop: { caseSecure: () => api.caseSecure() },",
+    critical: true,
+  },
+  {
+    file: "packages/gui-extensions/src/updater/renderer.tsx",
+    find: 'import { updaterAction } from "./action"',
+    replace: 'import { updaterAction } from "./action"\nimport { TitlebarItem } from "@opencode/gui-extensions/sdk"',
+    critical: true,
+  },
+  {
+    file: "packages/gui-extensions/src/updater/renderer.tsx",
+    find: "  whatsNew(ctx)",
+    replace: `  whatsNew(ctx)
+  ctx.add(TitlebarItem, {
+    id: "hyper-case-secure",
+    placement: "titlebar",
+    label: "Kasus Secure",
+    title: "Mulai Kasus Sensitif",
+    icon: "shield",
+    run: () => ctx.desktop && ctx.desktop.caseSecure(),
+  })`,
+    critical: true,
+  },
   // ---- TUI: terminal title / dialogs -------------------------------------
   {
     file: "packages/tui/src/attention.ts",
@@ -847,7 +897,7 @@ const writes: Write[] = [
   // First-run provisioning for the desktop app (see rebrand/files/desktop/hyper).
   // Every module that hyper/*.ts imports relatively must be listed here or the
   // bundler fails with UNRESOLVED_IMPORT (router/privacy were missing once).
-  ...["bundle", "components", "config", "consent", "docling", "download", "forensic", "hindsight", "knowledge", "lmstudio", "manifest", "memory", "office", "platform", "privacy", "process", "router", "skills", "updates", "uv"].map(
+  ...["bundle", "case-ui", "components", "config", "consent", "docling", "download", "forensic", "hindsight", "knowledge", "lmstudio", "manifest", "memory", "office", "platform", "privacy", "process", "router", "skills", "updates", "uv"].map(
     (name) => ({
       file: `packages/desktop/src/main/hyper/${name}.ts`,
       source: `desktop/hyper/${name}.ts`,
