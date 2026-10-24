@@ -6,7 +6,7 @@ const crypto = require("node:crypto")
 const { spawnSync } = require("node:child_process")
 
 const root = path.resolve(__dirname, "../..")
-const playwright = require(path.resolve(root, "../node_modules/.bun/playwright@1.59.1/node_modules/playwright"))
+const playwright = require(path.resolve(root, "../node_modules/.bun/node_modules/playwright"))
 const work = fs.mkdtempSync(path.join(os.tmpdir(), "hyper-case-window-"))
 const home = path.join(work, "home")
 const kind = "synthetic"
@@ -48,11 +48,9 @@ let browser
       if (!input || input.kind !== kind || input.file !== source || input.output !== output) throw Error("invalid input")
       const report = cliRun("validate", kind, "--data", source)
       if (!report.valid) return { ok: false, validation: { missing: report.field_wajib_kosong, wrongType: report.tipe_salah } }
-      try {
-        cliRun("mode", "on")
-        const result = cliRun("redact", kind, "--data", source, "--out", output)
-        return { ok: result.ok, output }
-      } catch (error) { console.error("bridge prepare:", error); throw error }
+      cliRun("mode", "on")
+      const result = cliRun("redact", kind, "--data", source, "--out", output)
+      return { ok: result.ok, output }
     }
     if (method === "openOutput") { opened = input === output; return "" }
     if (method === "deactivate") {
@@ -81,8 +79,7 @@ let browser
   assert(!fs.existsSync(path.join(output, "tokens.json")) && !cliRun("mode", "status").case_mode, "invalid data cannot activate mode")
   fs.writeFileSync(source, input)
   await page.locator("#prepare").click()
-  try { await page.locator("#continue:visible").waitFor({ timeout: 10000 }) }
-  catch (error) { console.error("wizard message:", await page.locator("#message").innerText()); throw error }
+  await page.locator("#continue:visible").waitFor()
   assert(cliRun("mode", "status").case_mode && hash(source) === before, "mode on and original unchanged")
   const redacted = fs.readFileSync(path.join(output, "parameter.redacted.json"), "utf8")
   assert(!redacted.includes("Budi Santoso") && !redacted.includes("09.123.456.7-890.000"), "redacted copy excludes identifiers")
