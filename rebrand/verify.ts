@@ -72,7 +72,7 @@ if (desktopDist) {
   console.log(`${ok ? "OK  " : "FAIL"} desktop installers named ${CLI}-desktop-*: ${installers.join(", ") || "(none)"}`)
 
   // The case module and its quickstart must travel inside the app bundle.
-  const bundle = path.join(desktopDist, "hyper-bundle")
+  // electron-builder places it under the app resources, not at dist/ root.
   const expected = [
     "office/lib/case/case.py",
     "office/lib/case/cli.py",
@@ -83,8 +83,9 @@ if (desktopDist) {
     "wizard/PRIVACY.md",
     "wizard/LICENSES.md",
   ]
+  const normalized = files.map((entry) => entry.replace(/\\/g, "/"))
   for (const file of expected) {
-    const exists = files.some((entry) => path.join(desktopDist, entry) === path.join(bundle, file))
+    const exists = normalized.some((entry) => entry.endsWith(`hyper-bundle/${file}`))
     if (!exists) bad++
     console.log(`${exists ? "OK  " : "MISS"} bundled: ${file}`)
   }
