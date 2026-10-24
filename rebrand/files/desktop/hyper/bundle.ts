@@ -173,7 +173,7 @@ function openWizard(auto: boolean) {
         at: new Date().toISOString(),
       }
       const state = await readState()
-      await writeState({ ...state, consent, unattended: state.unattended === true })
+      await writeState({ ...state, consent, unattended: false })
       return { ok: true, version: consent.version }
     })
     ipcMain.handle("hyper:plan", () =>
