@@ -77,7 +77,7 @@ const rules: Rule[] = [
   {
     file: "packages/app/src/shell/titlebar/titlebar.tsx",
     find: 'import { TitlebarItem } from "@opencode/gui-extensions/sdk"',
-    replace: 'import { TitlebarItem } from "@opencode/gui-extensions/sdk"\nimport { ShieldCheck } from "lucide-solid"',
+    replace: 'import { TitlebarItem } from "@opencode/gui-extensions/sdk"',
     critical: true,
   },
   {
@@ -91,7 +91,7 @@ const rules: Rule[] = [
                         title="Mulai Kasus Sensitif"
                         onClick={() => platform.caseSecure?.()}
                       >
-                        <ShieldCheck size={14} />
+                        <Icon name="lock" class="size-3.5" />
                         <span>Kasus Secure</span>
                       </button>
                     </Show>
