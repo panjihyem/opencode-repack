@@ -42,6 +42,8 @@ const missingPackage = ["case.html", "case-preload.cjs"].filter((name) => !fs.ex
 check("case UI files present for bundle step", missingPackage.length === 0)
 check("installer verifier requires case HTML and preload", /wizard\/case\.html/.test(fs.readFileSync(path.join(__dirname, "..", "..", "verify.ts"), "utf8")) && /wizard\/case-preload\.cjs/.test(fs.readFileSync(path.join(__dirname, "..", "..", "verify.ts"), "utf8")))
 check("CLI embedded build skips app service-worker generation", /OPENCODE_ARTIFACT === "cli"/.test(apply) && /serviceWorker/.test(apply))
+const workflow = fs.readFileSync(path.join(__dirname, "..", "..", "..", ".github", "workflows", "repack-build.yml"), "utf8")
+check("CLI job sets service-worker guard environment", /- name: Build CLI \(all targets\)[\s\S]*?env:\s*\n\s*PROD: "true"\s*\n\s*OPENCODE_ARTIFACT: cli/.test(workflow))
 
 const failed = checks.filter((item) => !item.ok)
 console.log(`\n${checks.length - failed.length}/${checks.length} checks passed`)
