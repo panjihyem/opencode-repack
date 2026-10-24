@@ -47,3 +47,6 @@ repo.txt
 /control/.tmp/
 *.private.b64
 private.b64
+
+__pycache__/
+rebrand/NUL
