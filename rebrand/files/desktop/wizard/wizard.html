@@ -15,6 +15,8 @@
         --accent-text: #ffffff;
         --ok: #1f7a4d;
         --err: #b3261e;
+        --warn: #7a4b00;
+        --warn-bg: #fff6e5;
       }
       @media (prefers-color-scheme: dark) {
         :root {
@@ -27,18 +29,34 @@
           --accent-text: #11161f;
           --ok: #5fcf9a;
           --err: #ff8a80;
+          --warn: #ffcc80;
+          --warn-bg: #3a2c12;
         }
       }
       * { box-sizing: border-box; }
       body { margin: 0; font: 14px/1.5 system-ui, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
-      main { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; padding: 24px 28px 20px; gap: 18px; }
+      main { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; padding: 20px 24px 18px; gap: 14px; }
       header h1 { margin: 0 0 4px; font-size: 20px; }
       header p { margin: 0; color: var(--muted); }
-      ol { display: flex; gap: 8px; list-style: none; margin: 14px 0 0; padding: 0; }
+      ol { display: flex; gap: 8px; list-style: none; margin: 12px 0 0; padding: 0; }
       ol li { flex: 1; height: 4px; border-radius: 2px; background: var(--line); }
       ol li.on { background: var(--accent); }
       section[hidden] { display: none; }
-      .list { display: grid; gap: 10px; }
+      section { overflow: auto; }
+      .list { display: grid; gap: 8px; }
+      .lede { margin: 0 0 10px; }
+      .advantages { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+      .advantages li { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+      .advantages b { display: block; }
+      .advantages span { color: var(--muted); font-size: 12.5px; }
+      .notice { margin: 12px 0 0; padding: 12px 14px; border: 1px solid var(--warn); border-radius: 10px; background: var(--warn-bg); }
+      .notice b { color: var(--warn); }
+      .notice p { margin: 6px 0 0; font-size: 12.5px; }
+      .docs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0 0; }
+      .docs .meta { color: var(--muted); font-size: 12px; }
+      .consent { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; margin: 12px 0 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); cursor: pointer; }
+      .consent input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--accent); }
+      .consent small { color: var(--muted); display: block; }
       label.item, .row { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
       label.item input { width: 18px; height: 18px; accent-color: var(--accent); }
       .name { font-weight: 600; }
@@ -58,21 +76,55 @@
       button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
       button:disabled { opacity: 0.5; cursor: default; }
       .actions { display: flex; gap: 8px; }
+      dialog { border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--text); max-width: 620px; width: calc(100% - 48px); max-height: 80vh; padding: 18px; }
+      dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
+      dialog pre { white-space: pre-wrap; overflow: auto; max-height: 60vh; font: 12.5px/1.55 ui-monospace, Consolas, monospace; margin: 0 0 12px; }
+      dialog .actions { justify-content: flex-end; }
     </style>
   </head>
   <body>
     <main>
       <header>
-        <h1 id="title">Selamat datang di Hyper AI</h1>
-        <p id="subtitle">Siapkan komponen AI lokal agar Hyper AI langsung siap dipakai.</p>
-        <ol id="steps"><li class="on"></li><li></li><li></li></ol>
+        <h1 id="title">Hyper AI — analisa AI, alat kerja di komputer Anda</h1>
+        <p id="subtitle">Baca ringkasan ini dulu. Setup tidak berjalan sebelum Anda memilih.</p>
+        <ol id="steps"><li class="on"></li><li></li><li></li><li></li></ol>
       </header>
 
-      <section id="step-welcome">
+      <section id="step-intro">
+        <p class="lede">Hyper AI memakai model cloud untuk kemampuan analisa, sementara alat kerja dan data kasus Anda diproses di komputer ini.</p>
+        <ul class="advantages">
+          <li><b>Ekstraksi dokumen lokal</b><span>PDF, scan, dan gambar menjadi teks terstruktur dengan OCR Docling di komputer Anda.</span></li>
+          <li><b>Pembuatan dokumen lokal</b><span>Excel (termasuk formula), Word, PowerPoint, PDF, dan grafik dibuat secara lokal.</span></li>
+          <li><b>Alur kasus dengan redaksi</b><span>Identitas diubah menjadi token lebih dulu; nilai asli tetap di komputer ini.</span></li>
+          <li><b>Memori lintas sesi</b><span>Hindsight menyimpan memori di layanan lokal komputer Anda.</span></li>
+          <li><b>Pilihan model</b><span>Model cloud untuk analisa; model lokal tersedia sebagai alternatif offline.</span></li>
+        </ul>
+
+        <div class="notice">
+          <b>Penting tentang data Anda</b>
+          <p>Alat dokumen berjalan lokal, tetapi <b>prompt, lampiran, kutipan berkas, dan keluaran tool yang dipakai model cloud dapat dikirim ke router Hyper AI dan penyedia model</b>. Penyimpanan memori lokal bukan berarti ekstraksi/konsolidasi memorinya offline — proses itu memakai model remote. Redaksi <code>hyper-case</code> harus dijalankan untuk data kasus sensitif; redaksi tidak otomatis melindungi semua input.</p>
+        </div>
+
+        <div class="docs">
+          <button type="button" data-doc="terms">Ketentuan Penggunaan</button>
+          <button type="button" data-doc="privacy">Kebijakan Privasi</button>
+          <button type="button" data-doc="licenses">Lisensi Pihak Ketiga</button>
+          <span class="meta" id="docsmeta"></span>
+        </div>
+
+        <label class="consent">
+          <input id="consent" type="checkbox" />
+          <span>Saya telah membaca dan menyetujui Ketentuan Penggunaan dan Kebijakan Privasi Hyper AI.
+            <small>Persetujuan ini dicatat secara lokal beserta versi dokumen. Perubahan material akan meminta persetujuan ulang.</small>
+          </span>
+        </label>
+      </section>
+
+      <section id="step-welcome" hidden>
         <div class="list">
-          <div class="row"><div><div class="name">Komponen Hyper AI</div><div class="desc">Komponen yang dipilih diunduh dari penerbit resminya. Mode otomatis menyiapkan semua komponen yang belum terpasang.</div></div></div>
-          <div class="row"><div><div class="name">Konteks &amp; memori untuk agen</div><div class="desc">Context7 (dokumentasi library terbaru) sudah termasuk. Memori jangka panjang Hindsight memakai model remote (MiniMax bawaan OpenCode) lewat router yang sudah terkonfigurasi.</div></div></div>
-          <label class="row" style="cursor:pointer"><input id="unattended" type="checkbox" style="width:18px;height:18px;accent-color:var(--accent)" checked><div><div class="name">Mode praktis (tanpa konfirmasi)</div><div class="desc">Hyper AI menjalankan aksi agen tanpa dialog izin berulang. Aturan izin yang Anda tetapkan tetap berlaku dan tidak diubah.</div></div><span></span></label>
+          <div class="row"><div><div class="name">Komponen Hyper AI</div><div class="desc">Komponen yang dipilih diunduh dari penerbit resminya setelah Anda menekan tombol pasang.</div></div></div>
+          <div class="row"><div><div class="name">Konteks &amp; memori untuk agen</div><div class="desc">Context7 (dokumentasi library) sudah termasuk. Memori Hindsight menyimpan data lokal, sedangkan ekstraksi faktanya memakai model remote lewat router.</div></div></div>
+          <label class="row" style="cursor:pointer"><input id="unattended" type="checkbox" style="width:18px;height:18px;accent-color:var(--accent)"><div><div class="name">Mode praktis (tanpa konfirmasi)</div><div class="desc">Hyper AI menjalankan aksi agen tanpa dialog izin berulang. Ini tidak mengubah persetujuan dokumen dan tidak membatasi data yang Anda kirim ke model. Biarkan mati bila Anda ingin setiap aksi dikonfirmasi.</div></div><span></span></label>
           <label class="row" style="cursor:pointer"><input id="offline" type="checkbox" style="width:18px;height:18px;accent-color:var(--accent)"><div><div class="name">Model lokal sebagai alternatif offline</div><div class="desc">Nyalakan bila Hyper AI perlu tetap bisa bekerja tanpa koneksi ke router. Model lokal hanya dipakai sebagai cadangan; memori jangka panjang tetap memakai model remote.</div></div><span></span></label>
         </div>
       </section>
@@ -93,11 +145,16 @@
         <span class="note" id="note"></span>
         <div class="actions">
           <button id="back" hidden>Kembali</button>
-          <button id="skip">Lewati penyiapan</button>
-          <button id="next" class="primary">Lanjutkan</button>
+          <button id="skip">Keluar</button>
+          <button id="next" class="primary" disabled>Setuju &amp; lanjut</button>
         </div>
       </footer>
     </main>
+
+    <dialog id="docdialog">
+      <pre id="doctext"></pre>
+      <div class="actions"><button id="docclose" type="button">Tutup</button></div>
+    </dialog>
 
     <script>
       const api = window.hyperSetup
@@ -108,24 +165,35 @@
       let finished = false
       let auto = false
       let models = []
+      let docs = null
 
       const formatSize = (bytes) => (bytes >= 1e9 ? (bytes / 1e9).toFixed(1) + " GB" : Math.round(bytes / 1e6) + " MB")
+      const titles = [
+        "Hyper AI — analisa AI, alat kerja di komputer Anda",
+        "Pilih cara kerja Hyper AI",
+        "Pilih komponen Hyper AI",
+        "Menyiapkan Hyper AI...",
+      ]
+      const subtitles = [
+        "Baca ringkasan ini dulu. Setup tidak berjalan sebelum Anda memilih.",
+        "Komponen tambahan diunduh dari penerbit resminya setelah Anda menekan tombol pasang.",
+        "Komponen yang sudah terpasang dilewati otomatis.",
+        "Biarkan jendela ini terbuka. Anda tetap bisa memakai Hyper AI sambil menunggu.",
+      ]
+      const labels = ["Setuju & lanjut", "Lanjutkan", "Pasang komponen", "Menyiapkan..."]
 
       function show(index) {
         step = index
-        ;["welcome", "choose", "run"].forEach((name, i) => ($("step-" + name).hidden = i !== index))
+        ;["intro", "welcome", "choose", "run"].forEach((name, i) => ($("step-" + name).hidden = i !== index))
         ;[...$("steps").children].forEach((li, i) => li.classList.toggle("on", i <= index))
-        $("back").hidden = index !== 1
-        $("skip").hidden = index === 2
-        $("title").textContent = ["Selamat datang di Hyper AI", "Pilih komponen Hyper AI", "Menyiapkan Hyper AI..."][index]
-        $("subtitle").textContent = [
-          "Siapkan komponen agar Hyper AI langsung siap dipakai.",
-          "Komponen Hyper AI yang sudah terpasang dilewati otomatis.",
-          "Biarkan jendela ini terbuka. Anda tetap bisa memakai Hyper AI sambil menunggu.",
-        ][index]
-        $("next").textContent = ["Lanjutkan", "Pasang komponen", "Menyiapkan..."][index]
-        $("next").disabled = index === 2
-        $("note").textContent = index === 1 ? "Perkiraan ruang: " + formatSize(selectedBytes()) : ""
+        $("back").hidden = index === 0 || index === 3
+        $("skip").hidden = index === 3
+        $("skip").textContent = index === 0 ? "Keluar" : "Lewati penyiapan"
+        $("title").textContent = titles[index]
+        $("subtitle").textContent = subtitles[index]
+        $("next").textContent = labels[index]
+        $("next").disabled = index === 3 || (index === 0 && !($("consent").checked && docs))
+        $("note").textContent = index === 2 ? "Perkiraan ruang: " + formatSize(selectedBytes()) : ""
       }
 
       function selectedIds() {
@@ -135,7 +203,7 @@
         const ids = selectedIds()
         const components = plan.filter((item) => ids.includes(item.id) && item.id !== "models" && !item.installed)
         const selectedModel = models.find((item) => item.id === $("model-select").value)
-          const modelBytes = ids.includes("models") && !selectedModel?.installed ? (selectedModel?.bytes ?? 0) : 0
+        const modelBytes = ids.includes("models") && !selectedModel?.installed ? (selectedModel?.bytes ?? 0) : 0
         return components.reduce((sum, item) => sum + item.bytes, 0) + modelBytes
       }
 
@@ -165,8 +233,6 @@
           label.innerHTML = '<input type="checkbox" data-id="' + item.id + '">' +
             '<span><span class="name"></span><br><span class="desc"></span></span><span class="size"></span>'
           const input = label.querySelector("input")
-          // Everything is picked by default: one installer is meant to produce a
-          // fully working setup.
           input.checked = !item.installed
           input.disabled = item.required || item.installed
           label.querySelector(".name").textContent = item.name
@@ -202,8 +268,6 @@
             : "Hyper AI siap dipakai."
           $("next").textContent = "Selesai — buka Hyper AI"
           $("next").disabled = false
-          // Auto mode never asks for a click: close once the setup has settled.
-          if (auto) setTimeout(() => api.finish(), 2500)
           return
         }
         const row = $("row-" + update.id)
@@ -214,48 +278,75 @@
         if (typeof update.fraction === "number") row.querySelector(".bar i").style.width = Math.round(update.fraction * 100) + "%"
       }
 
-      async function beginAuto() {
-        const ids = selectedIds()
-        const recommended = models.find((model) => model.recommended)
-        if (recommended) $("model-select").value = recommended.id
-        renderProgress(ids)
-        show(2)
-        running = true
-        $("note").textContent = ""
-        await api.start(ids, { unattended: true, modelId: $("model-select").value, offline: $("offline").checked })
+      async function openDoc(name) {
+        const doc = await api.doc(name)
+        $("doctext").textContent = doc?.text || "Dokumen tidak tersedia."
+        $("docdialog").showModal()
       }
+
+      for (const button of document.querySelectorAll("[data-doc]")) {
+        button.addEventListener("click", () => openDoc(button.dataset.doc))
+      }
+      $("docclose").addEventListener("click", () => $("docdialog").close())
+
+      $("consent").addEventListener("change", () => {
+        if (step === 0) $("next").disabled = !($("consent").checked && docs)
+      })
 
       $("next").addEventListener("click", async () => {
         if (finished) return api.finish()
-        if (step === 0) return show(1)
-        if (step === 1) {
+        if (step === 0) {
+          if (!docs || !$("consent").checked) return
+          const result = await api.consent({ terms: docs.terms.hash, privacy: docs.privacy.hash })
+          if (!result?.ok) {
+            $("note").textContent = result?.error === "docs-changed"
+              ? "Dokumen berubah. Tutup lalu buka kembali penyiapan ini."
+              : "Persetujuan gagal dicatat. Coba lagi."
+            return
+          }
+          return show(1)
+        }
+        if (step === 1) return show(2)
+        if (step === 2) {
           const ids = selectedIds()
           const unattended = $("unattended").checked
           const offline = $("offline").checked
           renderProgress(ids)
-          show(2)
+          show(3)
           running = true
-          await api.start(ids, { unattended, modelId: $("model-select").value, offline })
+          const result = await api.start(ids, { unattended, modelId: $("model-select").value, offline })
+          if (!result?.ok) {
+            running = false
+            finished = false
+            show(0)
+            $("note").textContent = "Persetujuan tidak valid. Baca dan setujui dokumen sebelum memasang."
+          }
         }
       })
-      $("back").addEventListener("click", () => show(0))
+      $("back").addEventListener("click", () => show(step - 1))
       $("skip").addEventListener("click", () => api.skip())
 
       api.onProgress(applyProgress)
-      Promise.all([api.plan(), api.modelChoices()]).then(async ([items, choices]) => {
-        plan = items
-        models = choices
-        renderModels()
-        renderChoices()
-        show(0)
-        // Auto mode (first launch): no clicks — jump straight into installing.
-        auto = await api.auto()
-        if (auto) {
-          $("unattended").checked = true
-          $("subtitle").textContent = "Menyiapkan semua komponen otomatis — tidak perlu diklik apa pun."
-          await beginAuto()
-        }
-      })
+      Promise.all([api.plan(), api.modelChoices(), api.docs()])
+        .then(async ([items, choices, consentDocs]) => {
+          plan = items
+          models = choices
+          docs = consentDocs
+          $("docsmeta").textContent = docs?.version ? "Versi dokumen " + docs.version : ""
+          renderModels()
+          renderChoices()
+          show(0)
+          auto = await api.auto()
+          if (auto) {
+            // Auto mode may pre-select defaults, but it never accepts terms or
+            // starts downloads on the user's behalf.
+            $("unattended").checked = false
+            $("note").textContent = "Pilih persetujuan dan komponen untuk memulai."
+          }
+        })
+        .catch((error) => {
+          $("note").textContent = "Penyiapan tidak dapat dimuat: " + (error?.message || error)
+        })
     </script>
   </body>
 </html>
