@@ -81,6 +81,12 @@ const rules: Rule[] = [
     critical: true,
   },
   {
+    file: "packages/app/vite.config.ts",
+    find: '    serviceWorker(fileURLToPath(new URL("./dist", import.meta.url))),',
+    replace: '    ...(process.env.OPENCODE_ARTIFACT === "cli" ? [] : [serviceWorker(fileURLToPath(new URL("./dist", import.meta.url)))]),',
+    critical: true,
+  },
+  {
     file: "packages/app/src/shell/titlebar/titlebar.tsx",
     find: "                    <TitlebarItems items={titlebarItems} />",
     replace: `                    <Show when={platform.platform === "desktop"}>
