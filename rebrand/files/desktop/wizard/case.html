@@ -74,7 +74,7 @@
         $("prepare").disabled = true; say("Memeriksa parameter dan membuat salinan redaksi di komputer…")
         try {
           result = await api.prepare({ kind, file: source, output })
-          if (!result.ok) return say("Parameter belum lengkap. Periksa: " + [...result.validation.missing, ...result.validation.wrongType].join(", "))
+          if (!result.ok) { $("prepare").disabled = false; return say("Parameter belum lengkap. Periksa: " + [...result.validation.missing, ...result.validation.wrongType].join(", ")) }
           $("result").hidden = false
           $("result").textContent = "Salinan redaksi dibuat di: " + result.output + " — token map tidak ditampilkan."
           $("warning").hidden = false; $("continue").hidden = false; $("prepare").hidden = true

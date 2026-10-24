@@ -23,6 +23,7 @@ check("cloud warning is shown", /tetap memakai cloud/.test(html) || /model AI te
 check("shell limitation explained", /shell[^<]{0,100}(jaringan|internet)/i.test(html))
 check("result contains no token map value", !/textContent\s*=\s*.*tokenMap/.test(html))
 check("user must confirm before proceeding", /Lanjut ke analisa/.test(html) && /parameter\.redacted\.json saja/.test(html))
+check("invalid parameter permits correction", /if \(!result\.ok\) \{ \$\("prepare"\)\.disabled = false; return say/.test(html))
 check("no automatic provider request in case UI", !/fetch\(|api\.prompt|sendMessage|submitPrompt/.test(html))
 check("source file must be JSON", /DATA_EXTENSIONS/.test(main))
 check("source cannot be overwritten", /realOutput === realSource/.test(main))
