@@ -336,7 +336,8 @@ export const layer = Layer.effect(
 
       const hasHttpHooks =
         (yield* hooks.has("session", "http.request", model.ref.providerID)) ||
-        (yield* hooks.has("session", "http.response", model.ref.providerID))
+        (yield* hooks.has("session", "http.response", model.ref.providerID)) ||
+        (yield* hooks.has("session", "outbound.guard", model.ref.providerID))
       const http: StreamOptions["http"] = hasHttpHooks
         ? (req, handler) =>
             Effect.gen(function* () {
@@ -351,6 +352,13 @@ export const layer = Layer.effect(
                   new Uint8Array(yield* Effect.promise(() => before.request.clone().arrayBuffer())),
                   before.request.headers.get("content-type") ?? undefined,
                 )
+              // No mutable hook runs between this check and the HTTP handler.
+              yield* hooks.trigger("session", "outbound.guard", {
+                ...scope,
+                transport: "http",
+                url: before.request.url,
+                payload: before.request.body ? yield* Effect.promise(() => before.request.clone().text()) : "",
+              })
               const res = yield* handler(sent)
               const after = yield* hooks.trigger("session", "http.response", {
                 ...scope,
@@ -382,6 +390,13 @@ export const layer = Layer.effect(
                   hooks
                     .trigger("session", "experimental.ws.send", { ...scope, frame })
                     .pipe(Effect.map((event) => event.frame)),
+                guard: (connect, frame) =>
+                  hooks.trigger("session", "outbound.guard", {
+                    ...scope,
+                    transport: "websocket",
+                    url: connect.url,
+                    payload: frame,
+                  }).pipe(Effect.asVoid),
                 receive: (frame) =>
                   hooks
                     .trigger("session", "experimental.ws.receive", { ...scope, frame })

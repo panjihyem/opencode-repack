@@ -136,6 +136,16 @@ export interface SessionRetry {
 }
 
 export interface SessionHooks {
+  /** Final outbound decision after mutable hooks. Throw to stop the request before transport. */
+  readonly "outbound.guard": {
+    readonly sessionID: Session.ID
+    readonly agent: Agent.ID
+    readonly model: Model.Ref
+    readonly kind: SessionRequestKind
+    readonly transport: "http" | "websocket"
+    readonly url: string
+    readonly payload: string
+  }
   readonly prompt: SessionPrompt
   readonly context: SessionContext
   readonly compaction: SessionCompaction

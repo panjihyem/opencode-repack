@@ -110,6 +110,16 @@ const layer = Layer.effect(
         input,
       })
 
+    const guardExecute = (name: string, input: unknown, context: Tool.Context) =>
+      hooks.trigger("tool", "execute.guard", {
+        tool: name,
+        sessionID: context.sessionID,
+        agent: context.agent,
+        messageID: context.messageID,
+        id: context.id,
+        input,
+      })
+
     const executeTool = Effect.fn("Tool.execute")(function* (
       tool: Tool.Info,
       name: string,
@@ -239,7 +249,9 @@ const layer = Layer.effect(
           const codeModeTool = codeModeEnabled
             ? CodeModeTool.create(codeModeInventory, (name, tool, input, context) =>
                 beforeExecute(name, input, context).pipe(
-                  Effect.flatMap((event) => executeTool(tool, name, event.input, context)),
+                  Effect.flatMap((event) => guardExecute(name, event.input, context).pipe(
+                    Effect.flatMap(() => executeTool(tool, name, event.input, context)),
+                  )),
                 ),
               )
             : undefined
@@ -274,6 +286,7 @@ const layer = Layer.effect(
               if (!requested && input.definitions && (direct.has(event.tool) || codeModeTool?.name === event.tool))
                 return yield* new Tool.Error({ message: `Tool is not available for this request: ${event.tool}` })
               const name = requested?.name ?? event.tool
+              yield* guardExecute(name, event.input, context)
               if (name === "execute" && codeModeTool)
                 return yield* executeTool(codeModeTool, name, event.input, context)
               const tool = direct.get(name)

@@ -36,6 +36,14 @@ export interface ToolEditor {
 }
 
 interface ToolHooks {
+  readonly "execute.guard"?: {
+    readonly tool: string
+    readonly sessionID: Session.ID
+    readonly agent: Agent.ID
+    readonly messageID: SessionMessage.ID
+    readonly id: Tool.CallID
+    readonly input: unknown
+  }
   readonly "execute.before": {
     tool: string
     readonly sessionID: Session.ID

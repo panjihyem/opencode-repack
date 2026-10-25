@@ -70,6 +70,7 @@ export interface Interceptor {
   readonly handshake?: (connect: Handshake) => Effect.Effect<Handshake>
   readonly send?: (frame: string) => Effect.Effect<string>
   readonly receive?: (frame: string) => Effect.Effect<string>
+  readonly guard?: (connect: Handshake, frame: string) => Effect.Effect<void>
 }
 
 export interface Interface {
@@ -312,6 +313,9 @@ export const makeLayer = (connector: WebSocketConnector) =>
         const exchange: WebSocketChannelExchange = selected
           ? { ...input, connect: { ...input.connect, url: selected.url, headers: Headers.fromInput(selected.headers) } }
           : input
+        // Opening a socket sends its handshake. Deny an unapproved endpoint before even connecting.
+        if (interceptor?.guard)
+          yield* interceptor.guard({ url: exchange.connect.url, headers: {} }, "")
         const key = affinity(exchange)
         const now = yield* Clock.currentTimeMillis
         const current = owner.channel
@@ -375,6 +379,12 @@ export const makeLayer = (connector: WebSocketConnector) =>
         const message = interceptor?.send
           ? yield* interceptor.send(create.message).pipe(Effect.onInterrupt(() => closeChannel(owner, channel)))
           : create.message
+        // Check final frame and endpoint on both new and reused connections; no fallback on denial.
+        if (interceptor?.guard)
+          yield* interceptor.guard(
+            { url: exchange.connect.url, headers: {} },
+            message,
+          )
         yield* Effect.logDebug("session websocket sending", {
           sessionTransport: "websocket",
           phase: "send",

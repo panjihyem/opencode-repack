@@ -514,7 +514,7 @@ export function fromPromise(plugin: Plugin) {
                 ),
               ),
             hook: (name, callback) =>
-              register(host.tool.hook(name, (event) => toolHook[name](() => Promise.resolve(callback(event))))),
+               register(host.tool.hook(name, (event) => toolHook[name]!(() => Promise.resolve(callback(event))))),
           },
           vcs: {
             get: adaptApiMethod(VcsEndpoints["vcs.get"], host.vcs.get),
@@ -634,11 +634,12 @@ const toolError = (error: unknown) =>
     ? error
     : new Tool.Error({ message: error instanceof Error ? error.message : String(error), error })
 
-// Only execute.before may reject a call; a rejection fails that call alone, like an Effect hook.
+// Before and final guard may reject a call; rejection fails that call before execution.
 const toolHook: {
   readonly [Name in keyof ToolHooks]: (run: () => Promise<void>) => Effect.Effect<void, ToolFailures[Name]>
 } = {
   "execute.before": (run) => Effect.tryPromise({ try: run, catch: toolError }),
+  "execute.guard": (run) => Effect.tryPromise({ try: run, catch: toolError }),
   "execute.after": (run) => Effect.promise(run),
 }
 

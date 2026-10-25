@@ -18,6 +18,14 @@ export interface ToolEditor {
 }
 
 export interface ToolHooks {
+  readonly "execute.guard"?: {
+    readonly tool: string
+    readonly sessionID: Session.ID
+    readonly agent: Agent.ID
+    readonly messageID: SessionMessage.ID
+    readonly id: Tool.CallID
+    readonly input: unknown
+  }
   readonly "execute.before": {
     tool: string
     readonly sessionID: Session.ID
@@ -47,6 +55,7 @@ export interface ToolHooks {
 
 // Only execute.before may fail: a Tool.Error rejects the call before the tool runs.
 export interface ToolFailures extends Record<keyof ToolHooks, unknown> {
+  readonly "execute.guard": Tool.Error
   readonly "execute.before": Tool.Error
   readonly "execute.after": never
 }
