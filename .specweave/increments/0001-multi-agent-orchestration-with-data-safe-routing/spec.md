@@ -98,3 +98,7 @@ Out: menjadikan master default untuk seluruh pengguna sebelum pilot; menjamin PI
 ### T-14 Probe packaged-style Promise plugin denial of model and tool calls
 - AC: AC-03 | Files: packages/core/test/session-model-request-hooks.test.ts, packages/core/test/session-runner.test.ts, docs/multi-agent/guard-evidence.md | Test: bun test test/session-model-request-hooks.test.ts (cwd: packages/core)
 - Dependencies: T-13. Probe actual Promise adapter and fake transport; do not call guard safe until attachment, retry and installer paths are covered.
+
+### T-15 Probe hook-order bypass at final transport boundary
+- AC: AC-03, AC-04 | Files: packages/core/test/session-model-request-hooks.test.ts, docs/multi-agent/guard-evidence.md | Test: bun test test/session-model-request-hooks.test.ts (cwd: packages/core)
+- Dependencies: T-14. Demonstrate whether an earlier routing hook can be overridden by a later hook before HTTP transport. Use result to locate mandatory final enforcement for T-12; no master activation.

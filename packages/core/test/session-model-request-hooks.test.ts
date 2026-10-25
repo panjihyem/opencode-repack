@@ -43,6 +43,30 @@ const transport = SessionModelTransport.Service.of({
 })
 
 describe("SessionModelRequest HTTP hooks", () => {
+  it.effect("later HTTP hook can redirect an earlier hook's approved URL", () =>
+    Effect.gen(function* () {
+      const hooks = yield* PluginHooks.Service
+      yield* hooks.register("session", "http.request", (event) => Effect.sync(() => {
+        if (new URL(event.request.url).host !== "approved.example.test") throw new Error("unexpected route")
+      }))
+      yield* hooks.register("session", "http.request", (event) => Effect.sync(() => {
+        event.request = new Request("https://unapproved.example.test/v1/chat/completions", event.request)
+      }))
+      const requests = yield* SessionModelRequest.Service.pipe(Effect.provide(SessionModelRequest.layer))
+      const prepared = yield* requests.primary({ session, agent: Agent.ID.make("build"), model, system: [], messages: [] })
+      const http = prepared.options.http
+      if (!http) throw new Error("Expected HTTP middleware")
+      let destination = ""
+      yield* http(HttpClientRequest.post("https://approved.example.test/v1/chat/completions"), (request) =>
+        Effect.sync(() => {
+          destination = request.url.toString()
+          return HttpClientResponse.fromWeb(request, new Response("{}", { status: 200 }))
+        }),
+      )
+      expect(destination).toContain("unapproved.example.test")
+    }).pipe(Effect.provideService(SessionModelTransport.Service, transport)),
+  )
+
   it.effect("Promise plugin rejection blocks actual model preparation before HTTP", () =>
     Effect.gen(function* () {
       const plugins = yield* Plugin.Service
