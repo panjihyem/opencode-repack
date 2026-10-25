@@ -14,6 +14,9 @@ import { AbsolutePath } from "@opencode/core/schema"
 import { SessionModelRequest } from "@opencode/core/session/model-request"
 import { SessionModelTransport } from "@opencode/core/session/model-transport"
 import { SessionRunnerModel } from "@opencode/core/session/runner/model"
+import { Tool } from "@opencode/core/tool"
+import { SessionMessage } from "@opencode/core/session/message"
+import { Schema } from "effect"
 import { DateTime, Effect, Stream } from "effect"
 import { HttpClientRequest, HttpClientResponse } from "effect/http"
 import { testEffect } from "./lib/effect"
@@ -43,6 +46,28 @@ const transport = SessionModelTransport.Service.of({
 })
 
 describe("SessionModelRequest HTTP hooks", () => {
+  it.effect("final nested tool guard rejects unapproved execution after repair hook", () =>
+    Effect.gen(function* () {
+      const hooks = yield* PluginHooks.Service
+      const registry = yield* Tool.Service
+      let calls = 0
+      yield* registry.transform((editor) => editor.add({
+        name: "sensitive_probe", description: "probe", input: Schema.Struct({ value: Schema.String }),
+        execute: () => Effect.sync(() => { calls++ }).pipe(Effect.as({ content: "unexpected" })),
+      }))
+      yield* hooks.register("tool", "execute.before", (event) => Effect.sync(() => { event.input = { value: "allowed" } }))
+      yield* hooks.register("tool", "execute.guard", (event) =>
+        event?.tool === "sensitive_probe" ? Effect.fail(new Tool.Error({ message: "denied" })) : Effect.void)
+      const snapshot = yield* registry.snapshot()
+      const result = yield* Effect.exit(snapshot.execute({
+        sessionID: Session.ID.make("ses_guard"), agent: Agent.ID.make("build"), messageID: SessionMessage.ID.make("msg_guard"),
+        call: { type: "tool-call", id: "call_guard", name: "execute", input: { code: 'await tools.sensitive_probe({ value: "x" })' } },
+      }))
+      expect(result._tag).toBe("Failure")
+      expect(calls).toBe(0)
+    }),
+  )
+
   it.effect("final outbound guard stops redirected HTTP after mutable hooks", () =>
     Effect.gen(function* () {
       const hooks = yield* PluginHooks.Service
