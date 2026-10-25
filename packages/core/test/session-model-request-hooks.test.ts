@@ -40,6 +40,60 @@ const transport = SessionModelTransport.Service.of({
 })
 
 describe("SessionModelRequest HTTP hooks", () => {
+  it.effect("denies every request kind before HTTP transport receives sensitive bytes", () =>
+    Effect.gen(function* () {
+      const hooks = yield* PluginHooks.Service
+      let sent = 0
+      yield* hooks.register("session", "http.request", () => Effect.sync(() => { sent++ }))
+      yield* hooks.register("session", "model.request", () => Effect.die(new Error("route denied")))
+      const requests = yield* SessionModelRequest.Service.pipe(Effect.provide(SessionModelRequest.layer))
+      for (const kind of KINDS) {
+        const outcome = yield* Effect.exit(requests[kind]({
+          session,
+          agent: Agent.ID.make("build"),
+          model,
+          system: [{ type: "text", text: "SYNTHETIC-SECRET" }],
+          messages: [],
+        }))
+        expect(outcome._tag).toBe("Failure")
+      }
+      expect(sent).toBe(0)
+    }).pipe(Effect.provideService(SessionModelTransport.Service, transport)),
+  )
+
+  it.effect("denies WebSocket session before handshake and frame send", () =>
+    Effect.gen(function* () {
+      const hooks = yield* PluginHooks.Service
+      let connections = 0
+      yield* hooks.register("session", "model.request", () => Effect.die(new Error("route denied")))
+      const websocketTransport = SessionModelTransport.Service.of({
+        bind: () => {
+          connections++
+          return { execute: () => Effect.die("must not connect") }
+        },
+        close: () => Effect.void,
+        closeAll: Effect.void,
+      })
+      const requests = yield* SessionModelRequest.Service.pipe(
+        Effect.provide(SessionModelRequest.layer),
+        Effect.provideService(SessionModelTransport.Service, websocketTransport),
+      )
+      const outcome = yield* Effect.exit(requests.primary({
+        session,
+        agent: Agent.ID.make("build"),
+        model: SessionRunnerModel.resolved(OpenAIChat.route.model({ id: "gpt-5.5", provider: "test" }), {
+          capabilities: { tools: true, input: ["text"], output: ["text"] },
+          cost: [], limit: { context: 200_000, output: 32_000 }, transport: "websocket",
+        }),
+        system: [{ type: "text", text: "SYNTHETIC-SECRET" }],
+        messages: [],
+        webSocket: "session",
+      }))
+      expect(outcome._tag).toBe("Failure")
+      expect(connections).toBe(0)
+    }),
+  )
+
   it.effect("tags every Session request kind on http.request and http.response", () =>
     Effect.gen(function* () {
       const hooks = yield* PluginHooks.Service

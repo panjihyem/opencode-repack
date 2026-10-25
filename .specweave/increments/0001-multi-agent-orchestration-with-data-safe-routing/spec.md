@@ -90,3 +90,7 @@ Out: menjadikan master default untuk seluruh pengguna sebelum pilot; menjamin PI
 
 ### T-12 Enforce routing on actual model and tool transport
 - AC: AC-03, AC-04 | Files: rebrand/files/desktop/hyper/agent-guard.ts, rebrand/test/e2e/agent-guard.test.ts, docs/multi-agent/guard-evidence.md | Test: bun test test/e2e/agent-guard.test.ts (cwd: rebrand)
+
+### T-13 Probe real request hooks before selecting enforcement boundary
+- AC: AC-03 | Files: packages/core/test/session-model-request-hooks.test.ts, docs/multi-agent/guard-evidence.md | Test: bun test test/session-model-request-hooks.test.ts (cwd: packages/core)
+- Dependencies: none. This task proves whether hook rejection stops fake HTTP/WS transport for primary and auxiliary requests; it does not itself enable or finish T-12.
