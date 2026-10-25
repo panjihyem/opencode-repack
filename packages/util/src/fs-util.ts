@@ -11,6 +11,7 @@ import { filesystem } from "./effect/app-node-platform.js"
 import { sameDirectory } from "./path.js"
 
 export namespace FSUtil {
+  export const ignoreGlobs = ["node_modules", ".git", "**/{node_modules,.git}/**"]
   export class FileSystemError extends Schema.TaggedError<FileSystemError>()("FileSystemError", {
     method: Schema.String,
     cause: Schema.optional(Schema.Defect()),

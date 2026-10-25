@@ -111,3 +111,7 @@ Out: menjadikan master default untuk seluruh pengguna sebelum pilot; menjamin PI
 ### T-17 Repair preflight regression from case tool allowlist
 - AC: AC-03 | Files: rebrand/test/e2e/agent-gate.test.ts | Test: bun test test/e2e/agent-gate.test.ts (cwd: rebrand)
 - Dependencies: T-16. Keep case-original read-only; test output checks using a separate approved public writer instead of weakening route policy.
+
+### T-18 Restore existing config watch typecheck
+- AC: AC-01 | Files: packages/util/src/fs-util.ts | Test: bun node_modules/@typescript/native-preview/bin/tsgo.js -b packages/core/tsconfig.json packages/core/tsconfig.tests.json (cwd: repository root)
+- Dependencies: none. Restore missing shared watcher ignore list without changing its documented values; prerequisite for verifying T-12 build.
