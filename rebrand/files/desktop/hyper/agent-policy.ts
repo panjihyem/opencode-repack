@@ -21,6 +21,8 @@ const classes = new Set<DataClass>(["public", "internal", "confidential", "case-
 const roles = new Set<AgentRole>(["master", "explorer", "extractor", "analyst", "investigator", "writer", "reviewer"])
 const forbidden = /(?:^|[\\/])(?:tokens\.json|\.env(?:\.[^\\/]*)?|[^\\/]*(?:secret|credential|api[-_]?key)[^\\/]*)$/i
 const modelId = /^(?:cx\/gpt-[^\s#]+|ocg\/(?:minimax|mimo)[^\s#]*)$/i
+// Only individually reviewed, read-only tools may see original case material.
+const caseTools = new Set(["read", "glob", "grep"])
 
 export function validatePolicy(input: unknown): ProjectPolicy {
   if (!input || typeof input !== "object") throw new Error("Project policy missing")
@@ -35,7 +37,7 @@ export function validatePolicy(input: unknown): ProjectPolicy {
     if (!Array.isArray(route.tools) || route.tools.some((tool) => typeof tool !== "string" || !tool))
       throw new Error("Invalid route tools")
     if (route.dataClass !== "public" && !route.model.startsWith("cx/gpt-")) throw new Error("Sensitive data requires approved GPT route")
-    if (route.dataClass === "case-original" && (!route.consentId || route.tools.some((tool) => /^(?:shell|web|mcp|memory)$/i.test(tool))))
+    if (route.dataClass === "case-original" && (!route.consentId || route.tools.some((tool) => !caseTools.has(tool))))
       throw new Error("Case route needs consent and restricted tools")
   }
   for (const entry of policy.consent) {

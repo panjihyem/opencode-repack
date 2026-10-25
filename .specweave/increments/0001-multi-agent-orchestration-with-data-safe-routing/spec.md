@@ -103,3 +103,7 @@ Out: menjadikan master default untuk seluruh pengguna sebelum pilot; menjamin PI
 ### T-15 Probe hook-order bypass at final transport boundary
 - AC: AC-03, AC-04 | Files: packages/core/test/session-model-request-hooks.test.ts, docs/multi-agent/guard-evidence.md | Test: bun test test/session-model-request-hooks.test.ts (cwd: packages/core)
 - Dependencies: T-14. Demonstrate whether an earlier routing hook can be overridden by a later hook before HTTP transport. Use result to locate mandatory final enforcement for T-12; no master activation.
+
+### T-16 Close case-original tool alias bypass in route policy
+- AC: AC-03 | Files: rebrand/files/desktop/hyper/agent-policy.ts, rebrand/test/agent-policy.test.ts | Test: bun test test/agent-policy.test.ts (cwd: rebrand)
+- Dependencies: T-02. Restrict case-original to an explicit tool allowlist, not a short denylist; `execute`, browser, MCP aliases and unrecognized tools must fail before dispatch. This is necessary but not sufficient for T-12 runtime enforcement.

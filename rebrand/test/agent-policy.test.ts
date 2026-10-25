@@ -35,4 +35,9 @@ test("rejects unsafe policy configuration before reading files", () => {
   const leaky = policy()
   leaky.routes[1] = { ...leaky.routes[1], files: ["folder/tokens.json"] }
   expect(() => validatePolicy(leaky)).toThrow()
+  for (const tool of ["execute", "browser", "shell", "mcp", "readFile", "opencode_subagent", "write"]) {
+    const bypass = policy()
+    bypass.routes[1] = { ...bypass.routes[1], tools: [tool] }
+    expect(() => validatePolicy(bypass)).toThrow("restricted tools")
+  }
 })
