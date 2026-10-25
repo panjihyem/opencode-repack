@@ -94,3 +94,7 @@ Out: menjadikan master default untuk seluruh pengguna sebelum pilot; menjamin PI
 ### T-13 Probe real request hooks before selecting enforcement boundary
 - AC: AC-03 | Files: packages/core/test/session-model-request-hooks.test.ts, docs/multi-agent/guard-evidence.md | Test: bun test test/session-model-request-hooks.test.ts (cwd: packages/core)
 - Dependencies: none. This task proves whether hook rejection stops fake HTTP/WS transport for primary and auxiliary requests; it does not itself enable or finish T-12.
+
+### T-14 Probe packaged-style Promise plugin denial of model and tool calls
+- AC: AC-03 | Files: packages/core/test/session-model-request-hooks.test.ts, packages/core/test/session-runner.test.ts, docs/multi-agent/guard-evidence.md | Test: bun test test/session-model-request-hooks.test.ts (cwd: packages/core)
+- Dependencies: T-13. Probe actual Promise adapter and fake transport; do not call guard safe until attachment, retry and installer paths are covered.

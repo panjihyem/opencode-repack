@@ -5,7 +5,10 @@ import { Money } from "@opencode/schema/money"
 import { Session } from "@opencode/schema/session"
 import type { SessionRequestKind } from "@opencode/plugin/effect/session"
 import { Location } from "@opencode/core/location"
+import { Plugin } from "@opencode/core/plugin"
+import { PluginHost } from "@opencode/core/plugin/host"
 import { PluginHooks } from "@opencode/core/plugin/hooks"
+import { PluginPromise } from "@opencode/core/plugin/promise"
 import { Project } from "@opencode/core/project"
 import { AbsolutePath } from "@opencode/core/schema"
 import { SessionModelRequest } from "@opencode/core/session/model-request"
@@ -40,6 +43,23 @@ const transport = SessionModelTransport.Service.of({
 })
 
 describe("SessionModelRequest HTTP hooks", () => {
+  it.effect("Promise plugin rejection blocks actual model preparation before HTTP", () =>
+    Effect.gen(function* () {
+      const plugins = yield* Plugin.Service
+      const host = yield* PluginHost.make(plugins)
+      yield* PluginPromise.fromPromise({
+        id: "test.route-denial",
+        async setup(ctx) {
+          await ctx.session.hook("model.request", () => { throw new Error("sensitive route denied") })
+        },
+      }).effect(host)
+      const requests = yield* SessionModelRequest.Service.pipe(Effect.provide(SessionModelRequest.layer))
+      const result = yield* Effect.exit(requests.primary({ session, agent: Agent.ID.make("build"), model,
+        system: [{ type: "text", text: "SYNTHETIC-SECRET" }], messages: [] }))
+      expect(result._tag).toBe("Failure")
+    }).pipe(Effect.provideService(SessionModelTransport.Service, transport)),
+  )
+
   it.effect("denies every request kind before HTTP transport receives sensitive bytes", () =>
     Effect.gen(function* () {
       const hooks = yield* PluginHooks.Service
