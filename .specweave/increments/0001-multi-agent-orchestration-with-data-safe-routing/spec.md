@@ -107,3 +107,7 @@ Out: menjadikan master default untuk seluruh pengguna sebelum pilot; menjamin PI
 ### T-16 Close case-original tool alias bypass in route policy
 - AC: AC-03 | Files: rebrand/files/desktop/hyper/agent-policy.ts, rebrand/test/agent-policy.test.ts | Test: bun test test/agent-policy.test.ts (cwd: rebrand)
 - Dependencies: T-02. Restrict case-original to an explicit tool allowlist, not a short denylist; `execute`, browser, MCP aliases and unrecognized tools must fail before dispatch. This is necessary but not sufficient for T-12 runtime enforcement.
+
+### T-17 Repair preflight regression from case tool allowlist
+- AC: AC-03 | Files: rebrand/test/e2e/agent-gate.test.ts | Test: bun test test/e2e/agent-gate.test.ts (cwd: rebrand)
+- Dependencies: T-16. Keep case-original read-only; test output checks using a separate approved public writer instead of weakening route policy.
