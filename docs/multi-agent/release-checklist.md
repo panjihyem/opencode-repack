@@ -4,6 +4,8 @@
 
 **Blocked; do not release multi-agent routing.** Approved scope is public/synthetic-only. This is a record of open release gates, not a completion certificate; no protection for sensitive data is claimed.
 
+T-12 was explicitly skipped as out of scope, not passed. A separate Core-owned security increment is required before any original-case/internal/confidential use. Public-only dispatch still awaits T-04/T-09 runtime and fake-provider evidence.
+
 ## Verified locally
 
 - [x] Combined rebrand/helper tests pass: 20 tests / 72 assertions.
