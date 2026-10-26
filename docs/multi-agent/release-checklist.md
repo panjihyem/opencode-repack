@@ -25,7 +25,7 @@ Headless UI: set `VITE_OPENCODE_TEST_FIXTURES=1`, `VITE_OPENCODE_SERVER_HOST=127
 
 `bun node_modules/@typescript/native-preview/bin/tsgo.js -b packages/core/tsconfig.json packages/core/tsconfig.tests.json` from repository root: pass.
 
-`python docs/build_user_manual_pdf.py`: blocked; Python is not installed (Windows Store execution alias only). Existing PDF was not overwritten.
+`%APPDATA%\ai.hyperai.desktop\hyper-bundle\office\venv\Scripts\python.exe docs/build_user_manual_pdf.py`: pass using installed Office venv and ReportLab 5.1.0. `pypdf` extracted public-only text from generated `docs/Panduan-Pengguna-Hyper-AI.pdf` (14 pages); commit `d5842a3`. This proves document generation, not pilot behavior.
 
 ## Required before release
 
@@ -36,7 +36,7 @@ Headless UI: set `VITE_OPENCODE_TEST_FIXTURES=1`, `VITE_OPENCODE_SERVER_HOST=127
 - [ ] Keep Case Secure/original-case outside feature scope; no mode flag-as-isolation claim.
 - [x] Preserve actual inbox `queue`/`steer` behavior: targeted headless UI suite passed. Master/child job status remains excluded until dispatcher integration and needs separate scope/AC.
 - [ ] Run approved public/synthetic end-to-end pilot against controlled fake provider; measure model, denials, bytes, UI, cost, and audit redaction.
-- [ ] Render and inspect manual PDF from Markdown source.
+- [x] Render and inspect manual PDF from Markdown source (14 pages; public-only text extracted).
 - [ ] Run `specweave verify`, fresh-context adversarial review, then complete increment only when all gates pass.
 
 ## Current non-claims
