@@ -19,17 +19,26 @@ export default {
     const gate = async (sessionID) => {
       const root = ctx.location.project.canonical
       const canonical = await realpath(root)
-      if (canonical !== root || !(ctx.location.directory === root || ctx.location.directory.startsWith(root + path.sep)))
+      if (canonical !== root || !(ctx.location.directory === root || ctx.location.directory.startsWith(root + path.sep))) {
         throw new Error("Public agents require active canonical project")
+      }
       const session = await ctx.session.get({ sessionID })
-        if (session.projectID !== ctx.location.project.id || session.parentID ||
-          !(session.location.directory === root || session.location.directory.startsWith(root + path.sep)))
+      if (
+        session.projectID !== ctx.location.project.id ||
+        session.parentID ||
+        !(session.location.directory === root || session.location.directory.startsWith(root + path.sep))
+      ) {
         throw new Error("Session outside opted-in project")
+      }
       const parent = path.join(root, ".hyper-ai")
-      if (await realpath(parent).catch((error) => {
-        if (error.code === "ENOENT") return ""
-        throw error
-      }) !== parent) throw new Error("Project opt-in missing")
+      if (
+        await realpath(parent).catch((error) => {
+          if (error.code === "ENOENT") return ""
+          throw error
+        }) !== parent
+      ) {
+        throw new Error("Project opt-in missing")
+      }
       const marker = path.join(parent, "public-agents.enabled")
       const info = await lstat(marker).catch((error) => {
         if (error.code === "ENOENT") return undefined
@@ -42,7 +51,9 @@ export default {
         throw error
       })
       let caseMode = true
-      try { caseMode = JSON.parse(privacy).case_mode === true } catch {}
+      try {
+        caseMode = JSON.parse(privacy).case_mode === true
+      } catch {}
       if (caseMode) throw new Error("Public agents disabled in case mode")
     }
     await ctx.command.transform((editor) => editor.add({
