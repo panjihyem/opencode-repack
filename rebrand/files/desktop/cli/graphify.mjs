@@ -44,6 +44,7 @@ const unsafeCode = async (root) => {
   const inspect = async (directory) => {
     for (const item of await readdir(directory, { withFileTypes: true })) {
       if (item.name === ".git" || item.name === ".hyper-ai" || item.name === "node_modules" || item.name === "graphify-out") continue
+      if (item.isDirectory() && /^(?:docs?|documentation|knowledge|cases?|kasus|data)$/i.test(item.name)) throw new Error("Documentation or case directory in Graphify project")
       const full = path.join(directory, item.name)
       if (item.isSymbolicLink()) throw new Error("Symlink in Graphify project")
       if (/^(?:case|kasus|secret|credential|token|\.env)(?:\b|[_.-])/i.test(item.name)) throw new Error("Sensitive file in Graphify project")

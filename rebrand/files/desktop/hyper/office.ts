@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import { copyFile, mkdir, stat, writeFile } from "node:fs/promises"
+import { copyFile, mkdir, readFile, stat, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { FORENSIC_SOURCE } from "./forensic"
 import deckSource from "./deck.py?raw"
@@ -26,7 +26,11 @@ export const officeInstalled = (dataDir: string) =>
     async ([m, py]) => {
       if (!m || !py) return false
       const deck = deckModule(dataDir)
-      if (!(await stat(deck).catch(() => undefined))) {
+      const previous = await readFile(deck, "utf8").catch((error: NodeJS.ErrnoException) => {
+        if (error.code === "ENOENT") return undefined
+        throw error
+      })
+      if (previous === undefined || (previous.startsWith('"""HYPER_AI_MANAGED:') && previous !== deckSource)) {
         await mkdir(path.dirname(deck), { recursive: true })
         await writeFile(deck, deckSource)
       }
