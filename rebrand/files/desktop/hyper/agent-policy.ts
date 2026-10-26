@@ -23,6 +23,7 @@ const forbidden = /(?:^|[\\/])(?:tokens\.json|\.env(?:\.[^\\/]*)?|[^\\/]*(?:secr
 const modelId = /^(?:cx\/gpt-[^\s#]+|ocg\/(?:minimax|mimo)[^\s#]*)$/i
 // Only individually reviewed, read-only tools may see original case material.
 const caseTools = new Set(["read", "glob", "grep"])
+const publicTools = new Set(["read", "glob", "grep"])
 
 export function validatePolicy(input: unknown): ProjectPolicy {
   if (!input || typeof input !== "object") throw new Error("Project policy missing")
@@ -76,5 +77,7 @@ export function validatePublicPolicy(input: unknown): ProjectPolicy {
   const policy = validatePolicy(input)
   if (policy.routes.some((route) => route.dataClass !== "public") || policy.consent.length)
     throw new Error("Multi-agent policy is public-only")
+  if (policy.routes.some((route) => route.role === "investigator" || route.tools.some((tool) => !publicTools.has(tool))))
+    throw new Error("Unapproved public route tool or role")
   return policy
 }

@@ -17,17 +17,17 @@ test("preflight rejects case dispatch before file read and permits scoped public
       project: "p1",
       routes: [
         { role: "investigator", dataClass: "case-original", model: "cx/gpt-6-sol", files: ["case.json", "link/outside.txt"], tools: ["read"], consentId: "c1" },
-        { role: "writer", dataClass: "public", model: "ocg/minimax-m3", files: ["case.json", "results/report.md", "link/outside.txt"], tools: ["read", "write"] },
+        { role: "writer", dataClass: "public", model: "ocg/minimax-m3", files: ["case.json", "results/report.md", "link/outside.txt"], tools: ["read"] },
       ],
       consent: [{ id: "c1", project: "p1", dataClass: "case-original", model: "cx/gpt-6-sol", files: ["case.json", "link/outside.txt", "results/report.md"], expiresAt: "2030-01-01T00:00:00Z" }],
     }
     const base = { project: "p1", role: "investigator" as const, dataClass: "case-original" as const, model: "cx/gpt-6-sol", files: ["case.json"], tools: ["read"] }
     await expect(preflightDispatch(policy, base, root)).rejects.toThrow("public-only")
     await expect(preflightDispatch(policy, base, path.join(root, "missing-project"))).rejects.toThrow("public-only")
-    await expect(preflightDispatch(policy, { ...base, role: "writer", dataClass: "public", model: "ocg/minimax-m3", tools: ["read", "write"] }, root)).rejects.toThrow("public-only")
+    await expect(preflightDispatch(policy, { ...base, role: "writer", dataClass: "public", model: "ocg/minimax-m3" }, root)).rejects.toThrow("public-only")
     policy.routes.shift()
     policy.consent = []
-    const publicRequest = { ...base, role: "writer" as const, dataClass: "public" as const, model: "ocg/minimax-m3", files: ["case.json"], tools: ["read", "write"] }
+    const publicRequest = { ...base, role: "writer" as const, dataClass: "public" as const, model: "ocg/minimax-m3", files: ["case.json"], tools: ["read"] }
     await expect(preflightDispatch(policy, { ...publicRequest, files: ["link/outside.txt"] }, root)).rejects.toThrow("Path outside approved scope")
     await expect(preflightDispatch(policy, { ...publicRequest, output: "results/report.md" }, root)).resolves.toHaveProperty("output", path.join(root, "results/report.md"))
   } finally {

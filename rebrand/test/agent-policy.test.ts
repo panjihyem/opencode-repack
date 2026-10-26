@@ -52,4 +52,9 @@ test("public policy validator refuses non-public configured routes and consent",
   expect(validatePublicPolicy(publicPolicy)).toBe(publicPolicy)
   publicPolicy.consent.push({ id: "c", project: "case-a", dataClass: "public", model: "ocg/minimax-m3", files: ["public.md"], expiresAt: "2030-01-01T00:00:00Z" })
   expect(() => validatePublicPolicy(publicPolicy)).toThrow("public-only")
+  publicPolicy.consent = []
+  publicPolicy.routes[0] = { ...publicPolicy.routes[0], tools: ["shell"] }
+  expect(() => validatePublicPolicy(publicPolicy)).toThrow("Unapproved public route tool")
+  publicPolicy.routes[0] = { ...publicPolicy.routes[0], role: "investigator", tools: ["read"] }
+  expect(() => validatePublicPolicy(publicPolicy)).toThrow("Unapproved public route tool")
 })
