@@ -1,0 +1,2 @@
+{"t":"T-01","e":"claim","by":"opencode@riefky","at":"2026-10-26T06:54:55.516Z","line":"Bind public route at trusted server transport"}
+{"t":"T-01","e":"block","by":"opencode@riefky","at":"2026-10-26T06:56:13.900Z","note":"Existing Core hook suite passes 9 tests/21 assertions, but no project-scoped opt-in/session binding or final route guard exists. Desktop base build passed via electron-vite direct CLI, not feature build or installer proof."}
