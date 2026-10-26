@@ -20,3 +20,9 @@ No controlled fake-provider pilot, exact-model integration, project opt-in isola
 ## Release decision
 
 Close 0001 only as unreleased helper prototype after verify/review. Do not use original case data, confidential/internal data, or token maps with multi-agent routing. Future release needs Core dispatcher, transport policy, fake-provider pilot and installer proof in separate scope.
+
+## 0002 candidate status (2026-10-26)
+
+- Command source uses OpenCode stateless `generate.text`, exact configured `ocg/minimax-m3.1-flash-free`, bounded public text, per-project marker, top-level session binding, and per-stage case-mode recheck. This is not automatic classification/DLP.
+- Rebrand/desktop overlay build completed in temporary worktree; `app.asar` inspection confirms command, model, marker and case gate are bundled. NSIS `.exe` packaging did not finish: network lookup for `github.com` failed. Live server test did not start because checked-out protocol exports mismatch (`hasMcpClientTicketURL` absent). No runtime command/provider call or final installer artifact is proven.
+- Candidate remains **unreleased**. Do not use case, internal, confidential, personal, credentials, or token data.

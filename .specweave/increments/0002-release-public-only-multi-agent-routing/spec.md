@@ -10,11 +10,11 @@ In: explicit public-text-only opt-in command in the active project; server plugi
 
 ## Acceptance Criteria
 
-- [ ] AC-01: Installed overlay registers explicit public-text command; absent invocation leaves normal session and case mode unchanged. Each execution requires an opt-in marker in the active project; global plugin registration alone never dispatches. Project root can invoke in its own or descendant top-level session.
+- [ ] AC-01: Desktop overlay build contains standalone public-text plugin and installer helper writes it into OpenCode plugin directory; no marker means zero model calls; case mode suppresses installation. Each execution requires opt-in marker in active project. Project root can invoke in own or descendant top-level session.
 - [ ] AC-02: Command rejects unknown/non-public classes, attachments, empty text and named token/secret markers before model call; rechecks project opt-in and case mode before each model call and publishing; only exact allowlisted model selected. Stateless `generate.text` has no tools, child session or file output; no protection against unlabeled secrets in pasted text is claimed.
 - [ ] AC-03: Public synthetic text passes bounded independent specialist stages then dependent reviewer; failures halt and no file is written.
-- [ ] AC-04: Fake generator integration records exact selected model and zero calls for denied input, retries or ambiguous delivery. No fake HTTP provider or provider-byte security claim.
-- [ ] AC-05: Inbox queue/steer unchanged; docs state explicit declaration limits. Desktop bundle builds and installer contains registered command and required modules.
+- [ ] AC-04: Fake generator records exact model and zero calls for denied inputs; ambiguous generation failure causes no retry/fallback or partial publish. No fake HTTP provider or provider-byte security claim.
+- [ ] AC-05: Inbox queue/steer unchanged; docs state explicit declaration limits. Windows desktop build and unpacked artifact contain command and required modules. NSIS installer unavailable in offline environment; candidate remains unreleased.
 
 ## Approach
 
@@ -22,7 +22,7 @@ Use global server plugin command with active-location execution guard and `ctx.g
 
 Baseline build check (2026-10-26): `bun run build` in `packages/desktop` fails with `bun: Operation not permitted` launching `electron-vite` via Windows script shim. Running `bun node_modules/electron-vite/bin/electron-vite.js build` in `packages/desktop` exits 0 and produces `out/`; this builds existing code only, **not** this increment. `bun install --frozen-lockfile` reaches root `prepare` then fails at `husky` with the same Windows permission error. No dependency manifest or lockfile changed.
 
-Overlay validation (temporary worktree): rebrand apply passes after correcting stale resume-prompt token in `rebrand/apply.ts`; clean desktop `electron-vite build --logLevel silent` succeeds with non-fatal CSS warnings. `prepare-bundle.ts` succeeds. `electron-builder --win --dir` produces `dist/win-unpacked`; `app.asar` inspection confirms command/model/opt-in/case-mode strings. NSIS `.exe` packaging fails because `github.com` DNS unavailable. Direct CLI server start fails before bind with `SyntaxError: Export named 'hasMcpClientTicketURL' not found` (overlay source checkout API mismatch); no runtime registration/provider test proven.
+Desktop build run after applying overlay in temporary worktree succeeds through direct electron-vite CLI; two existing CSS warnings for unsupported `::highlight` optimization. `bun run build` script's prebuild runs then Windows shim exits `Operation not permitted`. NSIS `.exe` packaging fails because `github.com` DNS unavailable. Direct CLI server start fails before bind with `SyntaxError: Export named 'hasMcpClientTicketURL' not found` (overlay source checkout API mismatch); no runtime registration/provider test proven. Temporary worktree `app.asar` had command strings, but source included e06f379 predating final session-root fix; do not count as final artifact proof.
 
 ## Decisions
 
@@ -47,8 +47,8 @@ Overlay validation (temporary worktree): rebrand apply passes after correcting s
 
 ### T-03 Desktop entrypoint and installer
 - AC: AC-01, AC-05 | Files: rebrand/files/desktop/hyper/agent-command.ts, rebrand/files/desktop/hyper/agent-install.ts, rebrand/files/desktop/hyper/bundle.ts, rebrand/apply.ts, rebrand/test/e2e/agent-bundle.test.ts, rebrand/test/e2e/agent-command.test.ts, docs/multi-agent/release-checklist.md | Test: cd rebrand && bun test test/e2e/agent-bundle.test.ts test/e2e/agent-command.test.ts
-- Dependencies: T-01, T-02. Build and inspect unpacked desktop proven; NSIS installer and live server runtime remain blocked and cannot count as shipped proof.
+- Dependencies: T-01, T-02. Build and inspect unpacked desktop artifact. NSIS installer not required by this task test; current installer download/runtime mismatch remain documented release gates.
 
 ### T-04 Verify and close 0002
-- AC: AC-01, AC-02, AC-03, AC-04, AC-05 | Files: docs/multi-agent/pilot-results.md, docs/multi-agent/release-checklist.md | Test: specweave verify 0002-release-public-only-multi-agent-routing
-- Dependencies: T-01, T-02, T-03. Independent review and complete only after tests, package and runtime proof.
+- AC: AC-01, AC-02, AC-03, AC-04, AC-05 | Files: docs/multi-agent/pilot-results.md, docs/multi-agent/release-checklist.md | Test: cd rebrand && bun test test/e2e/agent-bundle.test.ts test/e2e/agent-command.test.ts
+- Dependencies: T-01, T-02, T-03. Closes only as **unreleased candidate**; NSIS installer and live server runtime are outstanding, not claimed.
