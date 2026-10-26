@@ -6,7 +6,7 @@
 
 ## 0002 candidate (not released)
 
-Experimental `hyper-public-agents` command source accepts only text prefixed `public:` and no attachments. Its fake-generator tests cover four stateless stages and a queued synthetic result. **Command is not installed or active.** User declaration is not automatic classification. Global config installation would expose the command across projects and case-mode toggles would not revoke a live plugin, so installer wiring was withheld. No child sessions, file reads/writes, transport isolation, provider pilot, or sensitive-data protection is claimed.
+Experimental `hyper-public-agents` command accepts only text prefixed `public:` and no attachments. Its fake-generator tests cover four stateless stages and a queued synthetic result. Candidate installer wiring is in overlay source; installed artifact and active server execution are not yet verified, so **do not release**. Each run requires an empty `.hyper-ai/public-agents.enabled` marker in canonical project, matching top-level session, and case mode off; gates recheck before each model call. User declaration is not automatic classification. No child sessions, file reads/writes, transport isolation, provider pilot, or sensitive-data protection is claimed.
 
 T-12 was explicitly skipped as out of scope, not passed. A separate Core-owned security increment is required before any original-case/internal/confidential use. Desktop dispatcher and fake-provider pilot remain future work, not T-04/T-09 claims.
 

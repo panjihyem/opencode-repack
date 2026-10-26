@@ -27,10 +27,9 @@ test("managed plugin installs as standalone source and case mode disables it", a
   }
 })
 
-test("unapproved global plugin remains absent from desktop and installer", async () => {
+test("installer lists guarded plugin and desktop installs it after privacy check", async () => {
   const apply = await readFile(new URL("../../apply.ts", import.meta.url), "utf8")
   const bundle = await readFile(new URL("../../files/desktop/hyper/bundle.ts", import.meta.url), "utf8")
-  expect(apply).not.toContain('"agent-install", "bundle"')
-  expect(bundle).not.toContain("applyPublicAgentPlugin")
-  expect(bundle).not.toContain("agent-command")
+  expect(apply).toContain('"agent-install", "bundle"')
+  expect(bundle).toContain("applyPublicAgentPlugin(configDir(), !privacy)")
 })

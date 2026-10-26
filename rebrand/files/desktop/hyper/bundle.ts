@@ -11,6 +11,7 @@ import { hindsightInstalled, startHindsight } from "./hindsight"
 import { applyKnowledgeSkill, syncKnowledge } from "./knowledge"
 import { lmStudioInstalled, startLmServer, tuneLmStudio } from "./lmstudio"
 import { applySessionMemoryPlugin } from "./memory"
+import { applyPublicAgentPlugin } from "./agent-install"
 import { manifest } from "./manifest"
 import { caseMode } from "./privacy"
 import { resolveRouter } from "./router"
@@ -125,6 +126,7 @@ async function startServices(children: ChildProcess[]) {
   // In case mode it is written as a no-op: automatic retain/recall is the path
   // that would carry case text off the machine, so it is removed, not filtered.
   await applySessionMemoryPlugin(configDir(), !privacy).catch((error) => log("memory", error))
+  await applyPublicAgentPlugin(configDir(), !privacy).catch((error) => log("public-agents", error))
   // Local web search MCP (no API key, no remote configuration).
   await registerSearch()
   // `hyper` command line companion (sync/recall without the GUI).
