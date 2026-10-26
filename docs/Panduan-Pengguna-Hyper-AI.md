@@ -550,7 +550,7 @@ Contoh menyiapkan schema latihan (isi sintetis):
 
 **Jangan** gunakan identitas sungguhan untuk latihan. Screen mengenali pola tertentu dan nilai yang diketahui dari sheet, bukan semua kemungkinan identitas.
 
-Mode ini menolak integrasi web tertentu dan mematikan memori otomatis terkelola, tetapi **tidak** mematikan provider cloud, tidak mengisolasi shell dan tidak mengintersep semua prompt/lampiran.
+Mode ini menolak integrasi web tertentu dan mematikan memori otomatis terkelola, tetapi **tidak** mematikan provider cloud, tidak mengisolasi shell dan tidak mengintersep semua prompt/lampiran. Jangan gunakan mode ini sebagai izin mengirim kasus asli ke cloud.
 
 ---
 
@@ -583,6 +583,8 @@ dan tes verifikasi. Jangan menyimpulkan penyebab di luar bukti.
 - Periksa temuan satu per satu pada sumber/tes; jangan menerima jawaban agen sebagai bukti final.
 - Ambil konteks sensitif seminimal mungkin. Semua agen dapat memakai provider/tool yang membawa data keluar.
 
+**Status pilot Hyper AI (26 Oktober 2026):** orkestrasi multi-agent dengan enforcement runtime belum dirilis. Contoh koordinasi di bawah adalah prosedur manual, bukan fitur master yang mengamankan rute. Scope runtime yang direncanakan hanya data publik; synthetic fixtures hanya untuk tes, bukan runtime-class. Jangan kirim kasus asli, data internal/rahasia, attachment sensitif, atau token map melalui fitur multi-agent. Persetujuan pengguna tidak menggantikan guard transport yang belum tersedia. `queue` dan status job domain belum memiliki integrasi UI multi-agent khusus; perilaku inbox inti `queue`/`steer` tetap sebagaimana adanya.
+
 ### 13.4 Playbook multi-agent end-to-end
 
 **Contoh tugas:** menganalisis transaksi dan menghasilkan draf laporan beserta lampiran.
@@ -607,7 +609,7 @@ Tabel handoff yang disarankan:
 | Bukti | Rumus/query, line/sheet/cell, kutipan atau langkah reproduksi. |
 | Status | Selesai, blocker, asumsi, pertanyaan dan reviewer. |
 
-Jangan menjalankan beberapa agen pada file bersama tanpa locking/ownership. Untuk tindakan sensitif, lebih baik urutan terkontrol daripada paralelisme.
+Jangan menjalankan beberapa agen pada file bersama tanpa locking/ownership. Untuk tindakan sensitif, lebih baik urutan terkontrol daripada paralelisme. Fallback helper dan scheduler yang diuji di checkout bukan bukti runtime enforcement; jangan menggunakannya untuk kasus asli. Fallback sensitif harus berhenti bila provider tujuan tidak disetujui atau delivery ambigu.
 
 ---
 

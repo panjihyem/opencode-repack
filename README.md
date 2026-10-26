@@ -48,6 +48,8 @@ Details, caveats and the full component list: [`REPACK.md`](REPACK.md). Security
 - [Panduan pengguna (PDF)](docs/Panduan-Pengguna-Hyper-AI.pdf): tutorial dari setup, project/session, prompting, knowledge, dokumen, Excel, template kasus, Hyper Case Secure, hingga koordinasi multi-agent.
 - [Sumber panduan pengguna (Markdown)](docs/Panduan-Pengguna-Hyper-AI.md): teks yang dapat diperbarui; PDF dibangun dari sumber ini dengan `docs/build_user_manual_pdf.py` menggunakan Python + ReportLab pada Windows.
 
+Multi-agent orchestration dengan routing sensitif masih **belum dirilis**. Gunakan alur subagent hanya untuk data publik/sintetis; jangan kirim kasus asli atau data rahasia ke model/provider cloud. Case Secure menghentikan beberapa integrasi dan memory, tetapi tidak memblokir provider model atau jaringan dari `shell`. Lihat status dan batas keamanan di [panduan](docs/Panduan-Pengguna-Hyper-AI.md#13-orkestrasi-agen-dan-subagent).
+
 Untuk data sensitif, periksa model dan tool yang aktif sebelum memasukkan materi: pemrosesan file lokal atau redaksi kasus tidak otomatis mencegah prompt/konteks dikirim ke provider cloud.
 
 ## Install

@@ -1,11 +1,11 @@
 // HYPER_AI_MANAGED — defense in depth for an explicitly opted-in task, not a host OS sandbox.
-import { authorizeRoute, type ProjectPolicy } from "./agent-policy"
+import { authorizePublicRoute, type ProjectPolicy } from "./agent-policy"
 import type { Dispatch } from "./agent-gate"
 
 export type GuardScope = { policy: ProjectPolicy; request: Dispatch; endpoint: string }
 
-export function guardOutbound(scope: GuardScope, outbound: { model: string; url: string; payload: string; transport?: "http" | "websocket" }, now = new Date()) {
-  authorizeRoute(scope.policy, { ...scope.request, model: outbound.model }, now)
+export function guardOutbound(scope: GuardScope, outbound: { model: string; url: string; payload: string; transport?: "http" | "websocket" }) {
+  authorizePublicRoute(scope.policy, { ...scope.request, model: outbound.model })
   const expected = new URL(scope.endpoint)
   const actual = new URL(outbound.url)
   const protocol = outbound.transport === "websocket" ? "wss:" : "https:"
@@ -15,7 +15,7 @@ export function guardOutbound(scope: GuardScope, outbound: { model: string; url:
   if (/tokens\.json|(?:^|[\s/])\.env(?:\.|\b)/i.test(outbound.payload)) throw new Error("Forbidden attachment in model payload")
 }
 
-export function guardTool(scope: GuardScope, tool: string, now = new Date()) {
-  authorizeRoute(scope.policy, scope.request, now)
+export function guardTool(scope: GuardScope, tool: string) {
+  authorizePublicRoute(scope.policy, scope.request)
   if (!scope.request.tools.includes(tool)) throw new Error("Unapproved tool")
 }

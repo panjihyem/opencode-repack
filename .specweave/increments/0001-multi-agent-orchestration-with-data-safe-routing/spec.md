@@ -6,46 +6,47 @@ Hyper AI memiliki subagent bawaan `explore`/`general`, skill domain, child sessi
 
 ## Scope
 
-In: master opt-in untuk pekerjaan multi-langkah; klasifikasi data dan izin per project/kasus; agen explorer, extractor, analyst, investigator, writer, reviewer dengan model/tool/akses berbeda; handoff dan batas paralel; fallback fail-closed; queue pesan tanpa interupsi; audit metadata; uji end-to-end dengan data sintetis; panduan dan packaging overlay Hyper AI.
+In: master opt-in untuk pekerjaan multi-langkah **hanya pada data publik**; rute model/tool publik; agen explorer, extractor, analyst, writer, reviewer dengan akses berbeda; handoff dan batas paralel; fallback fail-closed dalam kelas publik; queue pesan tanpa interupsi; audit metadata; fake-provider test; panduan dan packaging overlay Hyper AI. Sintetis dipakai sebagai fixture test, bukan kelas runtime.
 
-Out: menjadikan master default untuk seluruh pengguna sebelum pilot; menjamin PII terdeteksi sempurna; menjamin semua model lokal; sandbox OS penuh; rute penyidikan otomatis yang menghasilkan dokumen final tanpa reviewer manusia; penggantian sistem inbox atau subagent V2; penambahan provider/credential baru tanpa persetujuan.
+Out: mengirim data internal/rahasia/kasus asli melalui multi-agent; klaim isolasi atau consent enforcement untuk data sensitif; menjadikan master default sebelum pilot; menjamin PII terdeteksi sempurna; menjamin semua model lokal; sandbox OS penuh; rute penyidikan otomatis yang menghasilkan dokumen final tanpa reviewer manusia; penggantian sistem inbox atau subagent V2; penambahan provider/credential baru tanpa persetujuan.
 
 ## Acceptance Criteria
 
-- [ ] AC-01: Saat fitur belum diaktifkan, pesan, pilihan agent dan mode kasus bekerja seperti sebelum perubahan; pengguna dapat mengaktifkan master untuk satu project tanpa mengubah project lain. Artefak overlay benar-benar terkirim dalam paket desktop, bukan hanya di `packages/`.
-- [ ] AC-02: Master merutekan tugas kecil langsung dan tugas besar ke agen yang sesuai; explorer dan reviewer baca-saja, extractor/data/writer hanya memakai input dan output yang diberi izin. Satu file punya satu writer; job independen bisa berjalan serentak dalam batas yang dikonfigurasi, job bergantung menunggu hasil, kegagalan tidak memicu duplikasi.
-- [ ] AC-03: Sebelum isi dokumen diteruskan ke model, rute menetapkan kelas data, provider/model tujuan, tool, batas file dan jejak persetujuan. Kasus beridentitas asli hanya boleh dikirim ke provider/model yang disetujui untuk project itu setelah persetujuan eksplisit untuk scope tersebut; token map, credential, dan data di luar scope tidak terkirim. Bila klasifikasi atau persetujuan tidak ada: berhenti sebelum membaca/mengirim isi.
-- [ ] AC-04: Fallback hanya ke model/provider yang di-allowlist untuk kelas data dan kemampuan task tersebut; bila tidak tersedia, tampilkan gagal tertutup. Uji penolakan fallback ke provider lain pada kasus asli termasuk kegagalan saat proses sudah berjalan; audit tidak menyimpan isi prompt/PII/token.
-- [ ] AC-05: Pesan yang dipilih sebagai `queue` menunggu idle boundary tanpa mengubah pekerjaan aktif, sementara `steer` tetap tersedia secara eksplisit. Status queued/active/finished/failed untuk master dan child job terbaca di UI; pesan baru tidak disalahartikan sebagai izin mengubah scope tugas sensitif.
-- [ ] AC-06: Alur contoh publik, workbook internal, serta kasus sintetis melintasi routing, ekstraksi/analisis, draf, review dan sign-off; output memiliki path/versi, sumber/rumus dan status verifikasi. Gate manusia wajib untuk restore identitas dan distribusi dokumen final.
-- [ ] AC-07: Dokumentasi menjelaskan pemilihan model, perbedaan queue/steer/job paralel, pembatasan tool, cloud/fallback, persetujuan kasus, dan batas perlindungan. Pemeriksaan overlay, test pengguna dan PDF panduan lulus sebelum increment ditutup.
+- [ ] AC-01: Saat fitur belum diaktifkan, perilaku pesan/agent/mode kasus lama tidak berubah; opt-in hanya berlaku pada satu project. Artefak overlay masuk installer, bukan hanya checkout.
+- [ ] AC-02: Master merutekan tugas kecil langsung dan tugas besar ke agen sesuai untuk **data publik saja**; synthetic fixtures hanya untuk tes. Explorer/reviewer baca-saja; extractor/data/writer hanya memakai input/output yang diizinkan. Satu file punya satu writer; job independen berjalan dalam batas fan-out; dependensi menunggu hasil; kegagalan tidak memicu duplikasi.
+- [ ] AC-03: Sebelum dispatch, rute menerima hanya public dan menolak internal/rahasia/kasus asli/tidak terklasifikasi. Fixture synthetic hanya untuk tests. Multi-agent tidak membaca/mengirim data non-public dan tidak mengklaim mengamankan sesi umum di luar entrypoint fitur.
+- [ ] AC-04: Fallback hanya ke model/provider yang di-allowlist untuk input public/synthetic dan kemampuan task; bila tidak tersedia atau delivery ambigu, gagal tertutup tanpa retry lintas rute. Audit hanya metadata dan hash, tanpa prompt/PII/token.
+- [ ] AC-05: `queue` menunggu idle boundary tanpa mengubah pekerjaan aktif; `steer` tetap eksplisit. UI inbox mempertahankan kontrak itu. Status job master/child belum termasuk scope hingga dispatcher terintegrasi, tidak diklaim tersedia.
+- [ ] AC-06: Fixture sintetis melewati routing, ekstraksi/analisis, draf, review/sign-off; output punya path/versi, sumber/rumus/status verifikasi. Tidak ada workbook internal atau kasus asli dalam pilot.
+- [ ] AC-07: Dokumentasi menjelaskan model public-only, queue/steer, tool, fallback, batas kasus sensitif, dan perlindungan yang tidak tersedia. Tes docs lulus; PDF/build hanya bila generator tersedia.
 
 ## Approach
 
-1. **Baseline dan model ancaman:** inventaris versi paket terpasang dan overlay, perilaku `SessionInbox` (`packages/core/src/session/inbox.ts`), eksekusi subagent (`packages/core/src/tool/plugin/subagent.ts`), konfigurasi model aktual, `case-ui.ts`, `casemode.py`, dan pengelola router. Catat provider/model IDs tanpa menyalin credential atau mengekspor dokumen asli. Uji `queue` vs `steer` pada UI/HTTP; tentukan batas dukungan dari build Hyper AI yang dirilis, bukan semata checkout source. Tentukan policy untuk input melalui pesan, lampiran, `read`, shell, MCP, dan hasil child agent. JANGAN klaim prompt agent sebagai security boundary.
-2. **Kontrak rute:** buat schema minimal per-project untuk klasifikasi (publik/internal/rahasia/kasus asli), provider/model/tool allowlist, scope path, masa berlaku persetujuan dan batas fan-out. Reject konfigurasi tidak valid dan perubahan yang memperlebar scope tanpa izin baru. Simpan bukti persetujuan non-rahasia; daftar model spesifik berasal dari katalog aktual dan pilot, bukan asumsi bahwa berbayar lebih aman. Jika satu provider/router merutekan beberapa model upstream, perlakukan router sebagai penerima data dan audit tujuan upstream hanya jika dapat diverifikasi.
-3. **Enforcement:** master melakukan preflight sebelum konten dibaca oleh agen/model; dispatcher memasok input minimum ke child baru (fresh context). Gunakan izin V2 per agen dan policy provider/tool, plus gerbang runtime untuk jalur shell, file, MCP, attachment, model switch dan failover. Policy per-agent bukan sandbox shell dan provider-use berskala provider, bukan allowlist per model; saat mekanisme tidak bisa menjamin pembatasan, hentikan task sensitif daripada bergantung pada prompt. Bila perlu buat scope runtime terisolasi untuk task sensitif, ukur biaya/kerumitannya dalam T-01 sebelum implementasi.
-4. **Agen:** definisi master primary opt-in dan spesialis subagent di overlay, skill domain tetap sebagai instruksi kerja. Explorer/reviewer tak dapat edit; extractor menjalankan pipeline lokal dan menyerahkan teks terpilih; analyst memakai salinan workbook; investigator memakai playbook dan Case Secure; writer hanya fakta tervalidasi. Master menggabungkan hasil; reviewer berbeda dari writer. Semua task berkontrak input/output, versi, owner, bukti, kondisi stop.
-5. **Scheduler:** gunakan child session foreground/background yang sudah ada; tambahkan hanya coordinator untuk DAG, batas jumlah serentak, status, deadline/cancel dan penyatuan hasil. Serialisasi operasi mode kasus, file yang sama dan proses yang bergantung. Jangan ubah arti `queue`/`steer` dalam core; UI menawarkan queue sebagai tindakan non-interupsi ketika aktif dan steer sebagai koreksi sadar.
-6. **Fallback:** rule per kelas data dan kemampuan; kegagalan provider/timeout/rate limit dipetakan ke rute yang masih disetujui, dengan batas percobaan. Untuk status delivery ambigu, jangan kirim ulang payload sensitif diam-diam; stop dan lapor. Hindsight punya fallback terpisah: audit dan batasi/disable per kasus agar tidak mem-bypass aturan agen.
+1. **Baseline:** inventaris versi/build dan overlay, `SessionInbox`, subagent, model IDs tanpa credential, dan perilaku `queue`/`steer`. Catat bahwa semua isi prompt/lampiran/hasil tool dapat mencapai model; jangan anggap klasifikasi via prompt sebagai security boundary.
+2. **Kontrak public-only:** master menerima hanya paket input yang dinyatakan public/synthetic oleh pemanggil, tetapi pernyataan itu bukan klasifikasi otomatis atau consent. Policy menolak internal/confidential/case-original, credential dan token map; exact model/tool/path serta batas fan-out dinyatakan eksplisit. Jika caller tidak dapat menjamin data public, jangan gunakan fitur.
+3. **Enforcement batas scope:** agent dispatcher/preflight membatasi file dan tool yang diteruskan oleh fitur ini. Ini bukan perlindungan seluruh session, shell OS, provider/network global, atau konten yang ditempel langsung. Jangan klaim sistem aman untuk data sensitif; simpan project/kasus sensitif di luar alur ini.
+4. **Agen:** definisi master opt-in dan spesialis hanya untuk tugas public/synthetic. Explorer/reviewer baca-saja; writer memiliki output tunggal; investigator/Case Secure tidak termasuk rollout ini.
+5. **Scheduler:** gunakan child session foreground/background yang sudah ada; coordinator hanya untuk DAG bounded, job status, deadline/cancel, dan penyatuan hasil. File satu writer; dependency menunggu. Jangan ubah arti `queue`/`steer` dalam core.
+6. **Fallback:** hanya model public allowlisted; ambiguity menghentikan job, tanpa retry lintas provider. Hindsight fallback terpisah.
 7. **Release:** jalankan uji negatif dan positif dari UI/HTTP dengan data sintetis, uji overlay pada paket desktop, cek audit tidak mengandung isi sensitif; perbarui README/manual Markdown lalu render PDF dari sumber, verifikasi judul/teks. Rilis pilot opt-in dulu; perlu keputusan baru dan data uji sebelum default-on.
 
-**Gate implementasi wajib (temuan T-04):** `agent-policy.ts`, `agent-gate.ts`, dan `agent-fallback.ts` masih helper yang tidak dipanggil oleh runtime. Sebelum agen dapat diaktifkan, T-12 wajib memasang enforcement pada semua jalur model (`primary`, `compaction`, `title`, `generate`, HTTP/WebSocket), tool execution (termasuk shell/MCP/Code Mode), attachment dan child model switch, lalu membuktikan penolakan sebelum byte sensitif terkirim. Hook session model tanpa typed rejection dapat mematikan request sebagai defect, tetapi itu belum bukti tidak ada bypass; uji request nyata diperlukan. Bila hook/plugin V2 tidak mampu menutup jalur tersebut, batasi fitur ke data publik sampai ada perubahan core yang eksplisit; jangan mengklaim kasus asli aman. T-04, T-07, dan T-09 bergantung pada bukti T-12, bukan pada instruksi prompt.
+**Gate public-only:** T-12 lama membuktikan proteksi data sensitif seluruh model/tool transport, yang tidak termasuk revised scope. Tidak boleh menafsirkan skip T-12 sebagai kelulusan keamanan; produk tidak boleh mengiklankan perlindungan sensitif. Sebelum entrypoint multi-agent public-only dikirim, T-03/T-04 wajib menjalankan preflight sebelum membaca file/dispatch, tolak kelas non-public, dan batasi tool/output; T-09 menguji provider fake. Batas ini tidak melindungi penggunaan umum sesi atau konten bebas.
 
 ## Decisions
 
 ### Asked
-- D-01 Bolehkah cloud membaca isi kasus asli? → Boleh hanya ke provider/model terpilih yang disetujui per project, dengan persetujuan eksplisit (user). Bukan izin blanket untuk semua provider, child, memory atau fallback.
+- D-01 Bolehkah cloud membaca isi kasus asli? → Di luar scope increment setelah revisi public-only; tidak ada data asli kasus yang dirutekan.
 - D-02 Routing awal model → Data sensitif memakai GPT cloud yang disetujui; tugas aman memakai MiniMax atau MiMo. Model dipilih dari katalog yang benar-benar tersedia dan diuji; fallback hanya di dalam kelas izin yang sama (user).
+- D-07 Batas rollout → Scope increment direvisi ke data publik/sintetis saja; dukungan data sensitif/kasus asli memerlukan increment terpisah dengan core-owned policy/consent binding dan final transport/tool enforcement (user, 2026-10-26).
 
 ### Defaulted (change any before sw-do)
-- D-03 Rollout → opt-in pilot per project; default-on hanya sesudah bukti keamanan/biaya/kualitas dan keputusan pengguna berikutnya.
+- D-03 Rollout → opt-in per project untuk data publik/sintetis saja; belum dirilis sampai pilot, installer, dan dokumentasi lolos. Default-on memerlukan keputusan baru setelah bukti keamanan/biaya/kualitas.
 - D-04 Queue → pertahankan `steer` default yang sudah ada di core; sediakan aksi `queue` yang menonjol untuk pesan susulan saat sibuk, jangan mengubah default global tanpa uji UX.
 - D-05 Model → pilot memakai hanya ID yang tersedia/teruji, bukan hard-code rekomendasi kualitas dari nama; tidak ada klaim model berbayar otomatis lebih aman.
 - D-06 Eksekusi → manfaatkan child sessions dan inbox yang ada; tidak membangun ulang sistem queue atau engine AI.
 
 ### Open
-- none. Jalur sensitif tetap fail-closed sampai daftar GPT/provider yang disetujui, kontrak/retensi, dan consent per project tersedia. Batas biaya/fan-out pilot konservatif dipilih setelah pengukuran T-01; nilai belum diketahui bukan izin untuk membuka rute sensitif.
+- none. Data sensitif tetap di luar scope dan harus ditolak oleh entry point multi-agent. Batas biaya/fan-out pilot konservatif ditetapkan sebelum pilot; nilai belum diketahui bukan izin membuka rute sensitif.
 
 ## Tasks
 
@@ -59,8 +60,8 @@ Out: menjadikan master default untuk seluruh pengguna sebelum pilot; menjamin PI
 - AC: AC-02, AC-03 | Files: rebrand/files/desktop/hyper/agent-gate.ts, rebrand/test/e2e/agent-gate.test.ts | Test: bun test test/e2e/agent-gate.test.ts (cwd: rebrand)
 
 ### T-04 Definisi agen spesialis dan bundle overlay
-- AC: AC-01, AC-02 | Files: rebrand/files/desktop/hyper/agents.ts, rebrand/files/desktop/hyper/bundle.ts, rebrand/test/e2e/agent-bundle.test.ts | Test: bun test test/e2e/agent-bundle.test.ts (cwd: rebrand)
-- Dependencies: T-12 (model/tool/attachment enforcement proven against live requests).
+- AC: AC-01, AC-02 | Files: rebrand/files/desktop/hyper/agent-policy.ts, rebrand/files/desktop/hyper/agent-gate.ts, rebrand/files/desktop/hyper/agent-fallback.ts, rebrand/files/desktop/hyper/agent-guard.ts, rebrand/apply.ts | Test: bun test test/e2e/agent-bundle.test.ts (cwd: rebrand)
+- Dependencies: T-03. BLOCKED: helper files are not registered in installer `writes`, and no live dispatcher integration exists. Do not copy standalone helpers as substitute for runtime enforcement; revise after trusted dispatch design exists. Previously proposed `agent-bundle.test.ts` does not exist; current verifiable scope is baseline/static source inspection, insufficient for AC-01 installer claim.
 
 ### T-05 Fallback terikat policy dan penanganan delivery ambigu
 - AC: AC-04 | Files: rebrand/files/desktop/hyper/agent-fallback.ts, rebrand/test/e2e/agent-fallback.test.ts | Test: bun test test/e2e/agent-fallback.test.ts (cwd: rebrand)
@@ -68,29 +69,29 @@ Out: menjadikan master default untuk seluruh pengguna sebelum pilot; menjamin PI
 ### T-06 Master dispatcher, scheduler DAG dan kontrak handoff
 - AC: AC-02, AC-06 | Files: rebrand/files/desktop/hyper/agent-orchestrator.ts, rebrand/test/e2e/agent-orchestrator.test.ts | Test: bun test test/e2e/agent-orchestrator.test.ts (cwd: rebrand)
 
-### T-07 Integrasi Case Secure, memory dan audit metadata
-- AC: AC-03, AC-04, AC-06 | Files: rebrand/files/desktop/hyper/case-ui.ts, rebrand/files/desktop/hyper/case/casemode.py, rebrand/files/desktop/hyper/agent-audit.ts, rebrand/test/e2e/agent-case.test.ts | Test: bun test test/e2e/agent-case.test.ts (cwd: rebrand)
-- Dependencies: T-04, T-12.
+### T-07 Document public-only boundary and exclude Case Secure
+- AC: AC-03, AC-04 | Files: README.md, docs/Panduan-Pengguna-Hyper-AI.md, docs/multi-agent/panduan.md, docs/multi-agent/pilot-results.md, docs/multi-agent/release-checklist.md | Test: bun test test/e2e/multi-agent-baseline.test.ts (cwd: rebrand)
+- Scope: explicitly exclude Case Secure/original-case dispatch; document boundaries, public-only rule, and separate future security increment. No case-mode runtime changes.
 
-### T-08 Queue UX dan status job tanpa interupsi
-- AC: AC-05 | Files: rebrand/files/desktop/hyper/agent-queue.ts, rebrand/test/e2e/agent-queue.test.ts | Test: bun test test/e2e/agent-queue.test.ts (cwd: rebrand)
-- Dependencies: T-04, T-12. Revise Files to include actual UI/inbox integration before claim; helper-only test is insufficient.
+### T-08 Verify existing inbox queue behavior (no new job status UI)
+- AC: AC-05 | Files: packages/app/e2e/regression/session-queue.spec.ts, docs/multi-agent/panduan.md, docs/multi-agent/release-checklist.md | Test: bun run test:e2e -- regression/session-queue.spec.ts --project=chromium (cwd: packages/app)
+- Dependencies: none. Existing inbox queue/steer UI stays unchanged; verify actual behavior. Master/child job status explicitly excluded; follow-up increment needed when dispatcher integrates.
 
-### T-09 Alur pilot end-to-end dan pengukuran biaya/keamanan
-- AC: AC-01, AC-02, AC-03, AC-04, AC-05, AC-06 | Files: rebrand/test/e2e/multi-agent-pilot.test.ts, docs/multi-agent/pilot-results.md | Test: bun test test/e2e/multi-agent-pilot.test.ts (cwd: rebrand)
-- Dependencies: T-04, T-07, T-08, T-12. Send synthetic payload to controlled fake provider; assert exact model, denial, and absence of forbidden bytes.
+### T-09 Synthetic fake-provider pilot E2E and evidence
+- AC: AC-01, AC-02, AC-03, AC-04, AC-06 | Files: rebrand/test/e2e/multi-agent-pilot.test.ts, docs/multi-agent/pilot-results.md | Test: bun test test/e2e/multi-agent-pilot.test.ts (cwd: rebrand)
+- Dependencies: T-04, T-07. Synthetic fixtures only; controlled fake provider; assert exact model, preflight denial, and absent forbidden bytes. No live provider/real data/cost claim. T-12 not released/closed by this test.
 
 ### T-10 Panduan pengguna, batas fitur dan PDF
-- AC: AC-07 | Files: README.md, docs/Panduan-Pengguna-Hyper-AI.md, docs/Panduan-Pengguna-Hyper-AI.pdf, docs/multi-agent/panduan.md | Test: python docs/build_user_manual_pdf.py
+- AC: AC-07 | Files: README.md, docs/Panduan-Pengguna-Hyper-AI.md, docs/multi-agent/panduan.md, docs/multi-agent/release-checklist.md, docs/Panduan-Pengguna-Hyper-AI.pdf | Test: python docs/build_user_manual_pdf.py
 - Dependencies: T-09. Document only verified pilot behavior.
 
 ### T-11 Verify and close 0001
 - AC: AC-01, AC-02, AC-03, AC-04, AC-05, AC-06, AC-07 | Files: docs/multi-agent/release-checklist.md | Test: specweave verify 0001-multi-agent-orchestration-with-data-safe-routing
-- Dependencies: T-04, T-07, T-08, T-09, T-10, T-12; fresh-context review required.
+- Dependencies: T-04, T-07, T-08, T-09, T-10; fresh-context review required. T-12 remains blocked for future sensitive-data support and is not completed here.
 
 ### T-12 Enforce routing on actual model and tool transport
 - AC: AC-03, AC-04 | Files: rebrand/files/desktop/hyper/agent-guard.ts, rebrand/files/desktop/hyper/agent-policy.ts, rebrand/files/desktop/hyper/agent-gate.ts, rebrand/apply.ts, rebrand/test/e2e/agent-guard.test.ts, packages/plugin/src/effect/session.ts, packages/plugin/src/promise/session.ts, packages/plugin/src/effect/tool.ts, packages/plugin/src/promise/tool.ts, packages/plugin/src/promise/adapter.ts, packages/core/src/session/model-request.ts, packages/core/src/session/model-transport.ts, packages/core/src/tool.ts, packages/core/src/plugin/hooks.ts, packages/core/test/session-model-request-hooks.test.ts, docs/multi-agent/guard-evidence.md | Test: bun test test/session-model-request-hooks.test.ts (cwd: packages/core) AND bun test test/e2e/agent-guard.test.ts (cwd: rebrand)
-- Dependencies: T-13, T-14, T-15. Apply enforcement in the installer overlay (not just local `packages/`), after every request-transforming hook, before HTTP handler or WebSocket connect/send. Explicitly deny tools including nested Code Mode/MCP/shell, model changes, auxiliary requests, retries, and attachments outside approved scope. The test must prove no forbidden bytes reach fake transports even when later hooks redirect the URL; absence of an opt-in policy must leave old behavior unchanged. If current extension points cannot meet that contract, keep this task blocked and do not install agents.
+- Dependencies: T-13, T-14, T-15. Original task requirement: enforce all model/tool transport boundaries and prove no forbidden bytes. Revised scope excludes sensitive data from rollout but does not make Core hook probes satisfy this contract. **Still blocked for any future sensitive-data support; not a release gate for public-only path if T-03 preflight + T-09 fake-provider tests prove that path.** Do not mark done based on helper tests or docs. T-12 is excluded from T-11 completion dependency for this public-only increment; retain blocked ledger status.
 
 ### T-13 Probe real request hooks before selecting enforcement boundary
 - AC: AC-03 | Files: packages/core/test/session-model-request-hooks.test.ts, docs/multi-agent/guard-evidence.md | Test: bun test test/session-model-request-hooks.test.ts (cwd: packages/core)

@@ -66,3 +66,15 @@ export function authorizeRoute(policy: ProjectPolicy, request: { project: string
   }
   return route
 }
+
+export function authorizePublicRoute(policy: ProjectPolicy, request: Parameters<typeof authorizeRoute>[1]): Route {
+  if (request.dataClass !== "public") throw new Error("Multi-agent routing is public-only")
+  return authorizeRoute(policy, request)
+}
+
+export function validatePublicPolicy(input: unknown): ProjectPolicy {
+  const policy = validatePolicy(input)
+  if (policy.routes.some((route) => route.dataClass !== "public") || policy.consent.length)
+    throw new Error("Multi-agent policy is public-only")
+  return policy
+}
