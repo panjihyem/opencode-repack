@@ -109,3 +109,11 @@ This is a **planned backlog**, not an implementation or authorization to connect
 ### T-10 Bound metadata and image download streams
 - AC: AC-02 | Files: rebrand/files/desktop/hyper/assets.ts, rebrand/test/e2e/deck-assets.test.ts | Test: cd rebrand && bun test test/e2e/deck-assets.test.ts
 - Dependencies: T-02. Read streams with hard limits even when `Content-Length` is missing or false; no file written after oversized response. Review finding `assets.ts:25,40`.
+
+### T-11 Exclude documentation tree and refresh managed deck
+- AC: AC-01, AC-05, AC-06 | Files: rebrand/files/desktop/cli/graphify.mjs, rebrand/test/e2e/graphify-integration.test.ts, rebrand/files/desktop/hyper/office.ts, rebrand/test/e2e/deck-quality.test.ts, docs/multi-agent/graph-memory-audit.md | Test: cd rebrand && bun test test/e2e/graphify-integration.test.ts test/e2e/deck-quality.test.ts
+- Dependencies: T-08, T-09. Review found `docs/notes.py` enters Graphify graph and stale managed `deck.py` survives upgrade. Deny docs trees before extraction; refresh only managed deck copy, preserve user-owned file.
+
+### T-12 Preserve user-owned deck on Office reinstall
+- AC: AC-01, AC-05 | Files: rebrand/files/desktop/hyper/office.ts, rebrand/test/e2e/deck-quality.test.ts | Test: cd rebrand && bun test test/e2e/deck-quality.test.ts
+- Dependencies: T-11. Apply same ownership check in `installOffice` as `officeInstalled`; mock installer path with fake uv to prove an existing user-owned `deck.py` survives a package-marker change.

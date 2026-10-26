@@ -21,19 +21,23 @@ const pythonBinary = (root: string) => path.join(venvBin(root), executable("pyth
 const marker = (root: string) =>
   path.join(root, `installed-${createHash("sha256").update(office.packages.join(",")).digest("hex").slice(0, 8)}`)
 
+export async function ensureManagedDeck(dataDir: string) {
+  const deck = deckModule(dataDir)
+  const previous = await readFile(deck, "utf8").catch((error: NodeJS.ErrnoException) => {
+    if (error.code === "ENOENT") return undefined
+    throw error
+  })
+  if (previous === undefined || (previous.startsWith('"""HYPER_AI_MANAGED:') && previous !== deckSource)) {
+    await mkdir(path.dirname(deck), { recursive: true })
+    await writeFile(deck, deckSource)
+  }
+}
+
 export const officeInstalled = (dataDir: string) =>
   Promise.all([stat(marker(officeRoot(dataDir))).catch(() => undefined), stat(pythonBinary(officeRoot(dataDir))).catch(() => undefined)]).then(
     async ([m, py]) => {
       if (!m || !py) return false
-      const deck = deckModule(dataDir)
-      const previous = await readFile(deck, "utf8").catch((error: NodeJS.ErrnoException) => {
-        if (error.code === "ENOENT") return undefined
-        throw error
-      })
-      if (previous === undefined || (previous.startsWith('"""HYPER_AI_MANAGED:') && previous !== deckSource)) {
-        await mkdir(path.dirname(deck), { recursive: true })
-        await writeFile(deck, deckSource)
-      }
+      await ensureManagedDeck(dataDir)
       return true
     },
   )
@@ -54,7 +58,7 @@ export async function installOffice(dataDir: string, report: Report) {
   const python = pythonBinary(root)
   await run(uv, ["pip", "install", "--python", python, ...office.packages])
   await writeForensicModule(root)
-  await writeFile(path.join(forensicRoot(root), "deck.py"), deckSource)
+  await ensureManagedDeck(dataDir)
   await writeCaseModule(root)
   await writeFile(marker(root), new Date().toISOString())
 }

@@ -2,7 +2,7 @@ import { expect, test } from "bun:test"
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
-import { officeInstalled, officeRoot, deckModule } from "../../files/desktop/hyper/office"
+import { officeInstalled, officeRoot, deckModule, ensureManagedDeck } from "../../files/desktop/hyper/office"
 
 const python = "C:\\Users\\User\\AppData\\Roaming\\ai.hyperai.desktop\\hyper-bundle\\office\\venv\\Scripts\\python.exe"
 const deck = new URL("../../files/desktop/hyper/deck.py", import.meta.url).pathname.replace(/^\/(?:[A-Za-z]:)/, (drive) => drive.slice(1))
@@ -38,6 +38,8 @@ test("public deck has PNG and editable chart without replacing source", async ()
     expect(await readFile(deckModule(oldInstall), "utf8")).toBe(managed)
     await writeFile(deckModule(oldInstall), "# user code\n")
     expect(await officeInstalled(oldInstall)).toBe(true)
+    expect(await readFile(deckModule(oldInstall), "utf8")).toBe("# user code\n")
+    await ensureManagedDeck(oldInstall)
     expect(await readFile(deckModule(oldInstall), "utf8")).toBe("# user code\n")
   } finally {
     await rm(root, { recursive: true, force: true })
