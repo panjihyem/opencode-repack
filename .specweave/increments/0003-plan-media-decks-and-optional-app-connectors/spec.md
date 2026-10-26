@@ -73,7 +73,7 @@ This is a **planned backlog**, not an implementation or authorization to connect
 - Dependencies: none. Test through installed Office workflow with synthetic fixture, inspect PPTX structure and rendered slide artifacts; keep existing chart PNG behavior.
 
 ### T-02 Public licensed image assets
-- AC: AC-02, AC-05 | Files: rebrand/files/desktop/hyper/skills.ts, rebrand/test/e2e/deck-assets.test.ts, docs/multi-agent/media-deck-plan.md | Test: cd rebrand && bun test test/e2e/deck-assets.test.ts
+- AC: AC-02, AC-05 | Files: rebrand/files/desktop/hyper/skills.ts, rebrand/files/desktop/hyper/assets.ts, rebrand/test/e2e/deck-assets.test.ts, docs/multi-agent/media-deck-plan.md | Test: cd rebrand && bun test test/e2e/deck-assets.test.ts
 - Dependencies: T-01. Fake metadata/image server with redirect/content-type/size/license failures; no web image auto-download in a sensitive project.
 - Pause new implementation until T-06 memory/graph audit is recorded; do not substitute chart work for this asset task.
 

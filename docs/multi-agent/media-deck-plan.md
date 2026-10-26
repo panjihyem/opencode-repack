@@ -9,7 +9,7 @@ Correction: `hyper-chart`, `hyper-fundflow` Sankey/treemap/graph and `hyper viz`
 Verification: `bun test test/e2e/deck-quality.test.ts` in `rebrand` checks output data/source unchanged, PNG signature, editable chart and shape bounds. A synthetic deck was rendered to PDF with PowerPoint, two slides, and visually inspected; no apparent overlap. Output kept in approved temporary workspace, not distributed as document template. The Office CLI ships `deck.py` from overlay and managed `hyper-report` skill references it; pre-existing user skills are not overwritten.
 
 Next gates:
-- Source-licensed web images only, with creator/license/landing URL manifest; no automatic network fetch for confidential/case data.
+- Optional public Commons asset selector (`rebrand/files/desktop/hyper/assets.ts`) now tested with fake metadata/image response: explicit consent, allowlisted HTTPS landing and image hosts, license/creator/attribution/time manifest, no overwrite, rejected case input, redirect and oversized/non-image failure. Not enabled as a default auto-search tool. User reviews the source/license before insertion; `hyper-report` owns slide insertion. Never fetch case/internal files via this path.
 - Generated images only after 9Router catalog + entitlement and explicit cost/data consent; never infer image capability from `cx/gpt-6-sol` chat alias.
 - Composio remains disabled. Pilot one public/synthetic read-only toolkit with no remote sandbox or write privileges. Any publish/send action requires human approval.
 - Render and inspect each deck before delivery. Keep PPTX charts editable when user needs editing; PNG when exact appearance matters.
