@@ -1,8 +1,8 @@
 # Pilot results — 0001
 
-## Status: pilot not run
+## Status: synthetic helper harness passed; provider pilot not run
 
-No end-to-end pilot is authorized yet. Revised scope is public/synthetic-only; T-12's sensitive-data consent/runtime gate remains a separate blocked capability, not an authorization to use any sensitive payload. A fake-provider public-path test and packaged overlay verification are still required before release.
+`bun test test/e2e/multi-agent-pilot.test.ts` in `rebrand`: 1 pass, 20 assertions. Synthetic file passed through preflight, bounded DAG and fake executor (explore/extract/draft/review metadata). Negative fixtures rejected non-public, unknown, token path, escape and mixed policy before fixture read; ambiguous fallback and duplicate output rejected. No provider, child session, write or audit transport was exercised. T-12 remains skipped, not a security clearance.
 
 ## Evidence available
 
@@ -15,8 +15,8 @@ No end-to-end pilot is authorized yet. Revised scope is public/synthetic-only; T
 
 ## Not measured
 
-No controlled fake-provider pilot, exact-model integration, project opt-in isolation, multi-agent child-job status, costs, upstream routing/retention, or package installer verification. Existing queue inbox UI is not a multi-agent queue. Do not treat missing measurements as zero risk or zero cost.
+No controlled fake-provider pilot, exact-model integration, project opt-in isolation, multi-agent child-job status, costs, upstream routing/retention, or package installer verification. Existing queue inbox UI is not a multi-agent queue. Do not treat missing measurements as zero risk or zero cost. The helper modules are deliberately absent from desktop entrypoint and installer overlay (`agent-bundle.test.ts`).
 
 ## Release decision
 
-Blocked. Do not use original case data, confidential/internal data, or token maps with multi-agent routing. Public/synthetic-only manual exercises do not constitute a released pilot. Reopen after public-only preflight, fake-provider pilot, packaged overlay, and documented queue behavior pass. T-12 remains a separate prerequisite for any future sensitive-data support.
+Close 0001 only as unreleased helper prototype after verify/review. Do not use original case data, confidential/internal data, or token maps with multi-agent routing. Future release needs Core dispatcher, transport policy, fake-provider pilot and installer proof in separate scope.
