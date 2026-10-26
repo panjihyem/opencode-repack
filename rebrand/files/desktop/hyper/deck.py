@@ -1,5 +1,6 @@
 """HYPER_AI_MANAGED: public/synthetic report deck from one data file; no network."""
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -21,9 +22,9 @@ def build(source: Path, output: Path):
     title, caption, rows = data.get("title"), data.get("source"), data.get("rows")
     if not isinstance(title, str) or not title.strip() or not isinstance(caption, str) or not caption.strip() or not isinstance(rows, list) or not rows:
         raise ValueError("Title, source and nonempty rows required")
-    if any(not isinstance(row, dict) or not isinstance(row.get("label"), str) or not isinstance(row.get("value"), (int, float)) or isinstance(row.get("value"), bool) for row in rows):
+    if any(not isinstance(row, dict) or not isinstance(row.get("label"), str) or len(row["label"]) > 16 or not isinstance(row.get("value"), (int, float)) or isinstance(row.get("value"), bool) or not math.isfinite(row["value"]) for row in rows):
         raise ValueError("Each row requires label and numeric value")
-    if len(rows) > 12 or len(title) > 95 or len(caption) > 180:
+    if len(rows) > 8 or len(title) > 65 or len(caption) > 105:
         raise ValueError("Deck exceeds bounded layout")
 
     output.parent.mkdir(parents=True, exist_ok=True)

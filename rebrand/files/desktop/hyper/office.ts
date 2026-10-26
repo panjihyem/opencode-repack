@@ -23,7 +23,15 @@ const marker = (root: string) =>
 
 export const officeInstalled = (dataDir: string) =>
   Promise.all([stat(marker(officeRoot(dataDir))).catch(() => undefined), stat(pythonBinary(officeRoot(dataDir))).catch(() => undefined)]).then(
-    ([m, py]) => Boolean(m && py),
+    async ([m, py]) => {
+      if (!m || !py) return false
+      const deck = deckModule(dataDir)
+      if (!(await stat(deck).catch(() => undefined))) {
+        await mkdir(path.dirname(deck), { recursive: true })
+        await writeFile(deck, deckSource)
+      }
+      return true
+    },
   )
 
 /**

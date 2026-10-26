@@ -1,7 +1,8 @@
 import { expect, test } from "bun:test"
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
+import { officeInstalled, officeRoot, deckModule } from "../../files/desktop/hyper/office"
 
 const python = "C:\\Users\\User\\AppData\\Roaming\\ai.hyperai.desktop\\hyper-bundle\\office\\venv\\Scripts\\python.exe"
 const deck = new URL("../../files/desktop/hyper/deck.py", import.meta.url).pathname.replace(/^\/(?:[A-Za-z]:)/, (drive) => drive.slice(1))
@@ -21,6 +22,16 @@ test("public deck has PNG and editable chart without replacing source", async ()
     expect((await readFile(path.join(root, "result.chart.png"))).subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
     expect(Bun.spawnSync([python, deck, source, output]).exitCode).not.toBe(0)
     expect(await readFile(source, "utf8")).toBe(data)
+    const tooLong = JSON.stringify({ data_class: "synthetic", title: "Contoh", source: "Dataset", rows: [{ label: "LABEL_SEPANJANG_INI_MEMOTONG_CHART", value: 1 }] })
+    await writeFile(source, tooLong)
+    expect(Bun.spawnSync([python, deck, source, path.join(root, "invalid.pptx")]).exitCode).not.toBe(0)
+    const oldInstall = path.join(root, "old-install")
+    await mkdir(path.join(officeRoot(oldInstall), "venv", "Scripts"), { recursive: true })
+    await writeFile(path.join(officeRoot(oldInstall), "venv", "Scripts", "python.exe"), "fixture")
+    const marker = (await import("node:crypto")).createHash("sha256").update((await import("../../files/desktop/hyper/manifest")).manifest.office.packages.join(",")).digest("hex").slice(0, 8)
+    await writeFile(path.join(officeRoot(oldInstall), `installed-${marker}`), "previous")
+    expect(await officeInstalled(oldInstall)).toBe(true)
+    expect((await readFile(deckModule(oldInstall), "utf8"))).toContain("HYPER_AI_MANAGED")
   } finally {
     await rm(root, { recursive: true, force: true })
   }
