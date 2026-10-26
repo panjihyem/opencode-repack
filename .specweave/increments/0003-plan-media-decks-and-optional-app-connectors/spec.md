@@ -87,7 +87,7 @@ This is a **planned backlog**, not an implementation or authorization to connect
 - Dependencies: none. Decide MCP vs SDK on security evidence; simulate one read-only toolkit, denied write/unknown tool and no-key path. Do not use a live account until consent. If SDK authorization checks must run on each tool call, add separate runtime task/Files before activation.
 
 ### T-05 Verify and close 0003
-- AC: AC-01, AC-02, AC-03, AC-04, AC-05, AC-06 | Files: docs/multi-agent/media-deck-plan.md, docs/multi-agent/composio-evaluation.md | Test: specweave verify 0003-plan-media-decks-and-optional-app-connectors
+- AC: AC-01, AC-02, AC-03, AC-04, AC-05, AC-06 | Files: docs/multi-agent/media-deck-plan.md, docs/multi-agent/composio-evaluation.md | Test: cd rebrand && bun test test/e2e/deck-quality.test.ts test/e2e/deck-assets.test.ts test/e2e/deck-image-generation.test.ts test/e2e/composio-policy.test.ts test/e2e/graphify-integration.test.ts
 - Dependencies: T-01, T-02, T-03, T-04, T-06, T-07. Run package-scoped tests, Office render audit, graph fixture, fresh-context review and complete only supported scope. Never treat a planned/completed increment as authorization for cloud data egress.
 
 ### T-06 Audit existing charts, Hindsight graph and Graphify boundary
