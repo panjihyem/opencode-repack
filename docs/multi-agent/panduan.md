@@ -16,4 +16,4 @@ Case Secure menonaktifkan memory terkelola dan sebagian integrasi web, tetapi ti
 4. Hentikan uji saat tujuan model/provider berubah, consent tidak tersedia, atau delivery ambigu. Jangan retry payload sensitif.
 5. Review output dan distribusi secara manual. Restore token map hanya lokal dengan persetujuan manusia.
 
-Pilot public-only belum boleh dibuka: preflight belum terhubung ke entrypoint runtime, fake-provider pilot belum dibuat, dan installer overlay belum memaketkan helper. Status queued/active/finished/failed untuk master/child-job belum tersedia; inbox queue UI tidak menggantikannya.
+Pilot public-only belum boleh dibuka: preflight belum terhubung ke entrypoint runtime, fake-provider pilot belum dibuat, dan installer overlay belum memaketkan helper. Inbox `queue`/`steer` lulus 31 tes Playwright headless; status queued/active/finished/failed untuk master/child-job belum tersedia, dan inbox queue UI tidak menggantikannya.

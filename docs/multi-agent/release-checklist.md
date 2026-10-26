@@ -11,7 +11,7 @@
 - [x] Core TypeScript build check passes.
 - [x] Documentation labels runtime routing as unreleased and restricts examples to public/synthetic data.
 - [x] Case Secure UI helper tests pass: `bun test test/case-ui.test.ts` in `rebrand` (11 tests, 23 assertions); no claim of provider isolation.
-- [x] Existing `packages/app/e2e/regression/session-queue.spec.ts` owns actual inbox queue/steer behavior; this does not prove master/child-job queue status. Attempted E2E run blocked because `playwright` command is unavailable in this workspace.
+- [x] Existing `packages/app/e2e/regression/session-queue.spec.ts` owns actual inbox queue/steer behavior; 31/31 headless Chromium tests pass with external Vite server. This does not prove master/child-job queue status.
 
 ## Validation commands
 
@@ -21,7 +21,7 @@
 
 `bun test test/session-model-request-hooks.test.ts` in `packages/core`: pass (9 tests, 21 assertions). These are hook boundary probes, not installer enforcement.
 
-Headless UI attempt: `bun run test:e2e -- regression/session-queue.spec.ts --project=chromium` in `packages/app` failed before Playwright start: `bun: command not found: playwright`.
+Headless UI: set `VITE_OPENCODE_TEST_FIXTURES=1`, `VITE_OPENCODE_SERVER_HOST=127.0.0.1`, `VITE_OPENCODE_SERVER_PORT=4096`; start `node ./node_modules/vite/bin/vite.js --host 127.0.0.1 --port 3000 --strictPort` in `packages/app`. Then set `PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000`, `PWDEBUG=0`, `PLAYWRIGHT_HTML_OPEN=never`; run `node ./node_modules/@playwright/test/cli.js test regression/session-queue.spec.ts --project=chromium --workers=2 --reporter=list` in `packages/app`: 31 passed (2.9m). Browser installed via `node ./node_modules/@playwright/test/cli.js install chromium-headless-shell`. Original Bun `webServer` script still fails in this environment; do not treat this workaround as installer evidence.
 
 `bun node_modules/@typescript/native-preview/bin/tsgo.js -b packages/core/tsconfig.json packages/core/tsconfig.tests.json` from repository root: pass.
 
@@ -34,7 +34,7 @@ Headless UI attempt: `bun run test:e2e -- regression/session-queue.spec.ts --pro
 - [ ] Cover attachments, child sessions, model/provider switches, auxiliary requests, retries, ambiguous delivery, MCP, shell, and nested Code Mode.
 - [ ] Verify public-only gate modules/config are present and active in packaged desktop installer; test absence of opt-in leaves old behavior unchanged.
 - [ ] Keep Case Secure/original-case outside feature scope; no mode flag-as-isolation claim.
-- [ ] Preserve actual inbox `queue`/`steer` behavior; verify when Playwright becomes available. Master/child job status remains excluded until dispatcher integration and needs separate scope/AC.
+- [x] Preserve actual inbox `queue`/`steer` behavior: targeted headless UI suite passed. Master/child job status remains excluded until dispatcher integration and needs separate scope/AC.
 - [ ] Run approved public/synthetic end-to-end pilot against controlled fake provider; measure model, denials, bytes, UI, cost, and audit redaction.
 - [ ] Render and inspect manual PDF from Markdown source.
 - [ ] Run `specweave verify`, fresh-context adversarial review, then complete increment only when all gates pass.
