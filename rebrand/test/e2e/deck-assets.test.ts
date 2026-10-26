@@ -38,5 +38,15 @@ test("licensed public Commons image stores provenance, rejects unsafe inputs", a
     expect(await readFile(output)).toEqual(png)
     expect(JSON.parse(await readFile(`${output}.license.json`, "utf8")).landing_url).toBe(page)
     await expect(fetchCommonsAsset(page, output, { fetch: send, consent: true, dataClass: "public" })).rejects.toThrow("exists")
+    const oversized = path.join(root, "oversized.png")
+    const huge: typeof fetch = async (url) => {
+      const uri = String(url)
+      const content = uri.includes("api.php") ? JSON.stringify(metadata) : Buffer.alloc(5_000_001, 0)
+      const response = new Response(content, { headers: { "content-type": uri.includes("api.php") ? "application/json" : "image/png" } })
+      Object.defineProperty(response, "url", { value: uri })
+      return response
+    }
+    await expect(fetchCommonsAsset(page, oversized, { fetch: huge, consent: true, dataClass: "public" })).rejects.toThrow("too large")
+    expect(await Bun.file(oversized).exists()).toBe(false)
   } finally { await rm(root, { recursive: true, force: true }) }
 })

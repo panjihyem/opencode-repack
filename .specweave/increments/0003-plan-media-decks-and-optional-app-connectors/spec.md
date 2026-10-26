@@ -105,3 +105,7 @@ This is a **planned backlog**, not an implementation or authorization to connect
 ### T-09 Restore deck module in existing Office installs and bound slide text
 - AC: AC-01, AC-05 | Files: rebrand/files/desktop/hyper/office.ts, rebrand/files/desktop/hyper/deck.py, rebrand/test/e2e/deck-quality.test.ts, docs/multi-agent/media-deck-plan.md | Test: cd rebrand && bun test test/e2e/deck-quality.test.ts
 - Dependencies: T-01. Copy managed deck script when existing install marker is present without reinstalling packages. Bound label/caption length and render a long-text negative fixture; do not claim geometrical shape checks prove text fit.
+
+### T-10 Bound metadata and image download streams
+- AC: AC-02 | Files: rebrand/files/desktop/hyper/assets.ts, rebrand/test/e2e/deck-assets.test.ts | Test: cd rebrand && bun test test/e2e/deck-assets.test.ts
+- Dependencies: T-02. Read streams with hard limits even when `Content-Length` is missing or false; no file written after oversized response. Review finding `assets.ts:25,40`.
