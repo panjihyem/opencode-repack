@@ -1,0 +1,11 @@
+{
+  "id": "0002-release-public-only-multi-agent-routing",
+  "uuid": "c16e12c2-5749-4bae-941f-e8d3875a2ab5",
+  "status": "active",
+  "type": "feature",
+  "priority": "P1",
+  "created": "2026-10-26T06:49:53.299Z",
+  "updated": "2026-10-26T06:49:53.299Z",
+  "lastActivity": "2026-10-26T06:49:53.299Z",
+  "title": "Release public-only multi-agent routing"
+}
