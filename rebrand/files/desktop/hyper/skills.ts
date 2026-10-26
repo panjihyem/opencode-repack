@@ -92,6 +92,7 @@ Python siap pakai: \`${python}\`
 - Untuk data publik/sintetis, generator contoh 16:9: \`${python} __DECK_PY__ input.json hasil-baru.pptx\`. JSON: {"data_class":"public","title":"Tren","source":"Dataset publik 2026","rows":[{"label":"A","value":12}]}. Hasil dua slide: grafik PNG dan chart PowerPoint yang bisa diedit; sumber tercetak. Jangan timpa berkas asli.
 - Render setiap slide ke gambar/PDF dan cek teks terpotong, footer, chart serta atribusi sebelum menyerahkan PPTX. Jangan kirim data kasus asli ke layanan desain/gambar cloud.
 - Aset gambar internet: cari dan pilih dulu halaman file Wikimedia Commons beserta pembuat dan lisensinya. Hanya untuk data publik dengan persetujuan eksplisit. Unduh memakai modul \`assets.ts\` terikat host dan simpan \`.license.json\` bersama gambar. Sertakan sumber dan atribusi pada slide/catatan. Jangan anggap semua gambar internet bebas pakai.
+- Generasi gambar via 9Router masih probe fake-provider \`image-generation.ts\`, tidak aktif sebagai tool. Chat \`cx/gpt-6-sol\` bukan image model. Jangan panggil image endpoint/live provider sebelum izin biaya dan data; jika model gambar tidak terdaftar, anggap tidak tersedia.
 
 ## PDF — \`reportlab\`, \`pypdf\`
 

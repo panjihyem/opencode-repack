@@ -10,6 +10,6 @@ Verification: `bun test test/e2e/deck-quality.test.ts` in `rebrand` checks outpu
 
 Next gates:
 - Optional public Commons asset selector (`rebrand/files/desktop/hyper/assets.ts`) now tested with fake metadata/image response: explicit consent, allowlisted HTTPS landing and image hosts, license/creator/attribution/time manifest, no overwrite, rejected case input, redirect and oversized/non-image failure. Not enabled as a default auto-search tool. User reviews the source/license before insertion; `hyper-report` owns slide insertion. Never fetch case/internal files via this path.
-- Generated images only after 9Router catalog + entitlement and explicit cost/data consent; never infer image capability from `cx/gpt-6-sol` chat alias.
+- Generated image probe (`image-generation.ts`) tested only with fake 9Router: catalog exact image ID, public consent before network, no calls for case data, PNG signature/size and metadata without API key. User explicitly declined a billable live test. **Image generation remains unavailable in Hyper AI runtime**; `cx/gpt-6-sol-image` entitlement not confirmed. Never infer it from the `cx/gpt-6-sol` chat alias.
 - Composio remains disabled. Pilot one public/synthetic read-only toolkit with no remote sandbox or write privileges. Any publish/send action requires human approval.
 - Render and inspect each deck before delivery. Keep PPTX charts editable when user needs editing; PNG when exact appearance matters.

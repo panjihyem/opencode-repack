@@ -56,6 +56,7 @@ This is a **planned backlog**, not an implementation or authorization to connect
 - D-01 Composio pilot data boundary → user chose only public/synthetic and read-only tools (2026-10-27). No private/original-case data or account write tools authorized.
 - D-06 User correction: Hyper AI already has chart, including Sankey; audit/update Hindsight memory and clarify Graphify before continuing media work (2026-10-27). Graphify is a distinct code-graph capability.
 - D-07 User decision: Graphify is required in Hyper AI memory layer; add executable installation/integration task, not just a paper audit (2026-10-27). Keep code-only local by default.
+- D-08 User declined live 9Router image test and billable generation; use fake provider only. Do not claim entitlement or live image support (2026-10-27).
 
 ### Defaulted (change any before sw-do)
 - D-02 Reuse installed Python Office/chart stack; no full OpenDesign or PptxGenJS bundling by default. Upgrade only after visible sample fails quality/fidelity checks.
@@ -78,8 +79,8 @@ This is a **planned backlog**, not an implementation or authorization to connect
 - Pause new implementation until T-06 memory/graph audit is recorded; do not substitute chart work for this asset task.
 
 ### T-03 Optional image generation probe and insert
-- AC: AC-03, AC-05 | Files: rebrand/files/desktop/hyper/skills.ts, rebrand/files/desktop/hyper/agent-install.ts, rebrand/test/e2e/deck-image-generation.test.ts, docs/multi-agent/media-deck-plan.md | Test: cd rebrand && bun test test/e2e/deck-image-generation.test.ts
-- Dependencies: T-01. Before editing code verify active model catalog, installed plugin API and existing provider auth path; revise Files/approach when those facts require another owner. Mock success/failure and check saved image/attribution before optional live probe.
+- AC: AC-03, AC-05 | Files: rebrand/files/desktop/hyper/skills.ts, rebrand/files/desktop/hyper/image-generation.ts, rebrand/test/e2e/deck-image-generation.test.ts, docs/multi-agent/media-deck-plan.md | Test: cd rebrand && bun test test/e2e/deck-image-generation.test.ts
+- Dependencies: T-01. A fake provider tests catalog/generation, PNG/output/provenance and denial. No live call or installed plugin because D-08 forbids billable test; status remains unavailable until separately approved live pilot.
 
 ### T-04 Composio feasibility contract, no global install
 - AC: AC-04, AC-05 | Files: docs/multi-agent/composio-evaluation.md, rebrand/files/desktop/hyper/composio-policy.ts, rebrand/test/e2e/composio-policy.test.ts | Test: cd rebrand && bun test test/e2e/composio-policy.test.ts
