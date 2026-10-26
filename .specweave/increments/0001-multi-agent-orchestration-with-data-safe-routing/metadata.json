@@ -1,14 +1,16 @@
 {
   "id": "0001-multi-agent-orchestration-with-data-safe-routing",
   "uuid": "466a284c-dc71-468a-8956-2b54c1dd2120",
-  "status": "active",
+  "status": "completed",
   "type": "feature",
   "priority": "P1",
   "created": "2026-10-24T20:48:30.239Z",
-  "updated": "2026-10-26T05:42:11.398Z",
-  "lastActivity": "2026-10-26T05:42:11.398Z",
+  "updated": "2026-10-26T05:56:00.313Z",
+  "lastActivity": "2026-10-26T05:56:00.313Z",
   "title": "Multi-agent orchestration with data-safe routing",
   "externalLinks": {},
   "testMode": "test-after",
-  "coverageTarget": 80
+  "coverageTarget": 80,
+  "readyForReviewAt": "2026-10-26T05:55:41.684Z",
+  "approvedAt": "2026-10-26T05:56:00.313Z"
 }
