@@ -4,6 +4,10 @@
 
 **Prototype only; do not release multi-agent routing.** Scope 0001 is helper contracts and synthetic harness, not opt-in runtime. Closing increment does not authorize use of multi-agent in desktop or sensitive-data handling.
 
+## 0002 candidate (not released)
+
+Experimental `hyper-public-agents` command source accepts only text prefixed `public:` and no attachments. Its fake-generator tests cover four stateless stages and a queued synthetic result. **Command is not installed or active.** User declaration is not automatic classification. Global config installation would expose the command across projects and case-mode toggles would not revoke a live plugin, so installer wiring was withheld. No child sessions, file reads/writes, transport isolation, provider pilot, or sensitive-data protection is claimed.
+
 T-12 was explicitly skipped as out of scope, not passed. A separate Core-owned security increment is required before any original-case/internal/confidential use. Desktop dispatcher and fake-provider pilot remain future work, not T-04/T-09 claims.
 
 ## Verified locally

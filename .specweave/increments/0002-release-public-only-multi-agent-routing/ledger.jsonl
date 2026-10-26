@@ -1,2 +1,12 @@
 {"t":"T-01","e":"claim","by":"opencode@riefky","at":"2026-10-26T06:54:55.516Z","line":"Bind public route at trusted server transport"}
 {"t":"T-01","e":"block","by":"opencode@riefky","at":"2026-10-26T06:56:13.900Z","note":"Existing Core hook suite passes 9 tests/21 assertions, but no project-scoped opt-in/session binding or final route guard exists. Desktop base build passed via electron-vite direct CLI, not feature build or installer proof."}
+{"t":"T-01","e":"claim","by":"opencode@riefky","at":"2026-10-26T07:02:40.571Z","line":"Probe stateless server generation boundary"}
+{"t":"T-01","e":"release","by":"opencode@riefky","at":"2026-10-26T07:04:08.718Z"}
+{"t":"T-01","e":"claim","by":"opencode@riefky","at":"2026-10-26T07:04:52.418Z","line":"Create explicit public-text server command"}
+{"t":"T-01","e":"done","by":"opencode@riefky","at":"2026-10-26T07:05:58.616Z","evidence":"cd rebrand && bun test test/e2e/agent-command.test.ts → exit 0\nlog: .specweave/increments/0002-release-public-only-multi-agent-routing/reports/task-T-01.txt\nbun test v1.4.4 (38afee6c8)\n\n 1 pass\n 0 fail\n 9 expect() calls\nRan 1 test across 1 file. [364.00ms]\nHEAD a052039","line":"Added explicit public text-only server command"}
+{"t":"T-02","e":"claim","by":"opencode@riefky","at":"2026-10-26T07:06:07.379Z","line":"Run bounded text specialists with fake generator"}
+{"t":"T-02","e":"done","by":"opencode@riefky","at":"2026-10-26T07:07:18.044Z","evidence":"cd rebrand && bun test test/e2e/agent-command.test.ts → exit 0\nlog: .specweave/increments/0002-release-public-only-multi-agent-routing/reports/task-T-02.txt\nbun test v1.4.4 (38afee6c8)\n\n 2 pass\n 0 fail\n 16 expect() calls\nRan 2 tests across 1 file. [335.00ms]\nHEAD 7dca74f","line":"Orchestrated public text specialists with fake generator"}
+{"t":"T-03","e":"claim","by":"opencode@riefky","at":"2026-10-26T07:08:04.951Z","line":"Package managed public-text plugin"}
+{"t":"T-03","e":"release","by":"opencode@riefky","at":"2026-10-26T07:08:22.411Z"}
+{"t":"T-03","e":"claim","by":"opencode@riefky","at":"2026-10-26T07:08:34.589Z","line":"Package standalone public-text command"}
+{"t":"T-03","e":"block","by":"opencode@riefky","at":"2026-10-26T07:23:18.042Z","note":"Global config/plugin installation violates per-project opt-in, case-mode toggle can leave active plugin, and packaged/runtime server proof absent. Installer wiring removed; standalone candidate tests pass but no feature shipped."}

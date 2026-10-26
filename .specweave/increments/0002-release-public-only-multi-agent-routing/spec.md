@@ -43,7 +43,7 @@ Baseline build check (2026-10-26): `bun run build` in `packages/desktop` fails w
 - Dependencies: T-01. Fake generator must be called through actual command executor, not a standalone helper.
 
 ### T-03 Desktop entrypoint and installer
-- AC: AC-01, AC-05 | Files: rebrand/files/desktop/hyper/bundle.ts, rebrand/apply.ts, rebrand/test/e2e/agent-bundle.test.ts, docs/multi-agent/release-checklist.md | Test: cd rebrand && bun test test/e2e/agent-bundle.test.ts
+- AC: AC-01, AC-05 | Files: rebrand/files/desktop/hyper/agent-command.ts, rebrand/files/desktop/hyper/agent-install.ts, rebrand/files/desktop/hyper/bundle.ts, rebrand/apply.ts, rebrand/test/e2e/agent-bundle.test.ts, docs/multi-agent/release-checklist.md | Test: cd rebrand && bun test test/e2e/agent-bundle.test.ts
 - Dependencies: T-01, T-02. Also build desktop and package/inspect installer before marking done.
 
 ### T-04 Verify and close 0002

@@ -18,8 +18,8 @@ test("explicit public text command rejects sensitive and attached input before g
   await execute!({ sessionID: "test", prompt: { text: "public: synthetic figure 12" } })
   expect(calls).toHaveLength(5)
   expect(calls.slice(0, 4).every((entry) => (entry as { model?: unknown }).model && (entry as { prompt?: string }).prompt?.includes("synthetic figure 12"))).toBe(true)
-  expect(calls.slice(0, 4).map((entry) => (entry as { model: unknown }).model)).toEqual(Array(4).fill({ providerID: "ocg", id: "minimax-m3" }))
-  expect((calls[3] as { prompt: string }).prompt).toContain("draft: Reviewed synthetic public text")
+  expect(calls.slice(0, 4).map((entry) => (entry as { model: unknown }).model)).toEqual(Array(4).fill({ providerID: "ocg", id: "minimax-m3.1-flash-free" }))
+  expect((calls[3] as { prompt: string }).prompt).toContain("Draft: Reviewed synthetic public text")
   expect(calls[4]).toEqual({ sessionID: "test", text: "Reviewed synthetic public text", delivery: "queue", resume: false })
 })
 
@@ -33,7 +33,7 @@ test("failed specialist stops downstream work and never publishes partial result
     generate: { text: async () => { generated++; throw new Error("delivery ambiguous") } },
     session: { synthetic: async () => { published++ } },
   } as never)
-  await expect(execute!({ sessionID: "test", prompt: { text: "public: synthetic only" } })).rejects.toThrow("Job failed")
+  await expect(execute!({ sessionID: "test", prompt: { text: "public: synthetic only" } })).rejects.toThrow("delivery ambiguous")
   expect(generated).toBe(2)
   expect(published).toBe(0)
 })
