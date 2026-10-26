@@ -5,6 +5,7 @@ test("explicit public text command rejects sensitive and attached input before g
   let execute: ((input: { sessionID: string; prompt: { text: string; files?: unknown[] } }) => Promise<void>) | undefined
   const calls: unknown[] = []
   await command.setup({
+    location: { project: { id: "test-project" } },
     command: { transform: async (register: (editor: { add: (item: { execute: typeof execute }) => void }) => void) => register({ add: (item) => { execute = item.execute } }) },
     generate: { text: async (input: unknown) => { calls.push(input); return { text: "Reviewed synthetic public text" } } },
     session: { synthetic: async (input: unknown) => { calls.push(input) } },
@@ -15,8 +16,24 @@ test("explicit public text command rejects sensitive and attached input before g
   await expect(execute!({ sessionID: "test", prompt: { text: "public: synthetic", files: [{ uri: "file:///secret" }] } })).rejects.toThrow("attachments")
   expect(calls).toHaveLength(0)
   await execute!({ sessionID: "test", prompt: { text: "public: synthetic figure 12" } })
-  expect(calls).toEqual([
-    { model: { providerID: "ocg", id: "minimax-m3" }, prompt: "Review this public text. No files or tools.\n\nsynthetic figure 12" },
-    { sessionID: "test", text: "Reviewed synthetic public text", delivery: "queue", resume: false },
-  ])
+  expect(calls).toHaveLength(5)
+  expect(calls.slice(0, 4).every((entry) => (entry as { model?: unknown }).model && (entry as { prompt?: string }).prompt?.includes("synthetic figure 12"))).toBe(true)
+  expect(calls.slice(0, 4).map((entry) => (entry as { model: unknown }).model)).toEqual(Array(4).fill({ providerID: "ocg", id: "minimax-m3" }))
+  expect((calls[3] as { prompt: string }).prompt).toContain("draft: Reviewed synthetic public text")
+  expect(calls[4]).toEqual({ sessionID: "test", text: "Reviewed synthetic public text", delivery: "queue", resume: false })
+})
+
+test("failed specialist stops downstream work and never publishes partial results", async () => {
+  let execute: ((input: { sessionID: string; prompt: { text: string } }) => Promise<void>) | undefined
+  let generated = 0
+  let published = 0
+  await command.setup({
+    location: { project: { id: "test-project" } },
+    command: { transform: async (register: (editor: { add: (item: { execute: typeof execute }) => void }) => void) => register({ add: (item) => { execute = item.execute } }) },
+    generate: { text: async () => { generated++; throw new Error("delivery ambiguous") } },
+    session: { synthetic: async () => { published++ } },
+  } as never)
+  await expect(execute!({ sessionID: "test", prompt: { text: "public: synthetic only" } })).rejects.toThrow("Job failed")
+  expect(generated).toBe(2)
+  expect(published).toBe(0)
 })

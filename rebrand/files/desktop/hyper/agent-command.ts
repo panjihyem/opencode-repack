@@ -1,5 +1,6 @@
 // HYPER_AI_MANAGED — explicit text-only public workflow, no session model/tool hooks.
 import { Plugin } from "@opencode/plugin"
+import { runJobs, type Job } from "./agent-orchestrator"
 
 const model = { providerID: "ocg", id: "minimax-m3" } as const
 const forbidden = /\b(?:tokens\.json|\.env(?:\.[\w-]+)?|api[_ -]?key|secret|credential|case[_ -]?original|confidential|internal)\b/i
@@ -20,8 +21,17 @@ export default Plugin.define({
       description: "Run public text specialists (prefix input with public:); never use for case data",
       execute: async ({ sessionID, prompt }) => {
         const text = publicText(prompt)
-        const result = await ctx.generate.text({ model, prompt: `Review this public text. No files or tools.\n\n${text}` })
-        await ctx.session.synthetic({ sessionID, text: result.text, delivery: "queue", resume: false })
+        const job = (id: string, role: Job["role"], dependsOn: string[] = []): Job => ({
+          id, role, dependsOn, project: ctx.location.project.id, dataClass: "public", model: `${model.providerID}/${model.id}`, files: ["<inline>"], tools: [],
+        })
+        const results = await runJobs([
+          job("explore", "explorer"), job("analyze", "analyst"), job("draft", "writer", ["explore", "analyze"]), job("review", "reviewer", ["draft"]),
+        ], async (task, handoffs) => {
+          const context = handoffs.map((item) => `${item.id}: ${item.evidence}`).join("\n")
+          const result = await ctx.generate.text({ model, prompt: `Role: ${task.role}. Use public text only. No files or tools.\n\n${text}\n${context}` })
+          return { id: task.id, status: "completed" as const, evidence: result.text }
+        })
+        await ctx.session.synthetic({ sessionID, text: results.at(-1)?.evidence ?? "", delivery: "queue", resume: false })
       },
     }))
   },
