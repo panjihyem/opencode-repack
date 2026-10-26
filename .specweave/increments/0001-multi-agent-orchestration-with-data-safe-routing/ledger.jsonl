@@ -69,3 +69,12 @@
 {"t":"T-08","e":"block","by":"opencode@riefky","at":"2026-10-26T03:38:15.800Z","note":"Playwright E2E cannot start: bun: command not found: playwright; no evidence to mark done"}
 {"t":"T-10","e":"done","by":"opencode@riefky","at":"2026-10-26T03:38:27.280Z","evidence":"Baseline documentation validation passed (bun test baseline: 1 test/6 assertions); PDF generation blocked: Python unavailable. Docs reflect public-only unreleased scope.\nHEAD fc19a59"}
 {"t":"T-10","e":"block","by":"opencode@riefky","at":"2026-10-26T03:44:05.633Z","note":"PDF generator required by task unavailable (Python not installed); previous baseline test is not equivalent to PDF build/inspection."}
+{"t":"T-08","e":"release","by":"opencode@riefky","at":"2026-10-26T03:47:43.914Z","note":"No Playwright executable in packages/app workspace; test is unrun and no code change can substitute for UI evidence"}
+{"t":"T-09","e":"release","by":"opencode@riefky","at":"2026-10-26T03:47:44.487Z","note":"No runtime dispatcher or installer gate; fake-provider pilot would only test helpers, violating acceptance criteria"}
+{"t":"T-11","e":"block","by":"opencode@riefky","at":"2026-10-26T03:47:45.067Z","note":"Verify fails root test/lint and ACs 0/7; T-04/T-08/T-09/T-12 unresolved; no completion"}
+{"t":"T-08","e":"claim","by":"opencode@riefky","at":"2026-10-26T03:49:13.448Z","line":"Run queue inbox E2E using workspace Playwright CLI"}
+{"t":"T-08","e":"block","by":"opencode@riefky","at":"2026-10-26T03:49:14.105Z","note":"Playwright CLI found, but configured Vite webServer cannot start: bun: Operation not permitted; test never reaches browser assertions."}
+{"t":"T-09","e":"claim","by":"opencode@riefky","at":"2026-10-26T03:49:14.776Z","line":"Check runtime integration before pilot test"}
+{"t":"T-09","e":"block","by":"opencode@riefky","at":"2026-10-26T03:49:15.426Z","note":"No live multi-agent dispatcher; helper-only fake provider cannot prove runtime routing. Do not create misleading pilot test."}
+{"t":"T-08","e":"claim","by":"opencode@riefky","at":"2026-10-26T04:00:26.177Z","line":"Verify queue/steer via external headless Vite server"}
+{"t":"T-08","e":"done","by":"opencode@riefky","at":"2026-10-26T04:10:43.144Z","evidence":"0f62f43; headless Playwright external Vite: 31 passed (2.9m), node ./node_modules/@playwright/test/cli.js test regression/session-queue.spec.ts --project=chromium --workers=2 --reporter=list, PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000","line":"Verified actual inbox queue/steer UI: 31 headless tests"}

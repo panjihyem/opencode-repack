@@ -10,7 +10,7 @@ No end-to-end pilot is authorized yet. Revised scope is public/synthetic-only; T
 - Core model hook suite: 9 tests pass, 21 assertions. Covers hook boundaries and denial probes with synthetic fixtures; does not establish a session-scoped approved policy or installer enforcement.
 - Core typecheck: `bun node_modules/@typescript/native-preview/bin/tsgo.js -b packages/core/tsconfig.json packages/core/tsconfig.tests.json` exits 0.
 - Case Secure UI helper flow: 11 tests / 23 assertions pass (`bun test test/case-ui.test.ts` in `rebrand`). Proves redaction/UI helper contracts, not provider/model isolation.
-- Existing queue UI E2E is `packages/app/e2e/regression/session-queue.spec.ts` and exercises real inbox `queue`/`steer`; attempted headless run failed before Playwright started with `bun: Operation not permitted`. It does not cover multi-agent job statuses.
+- Existing queue UI E2E `packages/app/e2e/regression/session-queue.spec.ts` exercises real inbox `queue`/`steer`: 31/31 headless Chromium tests passed with external Vite server and `PLAYWRIGHT_BASE_URL` (see `release-checklist.md`). It does not cover multi-agent job statuses.
 - Case Secure still allows model provider traffic and network access through `shell`; see `rebrand/files/desktop/hyper/case/casemode.py`.
 
 ## Not measured
