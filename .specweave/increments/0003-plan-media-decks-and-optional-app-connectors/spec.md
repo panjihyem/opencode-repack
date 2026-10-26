@@ -2,11 +2,11 @@
 
 ## Problem
 
-Hyper AI already ships `hyper-report` (python-pptx), `hyper-chart` (matplotlib), Office tools and source-aware case templates. Charts are currently PNG-first; slides lack a repeatable brand/layout/render QA gate, native editable charts, image provenance, and a dedicated image-generation tool. The `cx/gpt-6-sol` chat route does not by itself call a media API. External app integrations via Composio could expose case data or mutate connected accounts if enabled indiscriminately. Increment 0002 is closed as an **unreleased** text-only candidate, not proof of runtime security.
+Hyper AI already ships `hyper-report` (python-pptx), `hyper-chart` (matplotlib), `hyper-fundflow` (Sankey/treemap/graph), `hyper viz` (ECharts), Office tools and source-aware case templates. The gap is composing existing visual output into slides with provenance and layout QA, not creating another chart engine. Slides also lack image provenance and a dedicated image-generation tool. The `cx/gpt-6-sol` chat route does not by itself call a media API. External app integrations via Composio could expose case data or mutate connected accounts if enabled indiscriminately. Increment 0002 is closed as an **unreleased** text-only candidate, not proof of runtime security.
 
 ## Scope
 
-In: incremental, optional enhancements to existing report/chart skills; image provenance and an opt-in 9Router public-image probe; a narrowly scoped Composio read-only feasibility pilot for public/synthetic fixtures; documentation and gates for later release. Out: bundling all OpenDesign, an always-on Composio catalog or remote sandbox, sending original case/internal/confidential data through cloud tools, guaranteed image entitlement, video generation, and declaring 0002 released.
+In: incremental, optional enhancements to existing report/chart skills; image provenance and an opt-in 9Router public-image probe; a narrowly scoped Composio read-only feasibility pilot for public/synthetic fixtures; **Graphify-Labs local code-graph integration required** beside Hindsight; documentation and gates for later release. Out: bundling all OpenDesign, Graphify Cloud/LLM semantic scan of case documents by default, an always-on Composio catalog or remote sandbox, sending original case/internal/confidential data through cloud tools, guaranteed image entitlement, video generation, and declaring 0002 released.
 
 This is a **planned backlog**, not an implementation or authorization to connect real accounts. Work in priority order; stop each feature at its verified gate. Future tasks may be split into separate implementation increments with the same ACs if ownership or tests need isolation.
 
@@ -17,6 +17,7 @@ This is a **planned backlog**, not an implementation or authorization to connect
 - [ ] AC-03: Public-only image generation probes 9Router `GET /v1/models/image` for an entitled `cx/gpt-6-sol-image` (or actual advertised image ID) and `POST /v1/images/generations`; mock-provider tests validate selected model, PNG signature, size cap and no secret in logs. A live test may run only with explicit user consent for cost/data. If endpoint or entitlement fails, show unavailable; never relabel chat `cx/gpt-6-sol` as an image model. Saved image is insertable into PPTX and provenance records model/provider/prompt class without secret.
 - [ ] AC-04: Composio remains absent by default. A public/synthetic project can explicitly opt into a **single preapproved read-only toolkit**; project/user/session isolation, bounded tool allowlist, disabled connection management/remote sandbox and denied write/destructive tools are proven through fake service and one opted-in account. No case/private content or Composio key reaches logs/config; failed auth remains disabled. Live OAuth and Composio cloud use need separate user consent.
 - [ ] AC-05: User docs distinguish existing, tested, planned and unavailable capabilities; describe cloud data destinations, human approval for publish/send actions, model/asset licensing, cost limits and rollback. Verify package build and fresh-context review before closing implementation; no claim of released connector/media feature based on static tests alone.
+- [ ] AC-06: Official Graphify-Labs `graphifyy` is installed in an isolated local environment, not replaced by chart/Sankey or Hindsight. A code-only synthetic repo produces `graphify-out/graph.json`, `GRAPH_REPORT.md`, and a working graph query/path; no docs/case files or network payload enter the run. OpenCode access is project-scoped, uninstallable, and does not overwrite user instructions; failure disables Graphify without breaking Hindsight recall. Real package/CLI/MCP integration must be tested before claiming available.
 
 ## Approach
 
@@ -25,7 +26,7 @@ This is a **planned backlog**, not an implementation or authorization to connect
 | Area | Existing Hyper AI | Enhancement, smallest first |
 | --- | --- | --- |
 | Slides | `rebrand/files/desktop/hyper/skills.ts` `hyper-report`: python-pptx and templates | Brand/style guide, editable chart option, footer/overflow checks, render/PDF + visual inspection. Keep PNG when fidelity matters. |
-| Charts | `hyper-chart`: matplotlib PNG; `manifest.ts` also installs plotly/kaleido | Carry units/source/math in chart metadata and expose native chart path for editable decks; no duplicate chart engine until needed. |
+| Charts | `hyper-chart`: matplotlib PNG; `hyper-fundflow`: Sankey/treemap/graph; `hyper viz`: ECharts SVG/PNG | Reuse existing chart artifacts in PPTX and retain units/source/math; no new chart engine, Sankey pipeline or graph tool. Editable PowerPoint chart is an export format for source tabular data, not a replacement. |
 | Images | Web search tools and `cx` chat provider; no registered image-generation tool | Wikimedia Commons image selection with license/attribution manifest, then optional 9Router image-generation tool. Distinguish generated and licensed assets. |
 | Media | `packages/ai` has Image/Video clients and xAI protocols, but Hyper AI has no user-facing media dispatcher | Reuse only after proving configured credentials and endpoint; no model-picker flag or chat `modalities` toggle alone. |
 | App connections | OpenCode MCP available, Case Secure blocks selected MCPs but shell/model network remain possible | Composio as **project opt-in** via narrowly scoped session MCP or SDK; do not silently install global connectors. Verify guard at actual executor, not prompt text. |
@@ -33,11 +34,12 @@ This is a **planned backlog**, not an implementation or authorization to connect
 
 ### Chosen order
 
-1. **P0 deck quality.** Improve managed `hyper-report`/`hyper-chart` instructions and small local renderer: source data → native editable chart or matplotlib PNG → PPTX → render/overflow check. Use installed `python-pptx`/`matplotlib`; don't add PptxGenJS unless Python path demonstrably fails. OpenDesign's 15 deck templates / 36 themes can inspire a small reviewed style set; do not vendor app. Its PPTX export is agent-driven and requires separate fidelity audit.
+1. **P0 deck composition/quality, not chart creation.** Reuse `hyper-chart` and `hyper viz` outputs (including Sankey), embed in PPTX with source/units/caption, optionally export source table as native editable chart, then render/overflow check. The T-01 synthetic two-chart generator is only an example; do not advertise it as new chart feature. Use installed `python-pptx`/`matplotlib`; don't add PptxGenJS unless Python path demonstrably fails. OpenDesign themes may inspire a reviewed style set; do not vendor app.
 2. **P1 web image assets.** Search/choose via a source that provides license metadata (e.g., Commons), require user selection, record provenance. Allowlisted HTTPS downloads only, no arbitrary returned URL or automatic insertion into sensitive documents; attribution slide/notes when required.
 3. **P1 generated public image.** 9Router's 2026-10-26 changelog lists `cx/gpt-6-sol-image` and image output capabilities. The active account/endpoint remains **unverified**; catalog and mocked generation precede a consented live smoke test. Do not copy `opencode-gpt-imagegen` V1 plugin into V2: current third-party package uses `@opencode-ai/plugin` and V1 entrypoints; port or write minimal V2 tool only if router supports image API. Its proxy mode omits authorization header. Video remains separate.
 4. **P2 Composio pilot.** Current Composio sessions default to access to *every* toolkit. Create explicit allowlist for one read-only toolkit/tool pair with `sessionPreset: DIRECT_TOOLS`, `manageConnections: false`, `sandbox: false`, `mcp: true` only where server-side policy/approval is proven. `noElicitationSupportFallback: "deny"` for approval-required tools if MCP cannot elicit. Bind one user/account/project; use a scoped project API key, never store exported `session.mcp.headers` in repo or model-visible output. SDK path needed if `beforeExecute` interception is required; MCP bypasses SDK-side hooks. Disable by default in Case Secure and any non-public route. Do not rely on Composio tool tags alone as DLP. Run read-only public fixtures before any OAuth pilot.
-5. **Later only with demand:** OpenDesign companion app/MCP for interactive design iteration, video, workflow triggers, cloud publish/edit connectors, and case-data integration. These need their own data/security and cost decisions.
+5. **P1 Graphify code structure.** Install official `graphifyy` (double-y) in a separate venv and run code-only local AST extraction on explicit project roots. Prove graph query and path on synthetic code, then register a scoped CLI skill or MCP only after verifying versioned interface. Keep Graphify output out of source control and filter secrets/outputs. Hindsight still owns session/general semantic memories, not AST dependency edges. Never enable Graphify Cloud, docs/PDF semantic extraction, hooks or auto-index for case folders by default. Explicit removal and rollback required.
+6. **Later only with demand:** OpenDesign companion app/MCP for interactive design iteration, video, workflow triggers, cloud publish/edit connectors, and case-data integration. These need their own data/security and cost decisions.
 
 ### Research evidence
 
@@ -46,11 +48,14 @@ This is a **planned backlog**, not an implementation or authorization to connect
 - [PptxGenJS](https://github.com/gitbrent/PptxGenJS): native PPTX chart/image alternative; [Marp CLI](https://github.com/marp-team/marp-cli) normally exports slides as raster backgrounds; editable export experimental. Neither is required initially.
 - [9Router changelog](https://github.com/decolua/9router/blob/master/CHANGELOG.md): `cx/gpt-6-sol-image` in v0.5.111; [Codex images proposal](https://github.com/decolua/9router/issues/2718) shows entitlement and edits may vary. Catalog entry is not proof of this account's access.
 - [Composio session policy](https://docs.composio.dev/docs/configuring-sessions): unrestricted default, toolkit/tool allowlist, direct-tools preset, sandbox disabled; [MCP caveats](https://docs.composio.dev/docs/sessions-via-mcp): hosted MCP receives a project key, bypasses SDK `beforeExecute`/`afterExecute`; [pricing](https://composio.dev/pricing): Hobby 100K calls/mo but Composio-managed app allowance 20K, quotas/pricing may change.
+- [Graphify-Labs/graphify](https://github.com/Graphify-Labs/graphify): official PyPI name `graphifyy`; code-only tree-sitter graph is local, docs/media semantic pass can use an external LLM. Graphify outputs code structure; it is not `hyper viz` or Hindsight memory graph.
 
 ## Decisions
 
 ### Asked
 - D-01 Composio pilot data boundary → user chose only public/synthetic and read-only tools (2026-10-27). No private/original-case data or account write tools authorized.
+- D-06 User correction: Hyper AI already has chart, including Sankey; audit/update Hindsight memory and clarify Graphify before continuing media work (2026-10-27). Graphify is a distinct code-graph capability.
+- D-07 User decision: Graphify is required in Hyper AI memory layer; add executable installation/integration task, not just a paper audit (2026-10-27). Keep code-only local by default.
 
 ### Defaulted (change any before sw-do)
 - D-02 Reuse installed Python Office/chart stack; no full OpenDesign or PptxGenJS bundling by default. Upgrade only after visible sample fails quality/fidelity checks.
@@ -70,6 +75,7 @@ This is a **planned backlog**, not an implementation or authorization to connect
 ### T-02 Public licensed image assets
 - AC: AC-02, AC-05 | Files: rebrand/files/desktop/hyper/skills.ts, rebrand/test/e2e/deck-assets.test.ts, docs/multi-agent/media-deck-plan.md | Test: cd rebrand && bun test test/e2e/deck-assets.test.ts
 - Dependencies: T-01. Fake metadata/image server with redirect/content-type/size/license failures; no web image auto-download in a sensitive project.
+- Pause new implementation until T-06 memory/graph audit is recorded; do not substitute chart work for this asset task.
 
 ### T-03 Optional image generation probe and insert
 - AC: AC-03, AC-05 | Files: rebrand/files/desktop/hyper/skills.ts, rebrand/files/desktop/hyper/agent-install.ts, rebrand/test/e2e/deck-image-generation.test.ts, docs/multi-agent/media-deck-plan.md | Test: cd rebrand && bun test test/e2e/deck-image-generation.test.ts
@@ -80,5 +86,13 @@ This is a **planned backlog**, not an implementation or authorization to connect
 - Dependencies: none. Decide MCP vs SDK on security evidence; simulate one read-only toolkit, denied write/unknown tool and no-key path. Do not use a live account until consent. If SDK authorization checks must run on each tool call, add separate runtime task/Files before activation.
 
 ### T-05 Verify and close 0003
-- AC: AC-01, AC-02, AC-03, AC-04, AC-05 | Files: docs/multi-agent/media-deck-plan.md, docs/multi-agent/composio-evaluation.md | Test: specweave verify 0003-plan-media-decks-and-optional-app-connectors
-- Dependencies: T-01, T-02, T-03, T-04. Run package-scoped tests, Office render audit, fresh-context review and complete only supported scope. Never treat a planned/completed increment as authorization for cloud data egress.
+- AC: AC-01, AC-02, AC-03, AC-04, AC-05, AC-06 | Files: docs/multi-agent/media-deck-plan.md, docs/multi-agent/composio-evaluation.md | Test: specweave verify 0003-plan-media-decks-and-optional-app-connectors
+- Dependencies: T-01, T-02, T-03, T-04, T-06, T-07. Run package-scoped tests, Office render audit, graph fixture, fresh-context review and complete only supported scope. Never treat a planned/completed increment as authorization for cloud data egress.
+
+### T-06 Audit existing charts, Hindsight graph and Graphify boundary
+- AC: AC-01, AC-05 | Files: docs/multi-agent/graph-memory-audit.md, docs/multi-agent/media-deck-plan.md | Test: cd rebrand && bun test test/e2e/deck-quality.test.ts
+- Dependencies: T-01. Confirm live Hindsight bank stats and existing Sankey/viz code; distinguish external Graphify-Labs (not installed) from Hindsight graph and from fundflow visualization. Record user correction in session memory, don't enable new service.
+
+### T-07 Install isolated Graphify and expose scoped code graph
+- AC: AC-05, AC-06 | Files: rebrand/files/desktop/hyper/graphify.ts, rebrand/files/desktop/hyper/bundle.ts, rebrand/files/desktop/hyper/manifest.ts, rebrand/apply.ts, rebrand/test/e2e/graphify-integration.test.ts, docs/multi-agent/graph-memory-audit.md | Test: cd rebrand && bun test test/e2e/graphify-integration.test.ts
+- Dependencies: T-06. Pin version/hash after official package inspection; install on demand, code-only backend none, no global assistant instructions or cloud. Test install, synthetic extraction/query/path, negative case/docs, offline/failure/rollback and packaged availability. If native CLI cannot be tested on this machine, do not mark task done or claim Graphify shipped.
