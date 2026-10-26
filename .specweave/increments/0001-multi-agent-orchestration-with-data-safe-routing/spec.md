@@ -60,8 +60,8 @@ Out: mengirim data internal/rahasia/kasus asli melalui multi-agent; klaim isolas
 - AC: AC-02, AC-03 | Files: rebrand/files/desktop/hyper/agent-gate.ts, rebrand/test/e2e/agent-gate.test.ts | Test: bun test test/e2e/agent-gate.test.ts (cwd: rebrand)
 
 ### T-04 Definisi agen spesialis dan bundle overlay
-- AC: AC-01, AC-02 | Files: rebrand/files/desktop/hyper/agent-policy.ts, rebrand/files/desktop/hyper/agent-gate.ts, rebrand/files/desktop/hyper/agent-fallback.ts, rebrand/files/desktop/hyper/agent-guard.ts, rebrand/apply.ts | Test: bun test test/e2e/agent-bundle.test.ts (cwd: rebrand)
-- Dependencies: T-03. BLOCKED: helper files are not registered in installer `writes`, and no live dispatcher integration exists. Do not copy standalone helpers as substitute for runtime enforcement; revise after trusted dispatch design exists. Previously proposed `agent-bundle.test.ts` does not exist; current verifiable scope is baseline/static source inspection, insufficient for AC-01 installer claim.
+- AC: AC-01, AC-02 | Files: rebrand/files/desktop/hyper/agent-policy.ts, rebrand/files/desktop/hyper/agent-gate.ts, rebrand/files/desktop/hyper/agent-fallback.ts, rebrand/files/desktop/hyper/agent-guard.ts, rebrand/files/desktop/hyper/bundle.ts, rebrand/apply.ts, rebrand/test/e2e/agent-bundle.test.ts, rebrand/test/e2e/agent-gate.test.ts | Test: bun test test/e2e/agent-bundle.test.ts (cwd: rebrand)
+- Dependencies: T-03. Runtime entrypoint must enforce public-only before content reads, restrict child/model/tool changes and be active in the shipped overlay. Merely copying standalone helpers or testing source text is insufficient. Installer/runtime E2E is mandatory before done.
 
 ### T-05 Fallback terikat policy dan penanganan delivery ambigu
 - AC: AC-04 | Files: rebrand/files/desktop/hyper/agent-fallback.ts, rebrand/test/e2e/agent-fallback.test.ts | Test: bun test test/e2e/agent-fallback.test.ts (cwd: rebrand)
