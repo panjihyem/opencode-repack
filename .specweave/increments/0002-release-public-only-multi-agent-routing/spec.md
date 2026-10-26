@@ -52,3 +52,7 @@ Desktop build run after applying overlay in temporary worktree succeeds through 
 ### T-04 Verify and close 0002
 - AC: AC-01, AC-02, AC-03, AC-04, AC-05 | Files: docs/multi-agent/pilot-results.md, docs/multi-agent/release-checklist.md | Test: cd rebrand && bun test test/e2e/agent-bundle.test.ts test/e2e/agent-command.test.ts
 - Dependencies: T-01, T-02, T-03. Closes only as **unreleased candidate**; NSIS installer and live server runtime are outstanding, not claimed.
+
+### T-05 Serialize specialist calls behind revocable gates
+- AC: AC-02, AC-04 | Files: rebrand/files/desktop/hyper/agent-command.ts, rebrand/test/e2e/agent-command.test.ts | Test: cd rebrand && bun test test/e2e/agent-command.test.ts
+- Dependencies: T-02. Don't start second generation until first returns and opt-in/case-mode gate passes again.

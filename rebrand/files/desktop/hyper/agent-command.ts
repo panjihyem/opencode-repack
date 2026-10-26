@@ -62,10 +62,11 @@ export default {
       execute: async ({ sessionID, prompt }) => {
         const text = publicText(prompt)
         await gate(sessionID)
-        const stages = await Promise.all(["explorer", "analyst"].map(async (role) => {
+        const stages = []
+        for (const role of ["explorer", "analyst"]) {
           await gate(sessionID)
-          return ctx.generate.text({ model, prompt: `Role: ${role}. Use public text only. No files or tools.\n\n${text}` })
-        }))
+          stages.push(await ctx.generate.text({ model, prompt: `Role: ${role}. Use public text only. No files or tools.\n\n${text}` }))
+        }
         if (stages.some((stage) => stage.text.length > maximum)) throw new Error("Specialist result too large")
         await gate(sessionID)
         const draft = await ctx.generate.text({ model, prompt: `Role: writer. Public text:\n${text}\nExplorer: ${stages[0].text}\nAnalyst: ${stages[1].text}` })

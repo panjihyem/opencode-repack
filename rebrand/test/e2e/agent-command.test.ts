@@ -49,7 +49,7 @@ test("failed specialist stops downstream work and never publishes partial result
     session: { get: async () => ({ projectID: fixture.location.project.id, location: { directory: fixture.root } }), synthetic: async () => { published++ } },
   } as never)
   await expect(execute!({ sessionID: "test", prompt: { text: "public: synthetic only" } })).rejects.toThrow("delivery ambiguous")
-  expect(generated).toBe(2)
+  expect(generated).toBe(1)
   expect(published).toBe(0)
   } finally { await fixture.cleanup() }
 })
@@ -68,6 +68,28 @@ test("project opt-in removal stops dispatch between stages", async () => {
     } as never)
     await expect(execute!({ sessionID: "test", prompt: { text: "public: synthetic" } })).rejects.toThrow("Project opt-in missing")
     expect(generated).toBeLessThanOrEqual(2)
+    expect(published).toBe(0)
+  } finally { await fixture.cleanup() }
+})
+
+test("concurrent opt-in revocation prevents next specialist call", async () => {
+  const fixture = await project()
+  try {
+    let execute: ((input: { sessionID: string; prompt: { text: string } }) => Promise<void>) | undefined
+    let generated = 0
+    let published = 0
+    await command.setup({
+      location: fixture.location,
+      command: { transform: async (register: (editor: { add: (item: { execute: typeof execute }) => void }) => void) => register({ add: (item) => { execute = item.execute } }) },
+      generate: { text: async () => {
+        generated++
+        await unlink(path.join(fixture.root, ".hyper-ai", "public-agents.enabled"))
+        return { text: "public result" }
+      } },
+      session: { get: async () => ({ projectID: fixture.location.project.id, location: { directory: fixture.root } }), synthetic: async () => { published++ } },
+    } as never)
+    await expect(execute!({ sessionID: "test", prompt: { text: "public: synthetic" } })).rejects.toThrow("Project opt-in missing")
+    expect(generated).toBe(1)
     expect(published).toBe(0)
   } finally { await fixture.cleanup() }
 })
