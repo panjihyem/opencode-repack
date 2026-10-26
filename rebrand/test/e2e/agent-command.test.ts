@@ -93,6 +93,26 @@ test("unmarked project and child session deny before generating", async () => {
   } finally { await fixture.cleanup() }
 })
 
+test("project root command accepts its nested top-level session", async () => {
+  const fixture = await project()
+  const nested = path.join(fixture.root, "packages", "app")
+  try {
+    await mkdir(nested, { recursive: true })
+    let execute: ((input: { sessionID: string; prompt: { text: string } }) => Promise<void>) | undefined
+    let generated = 0
+    let published = 0
+    await command.setup({
+      location: { ...fixture.location, directory: fixture.root },
+      command: { transform: async (register: (editor: { add: (item: { execute: typeof execute }) => void }) => void) => register({ add: (item) => { execute = item.execute } }) },
+      generate: { text: async () => { generated++; return { text: "public result" } } },
+      session: { get: async () => ({ projectID: fixture.location.project.id, location: { directory: nested } }), synthetic: async () => { published++ } },
+    } as never)
+    await execute!({ sessionID: "nested-session", prompt: { text: "public: synthetic" } })
+    expect(generated).toBe(4)
+    expect(published).toBe(1)
+  } finally { await fixture.cleanup() }
+})
+
 test("case mode change stops public generations before next stage", async () => {
   const fixture = await project()
   const previous = process.env.OPENCODE_CONFIG_DIR

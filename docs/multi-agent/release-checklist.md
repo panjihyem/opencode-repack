@@ -6,7 +6,7 @@
 
 ## 0002 candidate (not released)
 
-Experimental `hyper-public-agents` command accepts only text prefixed `public:` and no attachments. Its fake-generator tests cover four stateless stages and a queued synthetic result. Candidate installer wiring is in overlay source; installed artifact and active server execution are not yet verified, so **do not release**. Each run requires an empty `.hyper-ai/public-agents.enabled` marker in canonical project, matching top-level session, and case mode off; gates recheck before each model call. User declaration is not automatic classification. No child sessions, file reads/writes, transport isolation, provider pilot, or sensitive-data protection is claimed.
+Experimental `hyper-public-agents` command accepts only text prefixed `public:` and no attachments. Fake-generator tests cover four stateless stages and queued synthetic result. Windows unpacked desktop build includes command in `app.asar`; NSIS installer download failed (`github.com` DNS unavailable) and live server startup failed on an overlay/protocol symbol mismatch. **Do not release.** Each run requires empty `.hyper-ai/public-agents.enabled` in canonical project, top-level session in that project, and case mode off; gates recheck before each model call. User declaration is not automatic classification. No child sessions, file reads/writes, transport isolation, provider pilot, or sensitive-data protection is claimed.
 
 T-12 was explicitly skipped as out of scope, not passed. A separate Core-owned security increment is required before any original-case/internal/confidential use. Desktop dispatcher and fake-provider pilot remain future work, not T-04/T-09 claims.
 

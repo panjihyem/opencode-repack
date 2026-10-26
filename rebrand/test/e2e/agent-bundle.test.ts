@@ -30,6 +30,6 @@ test("managed plugin installs as standalone source and case mode disables it", a
 test("installer lists guarded plugin and desktop installs it after privacy check", async () => {
   const apply = await readFile(new URL("../../apply.ts", import.meta.url), "utf8")
   const bundle = await readFile(new URL("../../files/desktop/hyper/bundle.ts", import.meta.url), "utf8")
-  expect(apply).toContain('"agent-install", "bundle"')
+  expect(apply).toContain('"agent-command", "agent-install", "bundle"')
   expect(bundle).toContain("applyPublicAgentPlugin(configDir(), !privacy)")
 })

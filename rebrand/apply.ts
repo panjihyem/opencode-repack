@@ -361,8 +361,8 @@ const rules: Rule[] = [
   { file: "packages/tui/src/component/logo.tsx", find: "gap={1}", replace: "gap={2}", critical: true },
   {
     file: "packages/tui/src/util/presentation.ts",
-    find: "`opencode -s ${input.session.sessionID}`",
-    replace: "`" + CLI + " -s ${input.session.sessionID}`",
+    find: "${bold}opencode -s ${input.sessionID}${reset}",
+    replace: "${bold}" + CLI + " -s ${input.sessionID}${reset}",
     critical: true,
   },
   { file: "packages/tui/src/util/presentation.ts", find: "${left} ${right}", replace: "${left}  ${right}" },
@@ -907,7 +907,7 @@ const writes: Write[] = [
   // First-run provisioning for the desktop app (see rebrand/files/desktop/hyper).
   // Every module that hyper/*.ts imports relatively must be listed here or the
   // bundler fails with UNRESOLVED_IMPORT (router/privacy were missing once).
-  ...["agent-install", "bundle", "case-ui", "components", "config", "consent", "docling", "download", "forensic", "hindsight", "knowledge", "lmstudio", "manifest", "memory", "office", "platform", "privacy", "process", "router", "skills", "updates", "uv"].map(
+  ...["agent-command", "agent-install", "bundle", "case-ui", "components", "config", "consent", "docling", "download", "forensic", "hindsight", "knowledge", "lmstudio", "manifest", "memory", "office", "platform", "privacy", "process", "router", "skills", "updates", "uv"].map(
     (name) => ({
       file: `packages/desktop/src/main/hyper/${name}.ts`,
       source: `desktop/hyper/${name}.ts`,

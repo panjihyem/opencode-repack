@@ -22,7 +22,8 @@ export default {
       if (canonical !== root || !(ctx.location.directory === root || ctx.location.directory.startsWith(root + path.sep)))
         throw new Error("Public agents require active canonical project")
       const session = await ctx.session.get({ sessionID })
-      if (session.location.directory !== ctx.location.directory || session.projectID !== ctx.location.project.id || session.parentID)
+        if (session.projectID !== ctx.location.project.id || session.parentID ||
+          !(session.location.directory === root || session.location.directory.startsWith(root + path.sep)))
         throw new Error("Session outside opted-in project")
       const parent = path.join(root, ".hyper-ai")
       if (await realpath(parent).catch((error) => {
