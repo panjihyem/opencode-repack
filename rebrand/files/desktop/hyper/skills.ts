@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
-import { caseModule, forensicModule, officeInstalled, officePython } from "./office"
+import { caseModule, deckModule, forensicModule, officeInstalled, officePython } from "./office"
 
 // Office-work skills for the agent: Excel (including formulas), reports
 // (DOCX/PPTX/PDF), charts and tax-investigation documents. Written only while
@@ -89,6 +89,8 @@ Python siap pakai: \`${python}\`
 
 - Slide dari template: \`Presentation("template.pptx")\`; placeholder diisi \`slide.shapes\`.
 - 1 ide per slide; angka penting ditampilkan besar; detail pindah ke speaker notes.
+- Untuk data publik/sintetis, generator contoh 16:9: \`${python} __DECK_PY__ input.json hasil-baru.pptx\`. JSON: {"data_class":"public","title":"Tren","source":"Dataset publik 2026","rows":[{"label":"A","value":12}]}. Hasil dua slide: grafik PNG dan chart PowerPoint yang bisa diedit; sumber tercetak. Jangan timpa berkas asli.
+- Render setiap slide ke gambar/PDF dan cek teks terpotong, footer, chart serta atribusi sebelum menyerahkan PPTX. Jangan kirim data kasus asli ke layanan desain/gambar cloud.
 
 ## PDF — \`reportlab\`, \`pypdf\`
 
@@ -333,6 +335,7 @@ export async function applyOfficeSkills(configDir: string, dataDir: string) {
   const python = officePython(dataDir)
   const forensic = forensicModule(dataDir)
   const caseCli = caseModule(dataDir)
+  const deck = deckModule(dataDir)
   const results: string[] = []
   for (const spec of skills) {
     const dir = path.join(configDir, "skill", spec.id)
@@ -343,7 +346,7 @@ export async function applyOfficeSkills(configDir: string, dataDir: string) {
       continue
     }
     await mkdir(dir, { recursive: true })
-    await writeFile(file, spec.body(python, forensic, caseCli).split(FORENSIC_PLACEHOLDER).join(forensic))
+    await writeFile(file, spec.body(python, forensic, caseCli).split(FORENSIC_PLACEHOLDER).join(forensic).split("__DECK_PY__").join(deck))
     results.push("written")
   }
   return results

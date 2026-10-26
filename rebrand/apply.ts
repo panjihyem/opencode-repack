@@ -915,6 +915,7 @@ const writes: Write[] = [
       create: true,
     }),
   ),
+  { file: "packages/desktop/src/main/hyper/deck.py", source: "desktop/hyper/deck.py", critical: true, create: true },
   // Config OTA: signed bundle loading, updater, and platform directories.
   ...["managed-bundle", "managed-apply", "managed-policy", "updater"].map((name) => ({
     file: `packages/core/src/config/${name}.ts`,

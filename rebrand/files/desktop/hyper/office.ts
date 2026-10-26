@@ -2,6 +2,7 @@ import { createHash } from "node:crypto"
 import { copyFile, mkdir, stat, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { FORENSIC_SOURCE } from "./forensic"
+import deckSource from "./deck.py?raw"
 import { manifest } from "./manifest"
 import { executable } from "./platform"
 import { run } from "./process"
@@ -41,6 +42,7 @@ export async function installOffice(dataDir: string, report: Report) {
   const python = pythonBinary(root)
   await run(uv, ["pip", "install", "--python", python, ...office.packages])
   await writeForensicModule(root)
+  await writeFile(path.join(forensicRoot(root), "deck.py"), deckSource)
   await writeCaseModule(root)
   await writeFile(marker(root), new Date().toISOString())
 }
@@ -73,6 +75,7 @@ export const forensicRoot = (root: string) => path.join(root, "lib")
 export const forensicModule = (dataDir: string) => path.join(forensicRoot(officeRoot(dataDir)), "forensic.py")
 /** Absolute path of the recurring-case CLI for skills and shell use. */
 export const caseModule = (dataDir: string) => path.join(forensicRoot(officeRoot(dataDir)), "case", "cli.py")
+export const deckModule = (dataDir: string) => path.join(forensicRoot(officeRoot(dataDir)), "deck.py")
 
 /** Same Python the office libraries live in, for skills and shell use. */
 export const officePython = (dataDir: string) => pythonBinary(officeRoot(dataDir))

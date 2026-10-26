@@ -64,7 +64,7 @@ This is a **planned backlog**, not an implementation or authorization to connect
 ## Tasks
 
 ### T-01 Deck quality with existing stack
-- AC: AC-01, AC-05 | Files: rebrand/files/desktop/hyper/skills.ts, rebrand/test/e2e/deck-quality.test.ts, docs/multi-agent/media-deck-plan.md | Test: cd rebrand && bun test test/e2e/deck-quality.test.ts
+- AC: AC-01, AC-05 | Files: rebrand/files/desktop/hyper/skills.ts, rebrand/files/desktop/hyper/office.ts, rebrand/files/desktop/hyper/deck.py, rebrand/apply.ts, rebrand/test/e2e/deck-quality.test.ts, docs/multi-agent/media-deck-plan.md | Test: cd rebrand && bun test test/e2e/deck-quality.test.ts
 - Dependencies: none. Test through installed Office workflow with synthetic fixture, inspect PPTX structure and rendered slide artifacts; keep existing chart PNG behavior.
 
 ### T-02 Public licensed image assets
