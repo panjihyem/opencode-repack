@@ -1,0 +1,9 @@
+$ cd rebrand && bun test test/e2e/agent-command.test.ts
+# exit 0 — 2026-10-26T09:39:28.935Z
+
+bun test v1.4.4 (38afee6c8)
+
+ 7 pass
+ 0 fail
+ 30 expect() calls
+Ran 7 tests across 1 file. [152.00ms]

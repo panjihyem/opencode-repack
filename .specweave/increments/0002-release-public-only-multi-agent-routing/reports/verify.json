@@ -1,0 +1,23 @@
+{
+  "ok": true,
+  "ranAt": "2026-10-26T09:42:10.409Z",
+  "increment": "0002-release-public-only-multi-agent-routing",
+  "commands": [
+    {
+      "cmd": "cd rebrand && bun test test/e2e/agent-bundle.test.ts test/e2e/agent-command.test.ts test/agent-policy.test.ts test/e2e/agent-gate.test.ts test/e2e/agent-fallback.test.ts test/e2e/agent-orchestrator.test.ts test/e2e/multi-agent-baseline.test.ts",
+      "exit": 0
+    }
+  ],
+  "acs": {
+    "total": 5,
+    "done": 5
+  },
+  "tasks": {
+    "total": 5,
+    "done": 5,
+    "skipped": 0,
+    "open": 0
+  },
+  "skipped": [],
+  "ledgerMalformed": 0
+}

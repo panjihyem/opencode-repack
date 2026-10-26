@@ -1,0 +1,9 @@
+$ cd rebrand && bun test test/e2e/agent-bundle.test.ts test/e2e/agent-command.test.ts; temporary overlay apply + electron-vite desktop build + electron-builder --win --dir + app.asar inspection
+# exit 0 — 2026-10-26T08:57:55.833Z
+
+bun test v1.4.4 (38afee6c8)
+
+ 2 pass
+ 0 fail
+ 11 expect() calls
+Ran 2 tests across 1 file. [84.00ms]

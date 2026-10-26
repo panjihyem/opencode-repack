@@ -1,11 +1,16 @@
 {
   "id": "0002-release-public-only-multi-agent-routing",
   "uuid": "c16e12c2-5749-4bae-941f-e8d3875a2ab5",
-  "status": "active",
+  "status": "completed",
   "type": "feature",
   "priority": "P1",
   "created": "2026-10-26T06:49:53.299Z",
-  "updated": "2026-10-26T07:23:54.488Z",
-  "lastActivity": "2026-10-26T07:23:54.488Z",
-  "title": "Release public-only multi-agent routing"
+  "updated": "2026-10-26T09:42:49.007Z",
+  "lastActivity": "2026-10-26T09:42:49.007Z",
+  "title": "Release public-only multi-agent routing",
+  "externalLinks": {},
+  "testMode": "test-after",
+  "coverageTarget": 80,
+  "readyForReviewAt": "2026-10-26T09:42:22.703Z",
+  "approvedAt": "2026-10-26T09:42:49.007Z"
 }
