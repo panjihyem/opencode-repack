@@ -119,3 +119,7 @@ Out: dispatcher dan opt-in runtime, child/provider transport, packaging modul mu
 ### T-18 Restore existing config watch typecheck
 - AC: AC-01 | Files: packages/util/src/fs-util.ts | Test: bun node_modules/@typescript/native-preview/bin/tsgo.js -b packages/core/tsconfig.json packages/core/tsconfig.tests.json (cwd: repository root)
 - Dependencies: none. Restore missing shared watcher ignore list without changing its documented values; prerequisite for verifying T-12 build.
+
+### T-19 Canonicalize writer output identity in prototype scheduler
+- AC: AC-02 | Files: rebrand/files/desktop/hyper/agent-orchestrator.ts, rebrand/test/e2e/agent-orchestrator.test.ts | Test: cd rebrand && bun test test/e2e/agent-orchestrator.test.ts
+- Dependencies: T-06. Reject equivalent relative paths as duplicate writers; no file-system writer added. Review finding: `results/draft.md` and `results/./draft.md` bypass raw string check.

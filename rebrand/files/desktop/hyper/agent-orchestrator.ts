@@ -1,4 +1,5 @@
 import type { Dispatch } from "./agent-gate"
+import path from "node:path"
 
 export type Job = Dispatch & { id: string; dependsOn: string[]; output?: string }
 export type Handoff = { id: string; status: "completed" | "failed"; output?: string; source?: string; evidence?: string }
@@ -9,7 +10,7 @@ export async function runJobs(jobs: Job[], execute: (job: Job, handoffs: readonl
   const ids = new Set(jobs.map((job) => job.id))
   if (ids.size !== jobs.length || jobs.some((job) => !job.id || job.dependsOn.includes(job.id) || job.dependsOn.some((id) => !ids.has(id))))
     throw new Error("Invalid job graph")
-  const outputs = jobs.flatMap((job) => job.output ? [job.output] : [])
+  const outputs = jobs.flatMap((job) => job.output ? [path.win32.normalize(job.output.replaceAll("/", "\\")).toLowerCase()] : [])
   if (new Set(outputs).size !== outputs.length) throw new Error("Multiple writers for one output")
   const complete = new Map<string, Handoff>()
   const waiting = new Map(jobs.map((job) => [job.id, job]))

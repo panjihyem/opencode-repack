@@ -23,6 +23,8 @@ test("parallel independent jobs finish before writer and reviewer; no duplicate 
 test("conflict, cycle and failed dependency stop without extra work", async () => {
   const execute = async (task: Job) => ({ id: task.id, status: "completed" as const })
   await expect(runJobs([job("a", [], "same.md"), job("b", [], "same.md")], execute)).rejects.toThrow("Multiple writers")
+  await expect(runJobs([job("a", [], "results/draft.md"), job("b", [], "results/./draft.md")], execute)).rejects.toThrow("Multiple writers")
+  await expect(runJobs([job("a", [], "results/draft.md"), job("b", [], "results\\DRAFT.md")], execute)).rejects.toThrow("Multiple writers")
   await expect(runJobs([job("a", ["b"]), job("b", ["a"])], execute)).rejects.toThrow("cyclic")
   let calls = 0
   await expect(runJobs([job("a"), job("b", ["a"])], async (task) => { calls++; throw new Error(task.id) })).rejects.toThrow("Job failed: a")
