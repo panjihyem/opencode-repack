@@ -1,7 +1,7 @@
 // HYPER_AI_MANAGED — opt-in Graphify code graph; no Hindsight overlap or cloud calls.
 import { createHash } from "node:crypto"
 import { spawn } from "node:child_process"
-import { lstat, mkdir, readFile, realpath, stat } from "node:fs/promises"
+import { lstat, mkdir, readFile, realpath, readdir, stat } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 
@@ -40,6 +40,19 @@ const projectRoot = async (directory) => {
   return root
 }
 
+const unsafeCode = async (root) => {
+  const inspect = async (directory) => {
+    for (const item of await readdir(directory, { withFileTypes: true })) {
+      if (item.name === ".git" || item.name === ".hyper-ai" || item.name === "node_modules" || item.name === "graphify-out") continue
+      const full = path.join(directory, item.name)
+      if (item.isSymbolicLink()) throw new Error("Symlink in Graphify project")
+      if (/^(?:case|kasus|secret|credential|token|\.env)(?:\b|[_.-])/i.test(item.name)) throw new Error("Sensitive file in Graphify project")
+      if (item.isDirectory()) await inspect(full)
+    }
+  }
+  await inspect(root)
+}
+
 export async function graphify(args) {
   const [action, directory, ...rest] = args
   if (!action || !directory || !["index", "query", "path"].includes(action)) throw new Error("usage: hyper graphify index|query|path <opted-in-repo> [terms]")
@@ -47,6 +60,7 @@ export async function graphify(args) {
   const graph = path.join(outputRoot(project), "graphify-out", "graph.json")
   if (action === "index") {
     if (rest.length) throw new Error("Unexpected arguments")
+    await unsafeCode(project)
     if (!(await stat(binary("graphify")).catch(() => undefined))?.isFile()) {
       const uv = process.env.HYPER_UV || path.join(process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming"), "ai.hyperai.desktop", "hyper-bundle", "office", "uv", process.platform === "win32" ? "uv.exe" : "uv")
       if (!(await stat(uv).catch(() => undefined))?.isFile()) throw new Error("Office uv unavailable; Graphify not installed")

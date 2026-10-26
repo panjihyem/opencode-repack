@@ -21,6 +21,8 @@ test("opted-in repo indexes code offline and queries extracted call edge", async
     expect(graphifyEnvironment().GRAPHIFY_BACKEND).toBe("none")
     await expect(graphify(["query", project, "greet"])).rejects.toThrow("opt-in missing")
     await writeFile(path.join(project, ".hyper-ai", "graphify.enabled"), "")
+    await expect(graphify(["index", project])).rejects.toThrow("Sensitive file")
+    await rm(path.join(project, "case.json"))
     const result = await graphify(["index", project])
     const content = await readFile(result, "utf8")
     expect(content).toContain("greet")
@@ -39,7 +41,8 @@ test("opted-in repo indexes code offline and queries extracted call edge", async
       if (before === undefined) delete process.env.OPENCODE_CONFIG_DIR
       else process.env.OPENCODE_CONFIG_DIR = before
     }
-    expect(await readFile(path.join(project, "case.json"), "utf8")).toBe("SENSITIVE_GRAPHIFY_CANARY")
+    await writeFile(path.join(project, "case.py"), "SENSITIVE_GRAPHIFY_CANARY")
+    await expect(graphify(["index", project])).rejects.toThrow("Sensitive file")
     await rm(path.join(project, ".hyper-ai", "graphify.enabled"))
     await expect(graphify(["query", project, "greet"])).rejects.toThrow("opt-in missing")
   } finally {

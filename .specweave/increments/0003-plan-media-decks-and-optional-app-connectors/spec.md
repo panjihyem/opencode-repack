@@ -97,3 +97,11 @@ This is a **planned backlog**, not an implementation or authorization to connect
 ### T-07 Install isolated Graphify and expose scoped code graph
 - AC: AC-05, AC-06 | Files: rebrand/files/desktop/cli/graphify.mjs, rebrand/files/desktop/cli/hyper.mjs, rebrand/scripts/prepare-bundle.ts, rebrand/files/desktop/hyper/skills.ts, rebrand/test/e2e/graphify-integration.test.ts, docs/multi-agent/graph-memory-audit.md | Test: cd rebrand && bun test test/e2e/graphify-integration.test.ts
 - Dependencies: T-06. Use existing Hyper CLI, not unsafe desktop IPC: isolated official `graphifyy==0.9.96` installed on demand from existing Office uv, never at startup. Code-only backend none, explicit project marker, separate output, no global assistant instructions or cloud. Test actual CLI on synthetic code and negative case/docs/missing opt-in, rollback and bundling. If native CLI/package cannot be tested on this machine, do not mark done or claim shipped.
+
+### T-08 Restrict Graphify to reviewed code paths
+- AC: AC-06 | Files: rebrand/files/desktop/cli/graphify.mjs, rebrand/test/e2e/graphify-integration.test.ts, docs/multi-agent/graph-memory-audit.md | Test: cd rebrand && bun test test/e2e/graphify-integration.test.ts
+- Dependencies: T-07. Independent review found opted-in repo containing `case.py` can still be scanned. Deny case/sensitive filenames and symlinked code paths before running CLI; keep output and Hindsight unchanged. Test a synthetic case.py negative fixture.
+
+### T-09 Restore deck module in existing Office installs and bound slide text
+- AC: AC-01, AC-05 | Files: rebrand/files/desktop/hyper/office.ts, rebrand/files/desktop/hyper/deck.py, rebrand/test/e2e/deck-quality.test.ts, docs/multi-agent/media-deck-plan.md | Test: cd rebrand && bun test test/e2e/deck-quality.test.ts
+- Dependencies: T-01. Copy managed deck script when existing install marker is present without reinstalling packages. Bound label/caption length and render a long-text negative fixture; do not claim geometrical shape checks prove text fit.
