@@ -89,7 +89,7 @@ Out: dispatcher dan opt-in runtime, child/provider transport, packaging modul mu
 - Dependencies: T-09. Document only verified pilot behavior.
 
 ### T-11 Verify and close 0001
-- AC: AC-01, AC-02, AC-03, AC-04, AC-05, AC-06, AC-07 | Files: docs/multi-agent/release-checklist.md | Test: specweave verify 0001-multi-agent-orchestration-with-data-safe-routing --cmd "bun test rebrand/test/e2e/agent-bundle.test.ts rebrand/test/e2e/multi-agent-pilot.test.ts"
+- AC: AC-01, AC-02, AC-03, AC-04, AC-05, AC-06, AC-07 | Files: docs/multi-agent/release-checklist.md | Test: cd rebrand && bun test test/e2e/agent-bundle.test.ts test/e2e/multi-agent-pilot.test.ts test/agent-policy.test.ts test/e2e/agent-gate.test.ts test/e2e/agent-fallback.test.ts test/e2e/agent-orchestrator.test.ts
 - Dependencies: T-04, T-07, T-08, T-09, T-10; review and close as unreleased prototype. T-12 remains skipped, not security proof. Verify may need explicit package-scoped commands because root test is intentionally disabled.
 
 ### T-12 Enforce routing on actual model and tool transport

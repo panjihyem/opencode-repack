@@ -2,9 +2,9 @@
 
 ## Decision
 
-**Blocked; do not release multi-agent routing.** Approved scope is public/synthetic-only. This is a record of open release gates, not a completion certificate; no protection for sensitive data is claimed.
+**Prototype only; do not release multi-agent routing.** Scope 0001 is helper contracts and synthetic harness, not opt-in runtime. Closing increment does not authorize use of multi-agent in desktop or sensitive-data handling.
 
-T-12 was explicitly skipped as out of scope, not passed. A separate Core-owned security increment is required before any original-case/internal/confidential use. Public-only dispatch still awaits T-04/T-09 runtime and fake-provider evidence.
+T-12 was explicitly skipped as out of scope, not passed. A separate Core-owned security increment is required before any original-case/internal/confidential use. Desktop dispatcher and fake-provider pilot remain future work, not T-04/T-09 claims.
 
 ## Verified locally
 
@@ -14,6 +14,8 @@ T-12 was explicitly skipped as out of scope, not passed. A separate Core-owned s
 - [x] Documentation labels runtime routing as unreleased and restricts examples to public/synthetic data.
 - [x] Case Secure UI helper tests pass: `bun test test/case-ui.test.ts` in `rebrand` (11 tests, 23 assertions); no claim of provider isolation.
 - [x] Existing `packages/app/e2e/regression/session-queue.spec.ts` owns actual inbox queue/steer behavior; 31/31 headless Chromium tests pass with external Vite server. This does not prove master/child-job queue status.
+- [x] `agent-bundle.test.ts`: agent helpers absent from desktop entrypoint and installer overlay (1 test, 3 assertions); proves **not shipped**, not installer security.
+- [x] `multi-agent-pilot.test.ts`: synthetic preflight/DAG/fake-executor pipeline (1 test, 20 assertions); no provider/model traffic or real pilot.
 
 ## Validation commands
 
@@ -39,8 +41,8 @@ Headless UI: set `VITE_OPENCODE_TEST_FIXTURES=1`, `VITE_OPENCODE_SERVER_HOST=127
 - [x] Preserve actual inbox `queue`/`steer` behavior: targeted headless UI suite passed. Master/child job status remains excluded until dispatcher integration and needs separate scope/AC.
 - [ ] Run approved public/synthetic end-to-end pilot against controlled fake provider; measure model, denials, bytes, UI, cost, and audit redaction.
 - [x] Render and inspect manual PDF from Markdown source (14 pages; public-only text extracted).
-- [ ] Run `specweave verify`, fresh-context adversarial review, then complete increment only when all gates pass.
+- [ ] For prototype close: run `specweave verify` with explicit package-scoped commands and inspect independent review. Release gates above remain open for future increment.
 
 ## Current non-claims
 
-Case Secure does not block model provider traffic or network-capable shell commands. Public-only classification at a feature entrypoint is not whole-session data-loss prevention. Helper tests and core probes are not installer or provider security evidence. No pilot cost, retention, or upstream router behavior has been measured. Sensitive-data support needs separate Core-owned consent/runtime enforcement before it can be considered.
+Case Secure does not block model provider traffic or network-capable shell commands. No multi-agent feature entrypoint exists. Helper tests and core probes are not installer or provider security evidence. No pilot cost, retention, or upstream router behavior has been measured. Sensitive-data support needs separate Core-owned consent/runtime enforcement before it can be considered.
