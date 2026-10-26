@@ -52,6 +52,7 @@ await Promise.all(
 // standalone ESM (electron-free) plus the thin launcher that drives it. Bun's
 // naming only emits `.js`, so rename to .mjs for the launcher's import.
 await $`cp -R ${path.join(import.meta.dir, "../files/desktop/cli")} ${path.join(root, "bin")}`
+if (!(await Bun.file(path.join(root, "bin", "graphify.mjs")).exists())) throw new Error("Graphify CLI companion missing")
 await Bun.build({
   entrypoints: [path.join(import.meta.dir, "../files/desktop/hyper/knowledge.ts")],
   target: "node",

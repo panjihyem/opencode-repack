@@ -14,6 +14,7 @@ import path from "node:path"
 
 const binDir = path.dirname(fileURLToPath(import.meta.url))
 const bundled = path.join(binDir, "knowledge.mjs")
+const graphifyModule = path.join(binDir, "graphify.mjs")
 
 const usage = () =>
   [
@@ -25,6 +26,7 @@ const usage = () =>
     "  banks               Daftar bank memori",
     "  fetch --source kemenkeu [--limit 20]  Simpan katalog regulasi dari feed resmi JDIH Kemenkeu",
     "  viz <job.json>      Render chart ECharts (sankey/graph/treemap/…) ke SVG/PNG di folder job",
+    "  graphify index|query|path <repo> [terms]  Graph struktur kode lokal (per project opt-in)",
     "",
     "Server memori berjalan bersama aplikasi Hyper AI; `hyper sync` memerlukan aplikasi terbuka.",
     "`hyper viz` memakai Chromium milik aplikasi dan bisa jalan saat aplikasi terbuka.",
@@ -86,6 +88,17 @@ async function main() {
     if (!rest[0]) return console.error("job file dibutuhkan — contoh: hyper viz /path/job.json")
     try {
       await runViz(rest[0])
+    } catch (error) {
+      console.error(error.message)
+      process.exitCode = 1
+    }
+    return
+  }
+
+  if (command === "graphify") {
+    try {
+      const { graphify } = await import(pathToFileURL(graphifyModule).href)
+      console.log(await graphify(rest))
     } catch (error) {
       console.error(error.message)
       process.exitCode = 1

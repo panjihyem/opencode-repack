@@ -106,6 +106,25 @@ Python siap pakai: \`${python}\`
 `,
   },
   {
+    id: "hyper-graphify",
+    description: "Peta struktur kode lokal per project dengan Graphify; berbeda dari chart/Sankey dan Hindsight.",
+    body: () => `---
+name: hyper-graphify
+description: Peta struktur kode lokal pada repo yang secara eksplisit diaktifkan user. Tidak untuk berkas kasus.
+---
+
+# Graphify kode lokal
+
+\`${MANAGED}\`
+
+Hindsight = ingatan sesi/pengetahuan; hyper-fundflow = Sankey; Graphify = hubungan kode (import/call) per repo.
+
+Setelah user membuat berkas kosong \`.hyper-ai/graphify.enabled\` di root repo kode yang dipilih, jalankan \`hyper graphify index <repo>\` (memasang graphifyy 0.9.96 di venv terpisah saat pertama kali), lalu \`hyper graphify query <repo> "pertanyaan"\` atau \`hyper graphify path <repo> "run()" "greet()"\`. Semua kode diproses AST lokal; output terpisah di ~/.local/share/hyper-ai/graphify/graphs/. Jangan jalankan pada data kasus, jangan aktifkan Graphify Cloud, semantic docs, global hook, atau graphify install.
+
+Rollback: hapus marker project untuk menolak akses; hapus venv/graph project hanya atas permintaan user. Jangan menyentuh memori Hindsight.
+`,
+  },
+  {
     id: "hyper-chart",
     description:
       "Membuat grafik analisa (batang, garis, jumlah, scatter) dari data Excel/CSV; pilihan chart tepat guna untuk laporan.",
