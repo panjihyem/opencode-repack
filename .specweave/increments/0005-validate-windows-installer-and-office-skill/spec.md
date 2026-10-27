@@ -43,3 +43,7 @@ Use a clean worktree from `feat/config-ota` rather than dirty user workspace. In
 ### T-03 Packaged Graphify denial and final close
 - AC: AC-03, AC-04 | Files: docs/multi-agent/installer-validation.md | Test: specweave verify 0005-validate-windows-installer-and-office-skill
 - Dependencies: T-01, T-02. Run packaged CLI negative probes, verify, fresh-context review and complete. Explicitly state installed-app UI not tested if not run.
+
+### T-04 Repair missing MCP ticket exemption without relaxing auth
+- AC: AC-01, AC-04 | Files: packages/server/src/process.ts, packages/server/test/auth.test.ts, docs/multi-agent/installer-validation.md | Test: cd packages/server && bun test test/auth.test.ts
+- Dependencies: T-01. Source CLI build fails: process.ts imports `hasMcpClientTicketURL` absent from protocol; require normal authentication for MCP until a real ticket contract exists, then prove unauthenticated requests rejected. Compile a matching CLI from the corrected source before rebuilding NSIS. Do not relabel an old CLI's version.

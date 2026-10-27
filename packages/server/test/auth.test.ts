@@ -1,5 +1,7 @@
 import { expect, test } from "bun:test"
 import { ServerAuth } from "@opencode/server/auth"
+import { ServerFetch } from "@opencode/server/fetch"
+import { Effect } from "effect"
 import { Option, Redacted } from "effect"
 
 test("accepts only the fixed opencode username", () => {
@@ -21,4 +23,10 @@ test("session tokens expire, resist tampering, and are revoked by changing the p
   expect(ServerAuth.verifySession(`${Number(parts[0]) + 1}.${parts[1]}`, config, now)).toBe(false)
   expect(ServerAuth.verifySession(token, { ...config, password: Option.some("rotated") }, now)).toBe(false)
   expect(ServerAuth.issueSession({ ...config, password: Option.none() })).toBeUndefined()
+})
+
+test("unauthenticated MCP route is not a ticket exception", async () => {
+  const handler = await Effect.runPromise(ServerFetch.make({ password: "secret", database: { path: ":memory:" }, models: { fetch: false }, fs: { filewatcher: false } }).pipe(Effect.scoped))
+  const response = await handler(new Request("http://127.0.0.1/api/mcp?ticket=forged"))
+  expect(response.status).toBe(401)
 })
