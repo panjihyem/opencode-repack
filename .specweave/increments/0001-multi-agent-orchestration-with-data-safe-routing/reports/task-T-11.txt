@@ -1,0 +1,9 @@
+$ cd rebrand && bun test test/e2e/agent-bundle.test.ts test/e2e/multi-agent-pilot.test.ts test/agent-policy.test.ts test/e2e/agent-gate.test.ts test/e2e/agent-fallback.test.ts test/e2e/agent-orchestrator.test.ts
+# exit 0 — 2026-10-26T05:50:12.526Z
+
+bun test v1.4.4 (38afee6c8)
+
+ 11 pass
+ 0 fail
+ 64 expect() calls
+Ran 11 tests across 6 files. [155.00ms]

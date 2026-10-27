@@ -1,0 +1,27 @@
+{
+  "ok": false,
+  "ranAt": "2026-10-27T05:02:08.261Z",
+  "increment": "0006-smoke-isolated-beta-desktop-skill",
+  "commands": [
+    {
+      "cmd": "npm run test",
+      "exit": 1
+    },
+    {
+      "cmd": "npm run lint",
+      "exit": 1
+    }
+  ],
+  "acs": {
+    "total": 3,
+    "done": 0
+  },
+  "tasks": {
+    "total": 3,
+    "done": 2,
+    "skipped": 0,
+    "open": 1
+  },
+  "skipped": [],
+  "ledgerMalformed": 0
+}

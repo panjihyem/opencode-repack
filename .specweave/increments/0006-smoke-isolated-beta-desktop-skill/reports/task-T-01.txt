@@ -1,0 +1,9 @@
+$ cd packages/desktop && bun test src/main/lifecycle/configure.test.ts
+# exit 0 — 2026-10-27T05:01:48.533Z
+
+bun test v1.4.4 (38afee6c8)
+
+ 1 pass
+ 0 fail
+ 4 expect() calls
+Ran 1 test across 1 file. [129.00ms]

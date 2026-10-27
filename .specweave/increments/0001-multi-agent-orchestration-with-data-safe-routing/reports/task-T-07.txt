@@ -1,0 +1,9 @@
+$ C:\Users\User\AppData\Local\Programs\nodejs\bun.cmd test C:\Users\User\Documents\Hyper-AI-OTA\rebrand\test\e2e\multi-agent-baseline.test.ts
+# exit 0 — 2026-10-26T03:36:22.834Z
+
+bun test v1.4.4 (38afee6c8)
+
+ 1 pass
+ 0 fail
+ 6 expect() calls
+Ran 1 test across 1 file. [58.00ms]
