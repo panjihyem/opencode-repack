@@ -6,4 +6,10 @@ Installer: `packages/desktop/dist/hyper-ai-desktop-win-x64.exe` in build worktre
 
 The next Office provisioning change copies `deck.py` from package resources rather than relying only on compiled source. An isolated `applyOfficeSkills` fixture verifies generated `hyper-report/SKILL.md` points at provisioned deck, managed stale deck refreshes, and user-authored skill survives. This fixture executes source module with a resource root; it is **not** a launched installed desktop. Rebuild and inspect a package containing this change before claiming packaged runtime.
 
+## Rebuilt with standalone packaged Office script
+
+Commit `95fffc133bb43e55c14637a3a0d41c163a63a62e`, clean worktree `C:\Users\User\AppData\Local\Temp\opencode\hyper-verify-0005-final`. Overlay apply, desktop build, prepare-bundle and prebuild pass. First NSIS attempt timed out; second `--prepackaged dist/win-unpacked` run exits 0 and creates blockmap. Installer `dist/hyper-ai-desktop-win-x64.exe`: **292,493,485 bytes**, SHA256 `740DCDC1EA9F1F38189458E1E616E8FCCCB6BF1266A1FD5FC20D163CFB8AE94E`. Package contains `resources/hyper-bundle/office/lib/deck.py` (SHA256 `AD64F4E57C55358E8748AC58CAB1E8A9155F0E93DAFD2B1E3A4C1C34835050FC`) and Graphify CLI.
+
+Invoked package **resource** `deck.py` with existing Office venv against synthetic JSON: new PPTX 46,582 bytes, PowerPoint COM PDF 176,822 bytes, visual preview inspected. Isolated fake-config `applyOfficeSkills` test points managed skill to a real provisioned deck and preserves user-authored skill. Actual installer was not executed; packaged Electron main initialization and installed skill discovery still unproven. Older EXE hash above predates standalone Office resource.
+
 Remaining runtime gates: verify Graphify negatives on the rebuilt package and packaged Office resource/provisioning; no visible installed-app smoke. Live image generation and Composio remain off by prior decision.
