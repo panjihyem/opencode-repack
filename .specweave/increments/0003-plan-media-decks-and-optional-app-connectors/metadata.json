@@ -1,14 +1,16 @@
 {
   "id": "0003-plan-media-decks-and-optional-app-connectors",
   "uuid": "4c9c09fd-6727-4191-9f34-a95ddbe6e918",
-  "status": "active",
+  "status": "completed",
   "type": "feature",
   "priority": "P1",
   "created": "2026-10-26T22:06:35.640Z",
-  "updated": "2026-10-26T22:33:17.904Z",
-  "lastActivity": "2026-10-26T22:33:17.904Z",
+  "updated": "2026-10-27T00:08:39.336Z",
+  "lastActivity": "2026-10-27T00:08:39.336Z",
   "title": "Plan media decks and optional app connectors",
   "externalLinks": {},
   "testMode": "test-after",
-  "coverageTarget": 80
+  "coverageTarget": 80,
+  "readyForReviewAt": "2026-10-27T00:08:26.800Z",
+  "approvedAt": "2026-10-27T00:08:39.336Z"
 }
