@@ -47,3 +47,7 @@ Start with `specweave pickup`. Avoid modifying current checkout's untracked PDFs
 ### T-04 Recheck Graphify guard on every command and narrow deck claim
 - AC: AC-02, AC-03, AC-04 | Files: rebrand/files/desktop/cli/graphify.mjs, rebrand/test/e2e/graphify-integration.test.ts, docs/multi-agent/package-validation.md | Test: cd rebrand && bun test test/e2e/graphify-integration.test.ts test/e2e/deck-quality.test.ts
 - Dependencies: T-02. Reviewer found query/path can run after docs/case file appears and packaged deck source is not an installed executable. Deny all Graphify actions in unsafe repo; report only verified Office source/render evidence.
+
+### T-05 Rebuild artifact after Graphify guard fix
+- AC: AC-01, AC-02, AC-04 | Files: docs/multi-agent/package-validation.md | Test: cd rebrand && bun test test/e2e/graphify-integration.test.ts
+- Dependencies: T-04. Rebuild overlay and Windows unpacked package from commit containing per-command guard. Run packaged `query/path` negative probes after adding docs/case code; update commit/hash evidence. Old artifact cannot satisfy AC-02.

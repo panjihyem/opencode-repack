@@ -2,6 +2,12 @@
 
 Build source: `95fa65496f30916ed62472cb58ac1a6d68302151`, clean worktree at `C:\Users\User\AppData\Local\Temp\opencode\hyper-verify-0004`. Current workspace PDFs and user edits untouched.
 
+## Rebuilt after per-command Graphify guard
+
+Source commit `08a22a1f5b3921d65e501c95f67f23f6a3daf580`; clean worktree `C:\Users\User\AppData\Local\Temp\opencode\hyper-verify-0004-final`. `bun install --frozen-lockfile --ignore-scripts`, rebrand apply, direct electron-vite desktop build, `prepare-bundle.ts`, and `electron-builder --win --dir` exit 0. `dist/win-unpacked/resources/app.asar` SHA256 `6820E786D977B1CB27D7C3AB007846F9324487E6767A54347E0961BE5C704248`; packaged `bin/graphify.mjs` SHA256 `72DFD923795B7DD2F5ED8B5D0E466DFA048A2192E871BBA7451C207634689F53`.
+
+From **rebuilt packaged** `bin/hyper.mjs`, synthetic graph query returned `run() --calls--> greet()` with exit 0. After `docs/notes.py` was added, packaged `query` and `path` both refused with `Documentation or case directory in Graphify project`, exit 1. Removing that test directory restored query exit 0. This replaces the older artifact below for Graphify security evidence. It still does not prove installed desktop skill registration/Office module execution, real account, NSIS, or absence of disguised sensitive code.
+
 | Gate | Evidence |
 | --- | --- |
 | Overlay | `bun rebrand/apply.ts .` exit 0, 0 fatal; 2 noncritical TUI title warnings. |
