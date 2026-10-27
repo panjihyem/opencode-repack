@@ -30,6 +30,7 @@ export function configureApplication() {
     app.commandLine.appendSwitch("remote-debugging-port", process.env.OPENCODE_DESKTOP_REMOTE_DEBUGGING_PORT ?? "9222")
 
   const testRoot = createTestRoot()
+  if (testRoot) app.setPath("appData", path.join(testRoot, "appData"))
   app.setPath("userData", testRoot ? path.join(testRoot, "desktop") : path.join(app.getPath("appData"), APP_ID))
 
   if (testRoot) {
@@ -52,15 +53,13 @@ export function acquireApplicationLock() {
 function createTestRoot() {
   const root = testOnboarding
     ? path.join(tmpdir(), `opencode-onboarding-${randomUUID()}`)
-    : app.isPackaged
-      ? undefined
-      : process.env.OPENCODE_DESKTOP_TEST_ROOT
+    : process.env.OPENCODE_DESKTOP_TEST_ROOT
 
   if (!root) return undefined
 
   if (testOnboarding) rmSync(root, { recursive: true, force: true })
 
-  for (const dir of ["data", "config", "cache", "state", "desktop", "session", "documents"])
+  for (const dir of ["appData", "data", "config", "cache", "state", "desktop", "session", "documents"])
     mkdirSync(path.join(root, dir), { recursive: true })
 
   if (testOnboarding) process.env.OPENCODE_DB = ":memory:"

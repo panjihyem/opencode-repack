@@ -31,8 +31,8 @@ Consent is computed from packaged wizard Markdown, written only into temporary `
 ## Tasks
 
 ### T-01 Prove isolated profile setup and desktop startup
-- AC: AC-01 | Files: docs/multi-agent/desktop-smoke.md | Test: cd rebrand && bun test test/e2e/agent-bundle.test.ts
-- Dependencies: none. Verify test root resolution and current installed processes before launch; capture only own PID and test logs.
+- AC: AC-01 | Files: packages/desktop/src/main/lifecycle/configure.ts, packages/desktop/src/main/lifecycle/configure.test.ts, docs/multi-agent/desktop-smoke.md | Test: cd packages/desktop && bun test src/main/lifecycle/configure.test.ts
+- Dependencies: none. Verify test root resolution and current installed processes before launch; capture only own PID and test logs. Initial packaged Beta launch failed before wizard: `app.getPath("appData")` threw under isolated APPDATA; test and fix startup without touching normal profile.
 
 ### T-02 Verify packaged Office skill through desktop startup
 - AC: AC-02 | Files: docs/multi-agent/desktop-smoke.md | Test: cd rebrand && bun test test/e2e/deck-quality.test.ts
