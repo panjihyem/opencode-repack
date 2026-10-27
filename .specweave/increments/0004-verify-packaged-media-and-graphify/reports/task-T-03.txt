@@ -1,0 +1,9 @@
+$ cd rebrand && bun test test/e2e/graphify-integration.test.ts test/e2e/deck-quality.test.ts test/e2e/deck-assets.test.ts test/e2e/deck-image-generation.test.ts test/e2e/composio-policy.test.ts
+# exit 0 — 2026-10-27T00:31:53.974Z
+
+bun test v1.4.4 (38afee6c8)
+
+ 5 pass
+ 0 fail
+ 58 expect() calls
+Ran 5 tests across 5 files. [38.65s]

@@ -1,11 +1,16 @@
 {
   "id": "0004-verify-packaged-media-and-graphify",
   "uuid": "adc84480-59d7-4196-ab2a-fab0635578bb",
-  "status": "active",
+  "status": "completed",
   "type": "feature",
   "priority": "P1",
   "created": "2026-10-27T00:11:13.138Z",
-  "updated": "2026-10-27T00:11:13.138Z",
-  "lastActivity": "2026-10-27T00:11:13.138Z",
-  "title": "Verify packaged media and Graphify"
+  "updated": "2026-10-27T01:02:01.024Z",
+  "lastActivity": "2026-10-27T01:02:01.024Z",
+  "title": "Verify packaged media and Graphify",
+  "externalLinks": {},
+  "testMode": "test-after",
+  "coverageTarget": 80,
+  "readyForReviewAt": "2026-10-27T01:01:48.601Z",
+  "approvedAt": "2026-10-27T01:02:01.024Z"
 }
