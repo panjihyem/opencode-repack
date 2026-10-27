@@ -1,1 +1,5 @@
 {"t":"T-01","e":"claim","by":"opencode@riefky","at":"2026-10-27T04:06:17.535Z","line":"Launch Beta only in isolated test profile"}
+{"t":"T-01","e":"done","by":"opencode@riefky","at":"2026-10-27T05:01:48.861Z","evidence":"cd packages/desktop && bun test src/main/lifecycle/configure.test.ts → exit 0\nlog: .specweave/increments/0006-smoke-isolated-beta-desktop-skill/reports/task-T-01.txt\nbun test v1.4.4 (38afee6c8)\n\n 1 pass\n 0 fail\n 4 expect() calls\nRan 1 test across 1 file. [129.00ms]\nHEAD de67578"}
+{"t":"T-02","e":"claim","by":"opencode@riefky","at":"2026-10-27T05:01:53.046Z"}
+{"t":"T-02","e":"done","by":"opencode@riefky","at":"2026-10-27T05:01:58.858Z","evidence":"cd rebrand && bun test test/e2e/deck-quality.test.ts → exit 0\nlog: .specweave/increments/0006-smoke-isolated-beta-desktop-skill/reports/task-T-02.txt\nbun test v1.4.4 (38afee6c8)\n\n 1 pass\n 0 fail\n 19 expect() calls\nRan 1 test across 1 file. [4.77s]\nHEAD de67578"}
+{"t":"T-03","e":"claim","by":"opencode@riefky","at":"2026-10-27T05:02:04.703Z"}

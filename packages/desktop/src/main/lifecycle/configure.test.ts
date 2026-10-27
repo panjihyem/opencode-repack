@@ -9,4 +9,5 @@ test("packaged test root sets appData before using userData", async () => {
   expect(appData).toBeGreaterThan(0)
   expect(userData).toBeGreaterThan(appData)
   expect(source).toContain('process.env.OPENCODE_DESKTOP_TEST_ROOT')
+  expect(source).toContain('app.setPath("documents", path.join(testRoot, "documents"))')
 })

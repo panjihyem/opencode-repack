@@ -36,7 +36,7 @@ export function configureApplication() {
   if (testRoot) {
     app.setPath("sessionData", path.join(testRoot, "session"))
 
-    if (testOnboarding) app.setPath("documents", path.join(testRoot, "documents"))
+    app.setPath("documents", path.join(testRoot, "documents"))
   }
 
   // V8 bytecode for the main bundle survives between launches, like the renderer's code cache.

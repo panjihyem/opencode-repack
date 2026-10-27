@@ -39,5 +39,5 @@ Consent is computed from packaged wizard Markdown, written only into temporary `
 - Dependencies: T-01. Inspect isolated files and execute referenced deck script with synthetic fixture; negative user-owned fixture if safe. No installed profile writes.
 
 ### T-03 Verify and close 0006
-- AC: AC-01, AC-02, AC-03 | Files: docs/multi-agent/desktop-smoke.md | Test: specweave verify 0006-smoke-isolated-beta-desktop-skill
+- AC: AC-01, AC-02, AC-03 | Files: packages/desktop/src/main/lifecycle/configure.ts, packages/desktop/src/main/lifecycle/configure.test.ts, packages/desktop/src/main/lifecycle/environment.ts, docs/multi-agent/desktop-smoke.md | Test: specweave verify 0006-smoke-isolated-beta-desktop-skill
 - Dependencies: T-01, T-02. Independent review and close only measured scope.
