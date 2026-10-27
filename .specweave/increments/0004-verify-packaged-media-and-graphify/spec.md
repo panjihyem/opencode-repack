@@ -11,8 +11,8 @@ In: build current `feat/config-ota` overlay in an isolated disposable worktree; 
 ## Acceptance Criteria
 
 - [ ] AC-01: Overlay applies to clean checkout and desktop build plus Windows unpacked package exit 0. Packaged resources include `bin/hyper.mjs`, `bin/graphify.mjs`, Office `deck.py` source and compiled desktop managed skill path; package artifact evidence names path, commit and hash.
-- [ ] AC-02: From packaged CLI resources, opted-in synthetic repo yields local Graphify graph and query/path with `GRAPHIFY_BACKEND=none`; without marker, case mode or docs/case code, no graph command executes. Hindsight service/data unchanged. No real project scan.
-- [ ] AC-03: From packaged Office script and managed skill path, synthetic deck generates/editable chart and renders to PDF without overwriting user source; pre-existing Office install preserves user-authored deck. Any missing dependency prevents release claim.
+- [ ] AC-02: From packaged CLI resources, opted-in synthetic repo yields local Graphify graph and query/path with `GRAPHIFY_BACKEND=none`; without marker, case mode or docs/case code, no graph command executes, including queries after a sensitive file appears. Hindsight service/data unchanged. No real project scan.
+- [ ] AC-03: Source of managed Office `deck.py` in compiled desktop artifact is inspected; overlay script generates synthetic deck and renders to PDF without overwriting user source; pre-existing Office install preserves user-authored deck. Installed desktop skill registration/execution remains unproven and blocks release claim.
 - [ ] AC-04: Report says which features are shipped in test artifact versus fake-only/inactive, and what remains unproven; package build/inspection and fresh-context review pass before closing 0004.
 
 ## Approach
@@ -43,3 +43,7 @@ Start with `specweave pickup`. Avoid modifying current checkout's untracked PDFs
 ### T-03 Verify and close 0004
 - AC: AC-01, AC-02, AC-03, AC-04 | Files: docs/multi-agent/package-validation.md | Test: specweave verify 0004-verify-packaged-media-and-graphify
 - Dependencies: T-01, T-02. Recheck package evidence, review in fresh context, then complete as verified test artifact only.
+
+### T-04 Recheck Graphify guard on every command and narrow deck claim
+- AC: AC-02, AC-03, AC-04 | Files: rebrand/files/desktop/cli/graphify.mjs, rebrand/test/e2e/graphify-integration.test.ts, docs/multi-agent/package-validation.md | Test: cd rebrand && bun test test/e2e/graphify-integration.test.ts test/e2e/deck-quality.test.ts
+- Dependencies: T-02. Reviewer found query/path can run after docs/case file appears and packaged deck source is not an installed executable. Deny all Graphify actions in unsafe repo; report only verified Office source/render evidence.

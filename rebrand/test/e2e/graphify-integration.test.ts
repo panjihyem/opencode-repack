@@ -47,6 +47,8 @@ test("opted-in repo indexes code offline and queries extracted call edge", async
     await mkdir(path.join(project, "docs"))
     await writeFile(path.join(project, "docs", "notes.py"), "PRIVATE_DOC_CANARY")
     await expect(graphify(["index", project])).rejects.toThrow("Documentation")
+    await expect(graphify(["query", project, "greet"])).rejects.toThrow("Documentation")
+    await expect(graphify(["path", project, "run()", "greet()"])).rejects.toThrow("Documentation")
     await rm(path.join(project, ".hyper-ai", "graphify.enabled"))
     await expect(graphify(["query", project, "greet"])).rejects.toThrow("opt-in missing")
   } finally {

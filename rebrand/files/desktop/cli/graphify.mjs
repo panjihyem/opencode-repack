@@ -58,10 +58,10 @@ export async function graphify(args) {
   const [action, directory, ...rest] = args
   if (!action || !directory || !["index", "query", "path"].includes(action)) throw new Error("usage: hyper graphify index|query|path <opted-in-repo> [terms]")
   const project = await projectRoot(directory)
+  await unsafeCode(project)
   const graph = path.join(outputRoot(project), "graphify-out", "graph.json")
   if (action === "index") {
     if (rest.length) throw new Error("Unexpected arguments")
-    await unsafeCode(project)
     if (!(await stat(binary("graphify")).catch(() => undefined))?.isFile()) {
       const uv = process.env.HYPER_UV || path.join(process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming"), "ai.hyperai.desktop", "hyper-bundle", "office", "uv", process.platform === "win32" ? "uv.exe" : "uv")
       if (!(await stat(uv).catch(() => undefined))?.isFile()) throw new Error("Office uv unavailable; Graphify not installed")
