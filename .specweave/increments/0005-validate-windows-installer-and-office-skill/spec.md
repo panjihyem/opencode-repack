@@ -11,9 +11,9 @@ In: build NSIS installer from current branch in clean worktree; inspect file has
 ## Acceptance Criteria
 
 - [ ] AC-01: NSIS `hyper-ai-desktop-win-x64.exe` built from current commit, exists and is nonempty; bundle includes Graphify CLI, Office deck source and runtime; recorded SHA256 and exact commit.
-- [ ] AC-02: With isolated fake config and existing Office install, package-provided Office provisioning creates managed `hyper-report/SKILL.md` pointing at real provisioned `deck.py`; synthetic deck generation via that path yields PPTX with PNG/native chart and renders to PDF; no user-authored skill or script overwritten.
+- [ ] AC-02: Isolated source-module provisioning test creates managed `hyper-report/SKILL.md` pointing at provisioned `deck.py` and preserves user-authored skill/script; package resource `deck.py` independently generates a synthetic PPTX with PNG/native chart and renders to PDF. A launched installed-app end-to-end skill invocation is **not** covered; distribution requires separate smoke test.
 - [ ] AC-03: Packaged Graphify CLI still rejects missing marker, Case Secure mode, docs/case code on all actions; only synthetic repo tested. No Hindsight or real project state modified.
-- [ ] AC-04: Verification and independent review distinguish installer build from installed-app smoke and report all limits honestly. Close only if package gates proven; no cloud capability implied.
+- [ ] AC-04: Verification and independent review distinguish installer build from installed-app smoke and Node server authentication runtime, reporting limits honestly. Close only as isolated Beta test artifact, not distribution; no cloud capability implied.
 
 ## Approach
 
