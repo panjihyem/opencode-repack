@@ -1,0 +1,11 @@
+{
+  "id": "0005-validate-windows-installer-and-office-skill",
+  "uuid": "ea462ccb-80d9-4469-9290-414dfa3dff88",
+  "status": "active",
+  "type": "feature",
+  "priority": "P1",
+  "created": "2026-10-27T01:11:26.894Z",
+  "updated": "2026-10-27T01:11:26.894Z",
+  "lastActivity": "2026-10-27T01:11:26.894Z",
+  "title": "Validate Windows installer and Office skill"
+}
