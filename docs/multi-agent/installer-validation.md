@@ -4,4 +4,6 @@ Source commit `437e19fc0c5744ad4f74900ba9fccc64c6870c96`. Build in clean worktre
 
 Installer: `packages/desktop/dist/hyper-ai-desktop-win-x64.exe` in build worktree, 292,265,885 bytes, SHA256 `E6E29FC7D43379CD4B86A40651CB4807E82A2BFFD94B4015676A882E6DCB90F3`. This file is not committed or published. Unpacked resources contain `bin/hyper.mjs` and `bin/graphify.mjs`; compiled `app.asar` contains managed `deck.py` and `hyper-report` skill source. No visible desktop or NSIS install into user profile has been performed.
 
-Remaining runtime gate: test the actual packaged Office provisioning path in an isolated fake config/userData, ensure skill points to deck script, and verify Graphify negative probes. Do not equate source-only synthetic deck tests with installed-app execution. Live image generation and Composio remain off by prior decision.
+The next Office provisioning change copies `deck.py` from package resources rather than relying only on compiled source. An isolated `applyOfficeSkills` fixture verifies generated `hyper-report/SKILL.md` points at provisioned deck, managed stale deck refreshes, and user-authored skill survives. This fixture executes source module with a resource root; it is **not** a launched installed desktop. Rebuild and inspect a package containing this change before claiming packaged runtime.
+
+Remaining runtime gates: verify Graphify negatives on the rebuilt package and packaged Office resource/provisioning; no visible installed-app smoke. Live image generation and Composio remain off by prior decision.

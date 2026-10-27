@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import { officeInstalled, officeRoot, deckModule, ensureManagedDeck } from "../../files/desktop/hyper/office"
+import { applyOfficeSkills } from "../../files/desktop/hyper/skills"
 
 const python = "C:\\Users\\User\\AppData\\Roaming\\ai.hyperai.desktop\\hyper-bundle\\office\\venv\\Scripts\\python.exe"
 const deck = new URL("../../files/desktop/hyper/deck.py", import.meta.url).pathname.replace(/^\/(?:[A-Za-z]:)/, (drive) => drive.slice(1))
@@ -41,6 +42,27 @@ test("public deck has PNG and editable chart without replacing source", async ()
     expect(await readFile(deckModule(oldInstall), "utf8")).toBe("# user code\n")
     await ensureManagedDeck(oldInstall)
     expect(await readFile(deckModule(oldInstall), "utf8")).toBe("# user code\n")
+    const config = path.join(root, "isolated-config")
+    await applyOfficeSkills(config, oldInstall)
+    const skill = await readFile(path.join(config, "skill", "hyper-report", "SKILL.md"), "utf8")
+    expect(skill).toContain(deckModule(oldInstall))
+    expect(skill).not.toContain("__DECK_PY__")
+    await writeFile(path.join(config, "skill", "hyper-report", "SKILL.md"), "USER_SKILL")
+    await applyOfficeSkills(config, oldInstall)
+    expect(await readFile(path.join(config, "skill", "hyper-report", "SKILL.md"), "utf8")).toBe("USER_SKILL")
+    const bundle = path.join(root, "package-resources")
+    await mkdir(path.join(bundle, "office", "lib"), { recursive: true })
+    await writeFile(path.join(bundle, "office", "lib", "deck.py"), managed)
+    const previousBundle = process.env.HYPER_AI_BUNDLE_ROOT
+    process.env.HYPER_AI_BUNDLE_ROOT = bundle
+    try {
+      await writeFile(deckModule(oldInstall), '"""HYPER_AI_MANAGED: stale"""\n')
+      expect(await officeInstalled(oldInstall)).toBe(true)
+      expect(await readFile(deckModule(oldInstall), "utf8")).toBe(managed)
+    } finally {
+      if (previousBundle === undefined) delete process.env.HYPER_AI_BUNDLE_ROOT
+      else process.env.HYPER_AI_BUNDLE_ROOT = previousBundle
+    }
   } finally {
     await rm(root, { recursive: true, force: true })
   }

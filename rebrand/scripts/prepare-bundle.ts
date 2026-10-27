@@ -42,6 +42,7 @@ console.log("bundled setup wizard + search MCP + security quickstart")
 // The recurring-case module ships as loose Python files: the installer copies
 // them next to forensic.py, so the .py files stay the single source of truth.
 await mkdir(path.join(root, "office", "lib", "case"), { recursive: true })
+await cp(path.join(import.meta.dir, "../files/desktop/hyper/deck.py"), path.join(root, "office", "lib", "deck.py"))
 await Promise.all(
   ["case.py", "cli.py", "pseudonym.py", "casemode.py", "selfcheck.py"].map((name) =>
     cp(path.join(import.meta.dir, "../files/desktop/hyper/case", name), path.join(root, "office/lib/case", name)),

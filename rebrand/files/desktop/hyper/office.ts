@@ -27,9 +27,16 @@ export async function ensureManagedDeck(dataDir: string) {
     if (error.code === "ENOENT") return undefined
     throw error
   })
-  if (previous === undefined || (previous.startsWith('"""HYPER_AI_MANAGED:') && previous !== deckSource)) {
+  const bundled = process.env.HYPER_AI_BUNDLE_ROOT ?? (typeof process.resourcesPath === "string" ? bundleRoot() : undefined)
+  const source = bundled
+    ? await readFile(path.join(bundled, "office", "lib", "deck.py"), "utf8").catch((error: NodeJS.ErrnoException) => {
+        if (error.code === "ENOENT" && !process.env.HYPER_AI_BUNDLE_ROOT) return deckSource
+        throw error
+      })
+    : deckSource
+  if (previous === undefined || (previous.startsWith('"""HYPER_AI_MANAGED:') && previous !== source)) {
     await mkdir(path.dirname(deck), { recursive: true })
-    await writeFile(deck, deckSource)
+    await writeFile(deck, source)
   }
 }
 

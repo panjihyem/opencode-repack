@@ -37,7 +37,7 @@ Use a clean worktree from `feat/config-ota` rather than dirty user workspace. In
 - Dependencies: none. Build overlay/NSIS in disposable worktree, hash EXE and inspect package files. If network or signing fails, record exact gate, do not mark done.
 
 ### T-02 Verify installed Office skill provisioning without user config
-- AC: AC-02 | Files: rebrand/files/desktop/hyper/office.ts, rebrand/files/desktop/hyper/skills.ts, rebrand/test/e2e/deck-quality.test.ts, docs/multi-agent/installer-validation.md | Test: cd rebrand && bun test test/e2e/deck-quality.test.ts
+- AC: AC-02 | Files: rebrand/files/desktop/hyper/office.ts, rebrand/files/desktop/hyper/skills.ts, rebrand/scripts/prepare-bundle.ts, rebrand/test/e2e/deck-quality.test.ts, docs/multi-agent/installer-validation.md | Test: cd rebrand && bun test test/e2e/deck-quality.test.ts
 - Dependencies: T-01. Exercise package-derived Office code in isolated test config; resolve managed deck path and render synthetic slide. Preserve user-authored skill and script fixtures.
 
 ### T-03 Packaged Graphify denial and final close
