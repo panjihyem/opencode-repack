@@ -116,4 +116,4 @@ This is a **planned backlog**, not an implementation or authorization to connect
 
 ### T-12 Preserve user-owned deck on Office reinstall
 - AC: AC-01, AC-05 | Files: rebrand/files/desktop/hyper/office.ts, rebrand/test/e2e/deck-quality.test.ts | Test: cd rebrand && bun test test/e2e/deck-quality.test.ts
-- Dependencies: T-11. Apply same ownership check in `installOffice` as `officeInstalled`; mock installer path with fake uv to prove an existing user-owned `deck.py` survives a package-marker change.
+- Dependencies: T-11. Apply same ownership check in `installOffice` as `officeInstalled`; test shared managed-deck writer with stale managed copy and user-owned copy. Full Office package reinstall is not exercised by this test; keep that gate explicit.
