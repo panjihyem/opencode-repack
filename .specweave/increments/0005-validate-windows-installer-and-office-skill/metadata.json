@@ -1,11 +1,16 @@
 {
   "id": "0005-validate-windows-installer-and-office-skill",
   "uuid": "ea462ccb-80d9-4469-9290-414dfa3dff88",
-  "status": "active",
+  "status": "completed",
   "type": "feature",
   "priority": "P1",
   "created": "2026-10-27T01:11:26.894Z",
-  "updated": "2026-10-27T01:11:26.894Z",
-  "lastActivity": "2026-10-27T01:11:26.894Z",
-  "title": "Validate Windows installer and Office skill"
+  "updated": "2026-10-27T03:28:32.406Z",
+  "lastActivity": "2026-10-27T03:28:32.406Z",
+  "title": "Validate Windows installer and Office skill",
+  "externalLinks": {},
+  "testMode": "test-after",
+  "coverageTarget": 80,
+  "readyForReviewAt": "2026-10-27T03:28:16.567Z",
+  "approvedAt": "2026-10-27T03:28:32.406Z"
 }

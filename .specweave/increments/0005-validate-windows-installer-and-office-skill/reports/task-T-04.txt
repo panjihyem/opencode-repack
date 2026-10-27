@@ -1,0 +1,18 @@
+$ cd packages/server && bun test test/auth.test.ts
+# exit 0 — 2026-10-27T02:28:17.764Z
+
+bun test v1.4.4 (38afee6c8)
+
+test\auth.test.ts:
+[02:28:17.177] INFO (#2): database schema bootstrap started {
+  migrations: 50,
+}
+[02:28:17.238] INFO (#2): database schema bootstrap completed {
+  migrations: 50,
+  durationMs: 61,
+}
+
+ 3 pass
+ 0 fail
+ 10 expect() calls
+Ran 3 tests across 1 file. [5.86s]

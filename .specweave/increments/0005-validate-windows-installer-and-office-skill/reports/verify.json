@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "ranAt": "2026-10-27T03:25:12.186Z",
+  "increment": "0005-validate-windows-installer-and-office-skill",
+  "commands": [
+    {
+      "cmd": "cd packages/server && bun test test/auth.test.ts",
+      "exit": 0
+    },
+    {
+      "cmd": "cd rebrand && bun test test/e2e/deck-quality.test.ts test/e2e/graphify-integration.test.ts test/e2e/deck-assets.test.ts test/e2e/deck-image-generation.test.ts test/e2e/composio-policy.test.ts",
+      "exit": 0
+    }
+  ],
+  "acs": {
+    "total": 4,
+    "done": 4
+  },
+  "tasks": {
+    "total": 4,
+    "done": 4,
+    "skipped": 0,
+    "open": 0
+  },
+  "skipped": [],
+  "ledgerMalformed": 0
+}
