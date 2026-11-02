@@ -1,0 +1,133 @@
+$ErrorActionPreference = 'Stop'
+$scriptPath = Join-Path $PSScriptRoot 'Hyper-Hub.ps1'
+$root = Join-Path ([System.IO.Path]::GetTempPath()) ("hyper-hub-contract-" + [Guid]::NewGuid().ToString('N'))
+try {
+  $discovery = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath discover -Root $root | ConvertFrom-Json
+  if ($LASTEXITCODE -ne 0 -or $discovery.externalRequests -ne $false -or (Test-Path -LiteralPath $root)) { throw 'discover must not create state or make network requests.' }
+  foreach ($zone in @('case', 'regular', 'unknown')) {
+    foreach ($operation in @('local.status', 'external.send', 'model.cloud', 'job.run')) {
+      $result = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath policy-check -Zone $zone -Operation $operation -Root $root | ConvertFrom-Json
+      $expected = if ($operation -ceq 'local.status' -and $zone -cin @('case', 'regular')) { 'allow' } else { 'deny' }
+      if ($LASTEXITCODE -ne 0 -or $result.decision -cne $expected -or $result.executable -ne $false -or (Test-Path -LiteralPath $root)) {
+        throw "policy contract failed: zone=$zone operation=$operation"
+      }
+    }
+  }
+  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath init -Root $root | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw 'init contract failed.' }
+
+  $status = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath status -Root $root | ConvertFrom-Json
+  if ($LASTEXITCODE -ne 0 -or $status.jobs -ne 0 -or $status.lastAuditHash -notmatch '^0{64}$') { throw 'status contract failed.' }
+
+  $discovery = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath discover -Root $root | ConvertFrom-Json
+  if ($LASTEXITCODE -ne 0 -or $discovery.externalRequests -ne $false) { throw 'discovery contract failed.' }
+  foreach ($service in $discovery.services) {
+    if ($service.readOnly -ne $true -or $service.authChecked -ne $false -or $service.port -lt 1 -or $service.port -gt 65535) { throw 'discovery service schema failed.' }
+    if ($service.process -eq 'opencode-cli.exe' -and $service.version -and $service.version -notmatch '^\d+\.\d+\.\d+') { throw 'discovery version format failed.' }
+  }
+  if ($discovery.services.Count -gt 0 -and $discovery.services[0].version -ne $null -and $discovery.services[0].version -notmatch '^\d+\.\d+\.\d+$') { throw 'unverified version must be null.' }
+
+  $tick = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath tick -Root $root | Out-String
+  if ($LASTEXITCODE -ne 0 -or $tick -notmatch 'Runner disabled') { throw 'fail-closed tick contract failed.' }
+
+  $addArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), 'add', '-Root', ('"' + $root + '"'), '-Id', 'contract-job', '-Name', '"Contract job"', '-Zone', 'regular', '-Cron', '"30 9 * * *"', '-Action', 'external.fetch', '-Resource', 'example.invalid')
+  $add = Start-Process -FilePath 'powershell.exe' -ArgumentList $addArgs -Wait -PassThru -WindowStyle Hidden -RedirectStandardOutput (Join-Path $root 'add.out')
+  if ($add.ExitCode -ne 0) { throw 'add contract failed.' }
+  $jobs = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath jobs -Root $root | ConvertFrom-Json
+  if ($LASTEXITCODE -ne 0 -or $jobs.count -ne 1 -or $jobs.executable -ne $false -or $jobs.jobs[0].id -cne 'contract-job') { throw 'jobs contract failed.' }
+  if ($jobs.jobs[0].nextRunUtc -notmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$') { throw 'nextRunUtc format contract failed.' }
+  $schedule = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath schedule -Root $root | ConvertFrom-Json
+  if ($LASTEXITCODE -ne 0 -or $schedule.count -ne 1 -or $schedule.executable -ne $false) { throw 'schedule contract failed.' }
+  $dry = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath tick -Root $root -DryRun | ConvertFrom-Json
+  if ($LASTEXITCODE -ne 0 -or $dry.mode -cne 'dry-run' -or $dry.launched -ne 0 -or $dry.executable -ne $false) { throw 'dry-run tick contract failed.' }
+  $pause = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath pause -Root $root -Id contract-job | ConvertFrom-Json
+  if ($LASTEXITCODE -ne 0 -or $pause.enabled -ne $false) { throw 'pause contract failed.' }
+  $resume = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath resume -Root $root -Id contract-job | ConvertFrom-Json
+  if ($LASTEXITCODE -ne 0 -or $resume.enabled -ne $true) { throw 'resume contract failed.' }
+  $remove = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath remove -Root $root -Id contract-job | ConvertFrom-Json
+  if ($LASTEXITCODE -ne 0) { throw 'remove contract failed.' }
+  $jobs = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath jobs -Root $root | ConvertFrom-Json
+  if ($jobs.count -ne 0) { throw 'remove did not delete job.' }
+
+  $rejectArgs = @(
+    @('-Id', 'x', '-Name', 'X', '-Zone', 'cloud', '-Cron', '"0 8 * * *"', '-Action', 'a', '-Resource', 'r'),
+    @('-Id', 'x', '-Name', 'X', '-Zone', 'regular', '-Cron', 'not-a-cron', '-Action', 'a', '-Resource', 'r'),
+    @('-Id', '"bad id"', '-Name', 'X', '-Zone', 'regular', '-Cron', '"0 8 * * *"', '-Action', 'a', '-Resource', 'r'),
+    @('-Id', 'y', '-Name', 'Y', '-Zone', 'regular', '-Action', 'a', '-Resource', 'r')
+  )
+  foreach ($extra in $rejectArgs) {
+    $rejectFile = Join-Path $root 'reject.out'
+    $rejectErr = Join-Path $root 'reject.err'
+    $reject = Start-Process -FilePath 'powershell.exe' -ArgumentList (@('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), 'add', '-Root', ('"' + $root + '"')) + $extra) -Wait -PassThru -WindowStyle Hidden -RedirectStandardOutput $rejectFile -RedirectStandardError $rejectErr
+    if ($reject.ExitCode -eq 0) { throw "invalid add accepted: $($extra -join ' ')" }
+  }
+  $jobs = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath jobs -Root $root 2>&1 | ConvertFrom-Json
+  if ($jobs.count -ne 0) { throw 'invalid add must not store a job.' }
+
+  foreach ($command in @('add', 'run')) {
+    $errorFile = Join-Path $root "$command.error"
+    $attempt = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), $command, '-Root', ('"' + $root + '"')) -RedirectStandardError $errorFile -Wait -PassThru -WindowStyle Hidden
+    if ($attempt.ExitCode -eq 0) { throw "$command must be blocked." }
+  }
+  $auditFile = Join-Path $root 'audit.jsonl'
+  [System.IO.File]::WriteAllText($auditFile, "tamper`n")
+  $errorFile = Join-Path $root 'status.error'
+  $attempt = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), 'status', '-Root', ('"' + $root + '"')) -RedirectStandardError $errorFile -Wait -PassThru -WindowStyle Hidden
+  if ($attempt.ExitCode -eq 0) { throw 'Tampered audit must block status.' }
+
+  $stateFile = Join-Path $root 'state.json'
+  $originalState = [System.IO.File]::ReadAllText($stateFile)
+  $state = $originalState | ConvertFrom-Json
+  # State berubah dulu, baru audit dikosongkan: urutan ini menjaga kombinasi yang masih bisa diuji.
+  $state.jobs = @([pscustomobject]@{
+    id = 'injected'; name = 'Injected'; zone = 'regular'; cron = '*/1 * * * *'; everyMinutes = 1; enabled = $true
+    nextRunUtc = [DateTime]::UtcNow.AddMinutes(-5).ToString('yyyy-MM-ddTHH:mm:ssZ')
+    action = 'local.status'; resource = 'local'; policy = 'deny'
+    executable = 'powershell.exe'; arguments = @('-Command', 'throw "unexpected execution"')
+  })
+  $state.lastAuditHash = ('0' * 64)
+  [System.IO.File]::WriteAllText($stateFile, ($state | ConvertTo-Json -Depth 10))
+  [System.IO.File]::WriteAllText($auditFile, '')
+  $tick = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath tick -Root $root | Out-String
+  if ($LASTEXITCODE -ne 0 -or $tick -notmatch 'Runner disabled') { throw 'Injected job must not run.' }
+  $dry = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath tick -Root $root -DryRun | ConvertFrom-Json
+  if ($LASTEXITCODE -ne 0 -or $dry.launched -ne 0 -or $dry.executable -ne $false) { throw 'Dry-run must never launch.' }
+  if (@($dry.due | Where-Object { $_.id -ceq 'injected' }).Count -ne 1) { throw 'Dry-run must report overdue injected job as due.' }
+  if (@((Get-Content -LiteralPath $stateFile -Raw | ConvertFrom-Json).runs).Count -ne 0) { throw 'Injected job produced a run.' }
+
+  [System.IO.File]::WriteAllText($stateFile, $originalState)
+  [System.IO.File]::Delete($auditFile)
+  $errorFile = Join-Path $root 'missing-audit.error'
+  $attempt = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), 'init', '-Root', ('"' + $root + '"')) -RedirectStandardError $errorFile -Wait -PassThru -WindowStyle Hidden
+  if ($attempt.ExitCode -eq 0 -or (Test-Path -LiteralPath $auditFile)) { throw 'Missing audit must block init without recreating audit.' }
+  # remote: kanal bukan rahasia; token tidak boleh pernah jadi argumen perintah.
+  # remote adalah katalog kanal: boleh dipanggil tanpa state (init). Karena itu blok ini
+  # sengaja dijalankan sebelum bagian yang memakai -Root.
+  $channels = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath remote -Sub channels 2>&1 | ConvertFrom-Json
+  if ($LASTEXITCODE -ne 0) { throw 'remote channels failed.' }
+  if (@($channels.channels | Where-Object { $_.id -ceq 'telegram' -and $_.supported -eq $true }).Count -ne 1) { throw 'telegram must be supported.' }
+  if (@($channels.channels | Where-Object { $_.id -ceq 'whatsapp' -and $_.supported -eq $true }).Count -ne 0) { throw 'whatsapp must not claim support before it exists.' }
+  $ErrorActionPreference = 'Continue'
+  $waOut = [string](& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath remote -Sub status -Channel whatsapp 2>&1)
+  if ($LASTEXITCODE -eq 0 -or $waOut -notmatch 'belum tersedia') { throw 'unsupported channel must fail loudly.' }
+  $noChannel = [string](& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath remote -Sub status 2>&1)
+  if ($LASTEXITCODE -eq 0 -or $noChannel -notmatch 'Channel wajib') { throw 'remote without -Channel must fail.' }
+  $ErrorActionPreference = 'Stop'
+  $ErrorActionPreference = 'Continue'
+  $help = [string](& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath __nope__ 2>&1)
+  $ErrorActionPreference = 'Stop'
+  if ($help -notmatch 'remote') { throw 'remote missing from command help.' }
+  if ($help -match '\btelegram\b') { throw 'legacy telegram command still advertised.' }
+  # allowlist wajib: tanpa -OwnerId, dan OwnerId bukan angka, setup harus gagal sebelum menyentuh .env
+  $ErrorActionPreference = 'Continue'
+  $noOwner = [string](& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath remote -Sub setup -Channel telegram -ModelProvider net -ModelId x 2>&1)
+  if ($LASTEXITCODE -eq 0 -or $noOwner -notmatch 'OwnerId wajib') { throw 'setup without allowlist must fail.' }
+  $badOwner = [string](& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath remote -Sub setup -Channel telegram -OwnerId abc -ModelProvider net -ModelId x 2>&1)
+  if ($LASTEXITCODE -eq 0 -or $badOwner -notmatch 'OwnerId tidak sesuai') { throw 'invalid allowlist id must fail.' }
+  $ErrorActionPreference = 'Stop'
+  $helpText = [IO.File]::ReadAllText($scriptPath)
+  if ($helpText -notmatch 'Allowlist wajib') { throw 'Hub must document that allowlist is mandatory.' }
+  'Hyper Hub contract checks passed.'
+} finally {
+  Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+}

@@ -1,0 +1,7 @@
+model,device,mode,ctx,ttft_s,prefill_tps,decode_tps,iterations,functional_status
+qwen3.5:2b-unc,NPU2,performance,1k,0.907,1101.49,21.17,2,INVALID_OUTPUT
+qwen3.5:2b-unc,NPU2,performance,2k,1.534,1283.92,21.04,2,INVALID_OUTPUT
+qwen3.5:2b-unc,NPU2,performance,4k,2.883,1356.31,20.30,2,INVALID_OUTPUT
+qwen3.5:2b-unc,NPU2,performance,8k,5.767,1350.60,19.19,2,INVALID_OUTPUT
+qwen3.5:2b-unc,NPU2,performance,16k,11.448,1357.58,17.54,2,INVALID_OUTPUT
+qwen3.5:2b-unc,NPU2,performance,32k,24.266,1280.47,14.76,2,INVALID_OUTPUT

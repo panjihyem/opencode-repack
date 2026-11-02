@@ -1,0 +1,4 @@
+model,quant,device,mode,ctx,prefill_tps,decode_tps,load_ok,tool_call_ok,notes
+qwen3.5-4b-heretic-darrellbest,Q4_K_M,iGPU-Radeon860M,Vulkan,8k,260.78,11.75,OK,2/2,build b12024 (ddf48f85c)
+qwen3.5-4b-heretic-darrellbest,Q4_K_M,iGPU-Radeon860M,Vulkan,16k,217.00,11.39,OK,2/2,build b12024 (ddf48f85c)
+qwen3.5-4b-heretic-darrellbest,Q4_K_M,iGPU-Radeon860M,Vulkan,32k,158.18,11.72,OK,2/2,build b12024 (ddf48f85c)

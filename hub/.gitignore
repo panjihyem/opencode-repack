@@ -1,0 +1,9 @@
+.env
+.env.*
+*.key
+qr.txt
+status.json
+*.server.log
+node_modules/
+__pycache__/
+*.pyc

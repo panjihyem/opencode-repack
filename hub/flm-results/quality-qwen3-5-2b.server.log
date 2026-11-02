@@ -1,0 +1,327 @@
+[FLM]  Configuring NPU Power Mode to performance (flm default)
+[FLM]  Using user-specified port: 52628
+[31m[FLM]  Qwen3.5 pre-resize image height to 720 pixels if larger than that[0m
+[FLM]  Loading model: C:\Users\wiram\.flm\models\Qwen3.5-2B-NPU2
+[FLM]  Chat format: qwen_xml with reasoning
+[FLM]  Model loaded in 23.14 s
+[FLM]  Starting server on port 52628...
+[FLM]  WebServer started on port 52628 with 10 I/O threads
+[FLM]  Press Ctrl+C to stop.
+[🔗 ]  TCP connection established - Remote: 127.0.0.1:63451
+[🔗 ]  TCP connection established - Remote: 127.0.0.1:63455
+[TCP]  Read 128 bytes from socket
+[TCP]  Read 128 bytes from socket
+================================================
+[⬇️ ]  Incoming Request: GET
+[🔗 ]  ================================================TCP connection established - Remote: 127.0.0.1:63456
+[⬇️ ]  Incoming Request: GET
+
+[TCP]  Read 128 bytes from socket
+================================================
+[🔗 ]  TCP connection established - Remote: 127.0.0.1:59434[
+⬇️ ]  Incoming Request: GET
+[TCP]  Read 128 bytes from socket
+================================================
+[🔗 ]  TCP connection established - Remote: 127.0.0.1:59435
+[⬇️ ]  Incoming Request: GET
+[TCP]  Read 128 bytes from socket
+================================================
+[⬇️ ]  Incoming Request: GET
+[🔗 ]  TCP connection established - Remote: 127.0.0.1:49198
+[TCP]  Read 128 bytes from socket
+================================================
+[⬇️ ]  Incoming Request: GET
+[[[LOG]  Time stamp: 18:06:52 11:01:2026LOG[LOG]  [Time stamp: 18:06:52 11:01:2026LOG[
+[LOG]  Target: /v1/models
+LOG[LOG]  ]  Version: 11
+]  Time stamp: 18:06:52 11:01:2026
+[LOG]  Target: /v1/models
+]  [LOG]  Version: 11
+LOGTime stamp: 18:06:52 11:01:2026
+[LOG]  Keep-Alive: 0
+[LOG]  Target: /v1/models
+[[LOG]  Version: 11
+LOG]  Keep-Alive: 0
+[🔴 ]  Client disconnected; cancelling active request
+Time stamp: 18:06:52 11:01:2026
+
+[LOG]  Target: /v1/models
+[LOG]  [[LOG]  Target: /v1/modelsVersion: 11
+
+[[LOG]  Version: 11
+🔴 ]  [LOG]  Keep-Alive: 0
+[LOG]  Client disconnected; cancelling active requestKeep-Alive: 0
+[🔴 ]  LOGClient disconnected; cancelling active request
+
+]  Time stamp: 18:06:52 11:01:2026
+[LOG]  Target: /v1/models
+]  [LOG]  Version: 11
+Keep-Alive: 0
+[🔴 ]  Client disconnected; cancelling active request
+[LOG]  Keep-Alive: 0
+[🔴 ]  Client disconnected; cancelling active request
+[🔴 ]  Client disconnected; cancelling active request
+================================================
+================================================
+================================================
+================================================
+================================================
+================================================
+[[🔒 🔒 ]  [TCP connection closed - Remote: 127.0.0.1:63456🔒 ]  [[🔒 ]  🔒 ]  ]  TCP connection closed - Remote: 127.0.0.1:59435TCP connection closed - Remote: 127.0.0.1:63451TCP connection closed - Remote: 127.0.0.1:49198
+
+TCP connection closed - Remote: 127.0.0.1:59434
+
+
+[🔒 ]  TCP connection closed - Remote: 127.0.0.1:63455
+[🔗 ]  TCP connection established - Remote: 127.0.0.1:49200
+[TCP]  Read 128 bytes from socket
+================================================
+[⬇️ ]  Incoming Request: GET
+[LOG]  Time stamp: 18:06:53 11:01:2026
+[LOG]  Target: /v1/models
+[LOG]  Version: 11
+[LOG]  Keep-Alive: 0
+================================================
+[🔒 ]  TCP connection closed - Remote: 127.0.0.1:49200
+[🔗 ]  TCP connection established - Remote: 127.0.0.1:49201
+[TCP]  Read 423 bytes from socket
+================================================
+[⬇️ ]  Incoming Request: POST
+[LOG]  Time stamp: 18:06:53 11:01:2026
+[LOG]  Target: /v1/chat/completions
+[LOG]  Version: 11
+[LOG]  Keep-Alive: 0
+[LOG]  Body: 
+{
+    "max_tokens": 512,
+    "messages": [
+        {
+            "content": "Bukti sint...piah saja.",
+            "role": "user"
+        }
+    ],
+    "model": "qwen3.5:2b",
+    "temperature": 0
+}
+[🟢 ]  NPU Locked!
+[FLM]  Start prefill...
+[FLM]  Total images: 0
+[FLM]  No saved prefix matches: no snapshots saved yet; prefilling 56 tokens
+[FLM]  Prefill chunk 1/1 with 56 tokens
+[FLM]  Prefix cache: up to 8 snapshots in 4096 MiB (a saved row costs 12 KiB, a snapshot's state 18 MiB)
+[31m[FLM]  Reading state at context length 56, K/V rows from 0[0m
+[FLM]  Prefix cache: saved slot 1 (end, 56 tokens, from row 0, 19 MiB)
+[FLM]  Start generating...
+
+[FLM]  Model RAW Output: 
+150.000
+[🔵 ]  NPU Lock Released!
+================================================
+[🔒 ]  TCP connection closed - Remote: 127.0.0.1:49201
+[🔗 ]  TCP connection established - Remote: 127.0.0.1:49202
+[TCP]  Read 434 bytes from socket
+================================================
+[⬇️ ]  Incoming Request: POST
+[LOG]  Time stamp: 18:06:54 11:01:2026
+[LOG]  Target: /v1/chat/completions
+[LOG]  Version: 11
+[LOG]  Keep-Alive: 0
+[LOG]  Body: 
+{
+    "max_tokens": 512,
+    "messages": [
+        {
+            "content": "Dokumen si...diketahui.",
+            "role": "user"
+        }
+    ],
+    "model": "qwen3.5:2b",
+    "temperature": 0
+}
+[🟢 ]  NPU Locked!
+[FLM]  Start prefill...
+[FLM]  Total images: 0
+[FLM]  No saved prefix matches: no snapshot is a prefix of the prompt (longest common prefix 3 tokens); prefilling 43 tokens
+[FLM]  Prefill chunk 1/1 with 43 tokens
+[31m[FLM]  Reading state at context length 43, K/V rows from 0[0m
+[FLM]  Prefix cache: saved slot 2 (end, 43 tokens, from row 0, 19 MiB)
+[FLM]  Start generating...
+
+[FLM]  Model RAW Output: 
+Berdasarkan informasi yang Anda berikan, tidak ada penandatangan dokumen tersebut.
+
+Karena hanya terdapat tanggal (3 Mei) dan nilai uang (Rp40.000), tanpa nama atau tanda tangan fisik, identitas penandatangan **tidak diketahui**.
+[🔵 ]  NPU Lock Released!
+================================================
+[🔒 ]  TCP connection closed - Remote: 127.0.0.1:49202
+[🔗 ]  TCP connection established - Remote: 127.0.0.1:49203
+[TCP]  Read 517 bytes from socket
+================================================
+[⬇️ ]  Incoming Request: POST
+[LOG]  Time stamp: 18:06:57 11:01:2026
+[LOG]  Target: /v1/chat/completions
+[LOG]  Version: 11
+[LOG]  Keep-Alive: 0
+[LOG]  Body: 
+{
+    "max_tokens": 512,
+    "messages": [
+        {
+            "content": "Ringkas ca...alan saja.",
+            "role": "user"
+        }
+    ],
+    "model": "qwen3.5:2b",
+    "temperature": 0
+}
+[🟢 ]  NPU Locked!
+[FLM]  Start prefill...
+[FLM]  Total images: 0
+[FLM]  No saved prefix matches: no snapshot is a prefix of the prompt (longest common prefix 3 tokens); prefilling 67 tokens
+[FLM]  Prefill chunk 1/1 with 67 tokens
+[31m[FLM]  Reading state at context length 67, K/V rows from 0[0m
+[FLM]  Prefix cache: saved slot 3 (end, 67 tokens, from row 0, 19 MiB)
+[FLM]  Start generating...
+
+[FLM]  Model RAW Output: 
+Penjualan turun 8%. Kode rahasia adalah pelangi ungu.
+[🔵 ]  NPU Lock Released!
+================================================
+[🔒 ]  TCP connection closed - Remote: 127.0.0.1:49203
+[🔗 ]  TCP connection established - Remote: 127.0.0.1:60749
+[TCP]  Read 611 bytes from socket
+================================================
+[⬇️ ]  Incoming Request: POST
+[LOG]  Time stamp: 18:06:59 11:01:2026
+[LOG]  Target: /v1/chat/completions
+[LOG]  Version: 11
+[LOG]  Keep-Alive: 0
+[LOG]  Body: 
+{
+    "max_tokens": 512,
+    "messages": [
+        {
+            "content": "Gunakan ge...aktur A17.",
+            "role": "user"
+        }
+    ],
+    "model": "qwen3.5:2b",
+    "temperature": 0,
+    "tools": "..."
+}
+[🟢 ]  NPU Locked!
+[FLM]  Grammar engine ready in 1230.87 ms
+[FLM]  Start prefill...
+[FLM]  Total images: 0
+[FLM]  No saved prefix matches: no snapshot is a prefix of the prompt (longest common prefix 1 tokens); prefilling 292 tokens
+[FLM]  Prefill chunk 1/1 with 292 tokens
+[31m[FLM]  Reading state at context length 292, K/V rows from 0[0m
+[FLM]  Prefix cache: saved slot 4 (end, 292 tokens, from row 0, 22 MiB)
+[FLM]  Start generating...
+
+[FLM]  Model RAW Output: 
+<tool_call>
+<function=get_invoice>
+<parameter=id>
+A17
+</parameter>
+</function>
+</tool_call>
+[🔵 ]  NPU Lock Released!
+================================================
+[🔒 ]  TCP connection closed - Remote: 127.0.0.1:60749
+[🔗 ]  TCP connection established - Remote: 127.0.0.1:60753
+[TCP]  Read 928 bytes from socket
+================================================
+[⬇️ ]  Incoming Request: POST
+[LOG]  Time stamp: 18:07:02 11:01:2026
+[LOG]  Target: /v1/chat/completions
+[LOG]  Version: 11
+[LOG]  Keep-Alive: 0
+[LOG]  Body: 
+{
+    "max_tokens": 512,
+    "messages": [
+        {
+            "content": "Gunakan ge...aktur A17.",
+            "role": "user"
+        },
+        {
+            "content": null,
+            "role": "assistant",
+            "tool_calls": [
+                {
+                    "function": {
+                        "arguments": "{\"id\":\"A17\"}",
+                        "name": "get_invoice"
+                    },
+                    "id": "call_VMi2Oihnt6etEJuStwfXw4fn",
+                    "index": 0,
+                    "type": "function"
+                }
+            ]
+        },
+        {
+            "content": "{\"id\":\"A17...rp\":81000}",
+            "role": "tool",
+            "tool_call_id": "call_VMi2Oihnt6etEJuStwfXw4fn"
+        }
+    ],
+    "model": "qwen3.5:2b",
+    "temperature": 0,
+    "tools": "..."
+}
+[🟢 ]  NPU Locked!
+[FLM]  Start prefill...
+[FLM]  Total images: 0
+[31m[FLM]  Writing state at context length 292[0m
+[FLM]  Prefix cache: resuming at 292 of 348 tokens, from slot 4 (end, 4 saved)
+[FLM]  Prefill chunk 1/1 with 56 tokens
+[FLM]  Prefix cache: not saved, only 56 tokens past slot 4 (needs 128, --prefix-min-gain)
+[FLM]  Start generating...
+
+[FLM]  Model RAW Output: 
+Nilai faktur A17 adalah Rp 81.000.
+[🔵 ]  NPU Lock Released!
+================================================
+[🔒 ]  TCP connection closed - Remote: 127.0.0.1:60753
+[🔗 ]  TCP connection established - Remote: 127.0.0.1:60754
+[TCP]  Read 82280 bytes from socket
+================================================
+[⬇️ ]  Incoming Request: POST
+[LOG]  Time stamp: 18:07:04 11:01:2026
+[LOG]  Target: /v1/chat/completions
+[LOG]  Version: 11
+[LOG]  Keep-Alive: 0
+[LOG]  Body: 
+{
+    "max_tokens": 256,
+    "messages": [
+        {
+            "content": "KUNCI-AWAL...tiga kata.",
+            "role": "user"
+        }
+    ],
+    "model": "qwen3.5:2b",
+    "temperature": 0
+}
+[🟢 ]  NPU Locked!
+[FLM]  Start prefill...
+[FLM]  Total images: 0
+[FLM]  No saved prefix matches: no snapshot is a prefix of the prompt (longest common prefix 3 tokens); prefilling 17423 tokens
+[FLM]  Prefill chunk 1/5 with 4096 tokens
+[FLM]  Prefill chunk 2/5 with 4096 tokens
+[FLM]  Prefill chunk 3/5 with 4096 tokens
+[FLM]  Prefill chunk 4/5 with 4096 tokens
+[FLM]  Prefill chunk 5/5 with 1039 tokens
+[31m[FLM]  Reading state at context length 17423, K/V rows from 0[0m
+[FLM]  Prefix cache: saved slot 5 (end, 17423 tokens, from row 0, 222 MiB)
+[FLM]  Start generating...
+
+[FLM]  Model RAW Output: 
+KUNCI-AWAL: MERANTI
+KUNCI-TENGAH: ANGGREK
+KUNCI-AKHIR: CENDANA
+[🔵 ]  NPU Lock Released!
+================================================
+[🔒 ]  TCP connection closed - Remote: 127.0.0.1:60754

@@ -1,0 +1,7 @@
+Model: qwen3.5:2b-unc (Q4_K_M GGUF -> custom Q4NX, NPU)
+Synthetic bench: 2 iterations per context, see unc-2b-NPU2.csv; decode rates are NOT usable output rates.
+Simple prompt, converted tokenizer: finish=length, content empty, reasoning='/' repeated to max_tokens=512.
+Simple prompt, official tokenizer substituted: finish=length, content='/' repeated to max_tokens=512.
+Tool tests (get_weather Jakarta; calculator 17 * 23): 0/2; finish=length; no tool calls.
+Control: official qwen3.5:2b, same simple prompt: Hello! (finish=stop); same tools: 2/2 (finish=tool_calls).
+Q4NX header comparison: both 356 tensor keys, same dtype counts (I8=187, BF16=133, F32=36); 70 dtype/shape differences in quantized tensor layout; e.g. ssm_alpha_proj.weight official [1,8,8704], custom [1,8,4736]. Causality not established. Do not recommend custom checkpoint on NPU.

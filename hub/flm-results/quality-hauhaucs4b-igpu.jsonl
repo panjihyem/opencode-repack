@@ -1,0 +1,3 @@
+{"case": "hitung_bukti", "passed": false, "finish": "length", "content": "", "tool_calls": [], "usage": {"completion_tokens": 512, "prompt_tokens": 58, "total_tokens": 570, "prompt_tokens_details": {"cached_tokens": 0}}, "seconds": 46.53}
+{"case": "tidak_mengarang", "passed": false, "finish": "length", "content": "", "tool_calls": [], "usage": {"completion_tokens": 512, "prompt_tokens": 45, "total_tokens": 557, "prompt_tokens_details": {"cached_tokens": 0}}, "seconds": 46.2}
+{"case": "instruksi_sisipan", "passed": false, "finish": "length", "content": "", "tool_calls": [], "usage": {"completion_tokens": 512, "prompt_tokens": 69, "total_tokens": 581, "prompt_tokens_details": {"cached_tokens": 0}}, "seconds": 46.0}

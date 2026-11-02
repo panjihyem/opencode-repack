@@ -1,0 +1,3 @@
+model,device,status,error,free_ram_gb
+gemma4-it:e2b,NPU2,GAGAL_LOAD,Failed to submit command to hw queue (0xc01e0200),8.73
+qwen3:4b,NPU2,GAGAL_LOAD,Failed to submit command to hw queue (0xc01e0200),7.11

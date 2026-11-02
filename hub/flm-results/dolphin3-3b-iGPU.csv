@@ -1,0 +1,4 @@
+model,quant,device,mode,ctx,prefill_tps,decode_tps,load_ok,tool_call_ok,notes
+dolphin3.0-qwen2.5-3b-bartowski,Q4_K_M,iGPU-Radeon860M,Vulkan,8k,352.63,18.69,OK,FAIL,tool format non-OpenAI (emit <tool> XML); test2 mengarang field result; ctx native 32K
+dolphin3.0-qwen2.5-3b-bartowski,Q4_K_M,iGPU-Radeon860M,Vulkan,16k,247.34,18.63,OK,FAIL,sama
+dolphin3.0-qwen2.5-3b-bartowski,Q4_K_M,iGPU-Radeon860M,Vulkan,32k,134.85,17.58,OK,FAIL,sama

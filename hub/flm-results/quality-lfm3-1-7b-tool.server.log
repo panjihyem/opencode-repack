@@ -1,0 +1,147 @@
+[FLM]  Configuring NPU Power Mode to performance (flm default)
+[FLM]  Using user-specified port: 52628
+[FLM]  Loading model: C:\Users\wiram\.flm\models\LFM3-1.7B-NPU2
+[FLM]  lfm3 prefill stages: mm+attn+swa
+[FLM]  lfm3 decode: all layers + lm_head on the NPU
+[FLM]  Chat format: qwen_xml with reasoning
+[FLM]  Model loaded in 3.73 s
+[FLM]  Starting server on port 52628...
+[FLM]  WebServer started on port 52628 with 10 I/O threads
+[FLM]  Press Ctrl+C to stop.
+[🔗 ]  TCP connection established - Remote: 127.0.0.1:56461
+[TCP]  Read 128 bytes from socket
+[🔗 ]  TCP connection established - Remote: 127.0.0.1:63749
+================================================
+[TCP]  Read 128 bytes from socket
+================================================
+[[⬇️ ]  Incoming Request: GET
+⬇️ ]  Incoming Request: GET
+[LOG]  Time stamp: 18:13:41 11:01:2026[
+[LOG]  Target: /v1/models
+LOG]  Time stamp: 18:13:41 11:01:2026
+[LOG]  Target: /v1/models
+[LOG]  [LOG]  Version: 11Version: 11
+
+[LOG]  Keep-Alive: 0
+[LOG]  Keep-Alive: 0
+[🔴 ]  Client disconnected; cancelling active request
+================================================
+================================================
+[🔒 ]  TCP connection closed - Remote: 127.0.0.1:63749
+[🔒 ]  TCP connection closed - Remote: 127.0.0.1:56461
+[🔗 ]  TCP connection established - Remote: 127.0.0.1:63750
+[TCP]  Read 610 bytes from socket
+================================================
+[⬇️ ]  Incoming Request: POST
+[LOG]  Time stamp: 18:13:41 11:01:2026
+[LOG]  Target: /v1/chat/completions
+[LOG]  Version: 11
+[LOG]  Keep-Alive: 0
+[LOG]  Body: 
+{
+    "max_tokens": 512,
+    "messages": [
+        {
+            "content": "Gunakan ge...aktur A17.",
+            "role": "user"
+        }
+    ],
+    "model": "lfm3:1.7b",
+    "temperature": 0,
+    "tools": "..."
+}
+[🟢 ]  NPU Locked!
+[FLM]  Grammar engine ready in 1037.71 ms
+[FLM]  Start prefill...
+[FLM]  No saved prefix matches: no snapshots saved yet; prefilling 95 tokens
+[FLM]  Prefill chunk 1/1 with 95 tokens
+[FLM]  Prefix cache: up to 8 snapshots in 4096 MiB (a saved row costs 22 KiB, a snapshot's state 0 MiB)
+[31m[FLM]  Reading state at context length 95, K/V rows from 0[0m
+[FLM]  Prefix cache: saved slot 1 (end, 95 tokens, from row 0, 2 MiB)
+[FLM]  Start generating...
+
+[FLM]  Model RAW Output: 
+We need to use the `get_invoice` tool with id "A17" for invoice A17. The user says: "Gunakan get_invoice untuk faktur A17. Setelah menerima nilai, sebut nilai faktur A17." which translates to: "Use get_invoice for invoice A17. After receiving the value, state the value of invoice A17."
+
+So I need to call `get_invoice` with id "A17". Then based on the result, I should output the value (presumably the invoice details or value). Let's do that.</think><tool_call>
+<function=get_invoice>
+<parameter=id>
+A17
+</parameter>
+</function>
+</tool_call>
+[🔵 ]  NPU Lock Released!
+================================================
+[🔒 ]  TCP connection closed - Remote: 127.0.0.1:63750
+[🔗 ]  TCP connection established - Remote: 127.0.0.1:56573
+[TCP]  Read 1407 bytes from socket
+================================================
+[⬇️ ]  Incoming Request: POST
+[LOG]  Time stamp: 18:13:53 11:01:2026
+[LOG]  Target: /v1/chat/completions
+[LOG]  Version: 11
+[LOG]  Keep-Alive: 0
+[LOG]  Body: 
+{
+    "max_tokens": 512,
+    "messages": [
+        {
+            "content": "Gunakan ge...aktur A17.",
+            "role": "user"
+        },
+        {
+            "content": null,
+            "reasoning_content": "We need to use the `get_invoice` tool with id \"A17\" for invoice A17. The user says: \"Gunakan get_invoice untuk faktur A17. Setelah menerima nilai, sebut nilai faktur A17.\" which translates to: \"Use get_invoice for invoice A17. After receiving the value, state the value of invoice A17.\"\n\nSo I need to call `get_invoice` with id \"A17\". Then based on the result, I should output the value (presumably the invoice details or value). Let's do that.",
+            "role": "assistant",
+            "tool_calls": [
+                {
+                    "function": {
+                        "arguments": "{\"id\":\"A17\"}",
+                        "name": "get_invoice"
+                    },
+                    "id": "call_38PgClh8LMDwYIEfw39EgV5L",
+                    "index": 0,
+                    "type": "function"
+                }
+            ]
+        },
+        {
+            "content": "{\"id\":\"A17...rp\":81000}",
+            "role": "tool",
+            "tool_call_id": "call_38PgClh8LMDwYIEfw39EgV5L"
+        }
+    ],
+    "model": "lfm3:1.7b",
+    "temperature": 0,
+    "tools": "..."
+}
+[🟢 ]  NPU Locked!
+[FLM]  Start prefill...
+[31m[FLM]  Writing state at context length 95[0m
+[FLM]  Prefix cache: resuming at 95 of 141 tokens, from slot 1 (end, 1 saved)
+[FLM]  Prefill chunk 1/1 with 46 tokens
+[FLM]  Prefix cache: not saved, only 46 tokens past slot 1 (needs 128, --prefix-min-gain)
+[FLM]  Start generating...
+
+[FLM]  Model RAW Output: 
+We need to respond. The user asked: "Gunakan get_invoice untuk faktur A17. Setelah menerima nilai, sebut nilai faktur A17." This is in Indonesian. Translation: "Use get_invoice for invoice A17. After receiving the value, state the value of invoice A17."
+
+We have already called get_invoice with id "A17" and got a response: {"id":"A17","amount_rp":81000}. So the amount_rp is 81000. The user wants to know the value (presumably amount) for invoice A17 after receiving it.
+
+Thus we should output that the value of invoice A17 is 81000 (maybe in Rupiah? "rp" likely Rp). We can phrase: "Nilai faktur A17 adalah 81.000 (Rp)". Or just state the amount_rp.
+
+Let's craft a concise answer in Indonesian, as user wrote in Indonesian. So:
+
+"Setelah menggunakan get_invoice untuk ID A17, nilai faktur A17 adalah 81.000 (RP)."
+
+We should mention that we got from the tool: amount_rp = 81000.
+
+Thus final.</think>Berikut hasil dari panggilan `get_invoice` untuk faktur **A17**:
+
+- **ID:** A17  
+- **Nilai (amount_rp):** 81.000  
+
+Jadi, nilai faktur A17 adalah **81.000 (Rp)**.
+[🔵 ]  NPU Lock Released!
+================================================
+[🔒 ]  TCP connection closed - Remote: 127.0.0.1:56573

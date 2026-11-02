@@ -1,0 +1,2 @@
+model,device,mode,result,detail
+qwen3-4b,NPU2,performance,FAIL,"XRT 0xc01e0200: DMA buffer page-in gagal; exit code 1; RAM bebas 7.11 GB saat test (bukan masalah RAM)"

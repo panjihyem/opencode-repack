@@ -1,0 +1,4 @@
+model,quant,device,mode,ctx,prefill_tps,decode_tps,load_ok,tool_call_ok,notes
+qwen3.5-4b-uncensored-hauhaucs,Q4_0,iGPU-Radeon860M,Vulkan,8k,287.90,12.48,OK,2/2,4.21B params
+qwen3.5-4b-uncensored-hauhaucs,Q4_0,iGPU-Radeon860M,Vulkan,16k,237.23,12.33,OK,2/2,sama
+qwen3.5-4b-uncensored-hauhaucs,Q4_0,iGPU-Radeon860M,Vulkan,32k,165.38,12.46,OK,2/2,sama

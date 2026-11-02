@@ -1,0 +1,7 @@
+model,device,mode,ctx,ttft_s,prefill_tps,decode_tps,iterations,tool_call
+lfm3-1.7b,NPU2,performance,1k,2.22,440.82,29.60,2,2/2
+lfm3-1.7b,NPU2,performance,2k,4.18,465.93,29.19,2,2/2
+lfm3-1.7b,NPU2,performance,4k,8.57,453.52,27.97,2,2/2
+lfm3-1.7b,NPU2,performance,8k,16.69,464.99,26.77,2,2/2
+lfm3-1.7b,NPU2,performance,16k,34.60,448.13,23.94,2,2/2
+lfm3-1.7b,NPU2,performance,32k,75.68,412.00,20.17,2,2/2

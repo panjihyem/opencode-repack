@@ -1,0 +1,1 @@
+{"case": "hitung_bukti", "passed": true, "finish": "stop", "content": "120.000 + 75.000 = 195.000\n195.000 - 150.000 = 45.000\n\n45.000", "tool_calls": [], "usage": {"completion_tokens": 57, "prompt_tokens": 60, "total_tokens": 117, "prompt_tokens_details": {"cached_tokens": 0}}, "seconds": 5.44}

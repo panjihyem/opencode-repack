@@ -1,0 +1,4 @@
+model,quant,device,mode,ctx,prefill_tps,decode_tps,load_ok,tool_call_ok,notes
+gemma-4-e2b-heretic-llmfan46,Q4_K_M,iGPU-Radeon860M,Vulkan,8k,89.66,22.18,OK,2/2,gemma4 E2B 4.65B; prefill lemah
+gemma-4-e2b-heretic-llmfan46,Q4_K_M,iGPU-Radeon860M,Vulkan,16k,37.05,21.87,OK,2/2,prefill turun drastis
+gemma-4-e2b-heretic-llmfan46,Q4_K_M,iGPU-Radeon860M,Vulkan,32k,18.54,22.27,OK,2/2,prefill 18.54 t/s @32K

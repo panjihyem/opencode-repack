@@ -1,0 +1,7 @@
+model,device,mode,ctx,ttft_s,prefill_tps,decode_tps,iterations
+qwen3-1.7b,NPU2,performance,1k,1.24,802.37,28.27,2
+qwen3-1.7b,NPU2,performance,2k,1.80,1086.16,23.84,2
+qwen3-1.7b,NPU2,performance,4k,3.55,1101.96,20.76,2
+qwen3-1.7b,NPU2,performance,8k,8.63,939.21,15.17,2
+qwen3-1.7b,NPU2,performance,16k,18.85,824.54,10.77,2
+qwen3-1.7b,NPU2,performance,32k,56.19,556.10,7.47,2

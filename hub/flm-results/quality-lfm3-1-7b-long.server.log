@@ -1,0 +1,74 @@
+[FLM]  Configuring NPU Power Mode to performance (flm default)
+[FLM]  Using user-specified port: 52628
+[FLM]  Loading model: C:\Users\wiram\.flm\models\LFM3-1.7B-NPU2
+[FLM]  lfm3 prefill stages: mm+attn+swa
+[FLM]  lfm3 decode: all layers + lm_head on the NPU
+[FLM]  Chat format: qwen_xml with reasoning
+[FLM]  Model loaded in 3.53 s
+[FLM]  Starting server on port 52628...
+[FLM]  WebServer started on port 52628 with 10 I/O threads
+[FLM]  Press Ctrl+C to stop.
+[🔗 ]  TCP connection established - Remote: 127.0.0.1:51800
+[TCP]  Read 128 bytes from socket
+================================================
+[⬇️ ]  Incoming Request: GET
+[LOG]  Time stamp: 18:14:21 11:01:2026
+[LOG]  Target: /v1/models
+[LOG]  Version: 11
+[LOG]  Keep-Alive: 0
+[🔴 ]  Client disconnected; cancelling active request
+================================================
+[🔒 ]  TCP connection closed - Remote: 127.0.0.1:51800
+[🔗 ]  TCP connection established - Remote: 127.0.0.1:55522
+[TCP]  Read 128 bytes from socket
+================================================
+[⬇️ ]  Incoming Request: GET
+[LOG]  Time stamp: 18:14:21 11:01:2026
+[LOG]  Target: /v1/models
+[LOG]  Version: 11
+[LOG]  Keep-Alive: 0
+================================================
+[🔒 ]  TCP connection closed - Remote: 127.0.0.1:55522
+[🔗 ]  TCP connection established - Remote: 127.0.0.1:55523
+[TCP]  Read 82279 bytes from socket
+================================================
+[⬇️ ]  Incoming Request: POST
+[LOG]  Time stamp: 18:14:21 11:01:2026
+[LOG]  Target: /v1/chat/completions
+[LOG]  Version: 11
+[LOG]  Keep-Alive: 0
+[LOG]  Body: 
+{
+    "max_tokens": 256,
+    "messages": [
+        {
+            "content": "KUNCI-AWAL...tiga kata.",
+            "role": "user"
+        }
+    ],
+    "model": "lfm3:1.7b",
+    "temperature": 0
+}
+[🟢 ]  NPU Locked!
+[FLM]  Start prefill...
+[FLM]  No saved prefix matches: no snapshots saved yet; prefilling 22386 tokens
+[FLM]  Prefill chunk 1/6 with 4096 tokens
+[FLM]  Prefill chunk 2/6 with 4096 tokens
+[FLM]  Prefill chunk 3/6 with 4096 tokens
+[FLM]  Prefill chunk 4/6 with 4096 tokens
+[FLM]  Prefill chunk 5/6 with 4096 tokens
+[FLM]  Prefill chunk 6/6 with 1906 tokens
+[FLM]  Prefix cache: up to 8 snapshots in 4096 MiB (a saved row costs 22 KiB, a snapshot's state 0 MiB)
+[31m[FLM]  Reading state at context length 22386, K/V rows from 0[0m
+[FLM]  Prefix cache: saved slot 1 (end, 22386 tokens, from row 0, 481 MiB)
+[FLM]  Start generating...
+
+[FLM]  Model RAW Output: 
+We need to parse the user's input. The user gave a huge block of text: "KUNCI-AWAL: MERANTI. Catatan arsip sintetis: entri ini tidak mengandung nomor perkara. ... (repeated many times) ... KUNCI-TENGAH: ANGGERE. ... KUNCI-AKHIR: CENDANA. Sebut tiga kunci berurutan dari awal, tengah, akhir. Hanya tiga kata."
+
+Interpretation: The user is giving some kind of puzzle or instruction. They mention "KUNCI-AWAL: MERANTI" (maybe "Key word: AWL? Not sure). Then many repeated lines about "Catatan arsip sintetis: entri ini tidak mengandung nomor perkara." That seems like a note that this entry does not contain case number. Then later "KUNCI-TENGAH: ANGGERE" and then again many repeats, and finally "KUNCI-AKHIR: CENDANA". And at the end: "Sebut tiga kunci berurutan dari awal, tengah, akhir. Hanya tiga kata."
+
+Thus we need to extract three key words (kunci) in order from beginning,
+[🔵 ]  NPU Lock Released!
+================================================
+[🔒 ]  TCP connection closed - Remote: 127.0.0.1:55523

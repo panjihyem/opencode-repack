@@ -1,0 +1,2 @@
+model,device,status,error,free_ram_gb
+nemotron3.5-bolt:e4b,NPU2,GAGAL_LOAD,Failed to submit command to hw queue (0xc01e0200),6.6

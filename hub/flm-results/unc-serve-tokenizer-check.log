@@ -1,0 +1,114 @@
+[FLM]  Configuring NPU Power Mode to performance (flm default)
+[FLM]  Using user-specified port: 52627
+[FLM]  Loading model: C:\Users\wiram\.flm\models\Qwen3.5-2B-Uncensored-NPU2
+[FLM]  Chat format: qwen_xml with reasoning
+[FLM]  Model loaded in 8.45 s
+[FLM]  Starting server on port 52627...
+[FLM]  WebServer started on port 52627 with 10 I/O threads
+[FLM]  Press Ctrl+C to stop.
+[🔗 ]  TCP connection established - Remote: 127.0.0.1:60291
+[TCP]  Read 279 bytes from socket
+================================================
+[⬇️ ]  Incoming Request: POST
+[LOG]  Time stamp: 17:11:08 11:01:2026
+[LOG]  Target: /v1/chat/completions
+[LOG]  Version: 11
+[LOG]  Keep-Alive: 1
+[LOG]  Body: 
+{
+    "max_tokens": 512,
+    "messages": [
+        {
+            "content": "Say hello ... sentence.",
+            "role": "user"
+        }
+    ],
+    "model": "qwen3.5:2b-unc",
+    "temperature": 0
+}
+[🟢 ]  NPU Locked!
+[FLM]  Start prefill...
+[FLM]  Total images: 0
+[FLM]  No saved prefix matches: no snapshots saved yet; prefilling 14 tokens
+[FLM]  Prefill chunk 1/1 with 14 tokens
+[FLM]  Prefix cache: up to 8 snapshots in 4096 MiB (a saved row costs 12 KiB, a snapshot's state 18 MiB)
+[31m[FLM]  Reading state at context length 14, K/V rows from 0[0m
+[FLM]  Prefix cache: saved slot 1 (end, 14 tokens, from row 0, 18 MiB)
+[FLM]  Start generating...
+
+[FLM]  Model RAW Output: 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+[🔵 ]  NPU Lock Released!
+================================================
+[🔒 ]  TCP connection closed - Remote: 127.0.0.1:60291
+[🔗 ]  TCP connection established - Remote: 127.0.0.1:53564
+[TCP]  Read 544 bytes from socket
+================================================
+[⬇️ ]  Incoming Request: POST
+[LOG]  Time stamp: 17:11:32 11:01:2026
+[LOG]  Target: /v1/chat/completions
+[LOG]  Version: 11
+[LOG]  Keep-Alive: 1
+[LOG]  Body: 
+{
+    "max_tokens": 256,
+    "messages": [
+        {
+            "content": "What is th... the tool.",
+            "role": "user"
+        }
+    ],
+    "model": "qwen3.5:2b-unc",
+    "temperature": 0,
+    "tools": "..."
+}
+[🟢 ]  NPU Locked!
+[FLM]  Grammar engine ready in 602.385 ms
+[FLM]  Start prefill...
+[FLM]  Total images: 0
+[FLM]  No saved prefix matches: no snapshot is a prefix of the prompt (longest common prefix 1 tokens); prefilling 286 tokens
+[FLM]  Prefill chunk 1/1 with 286 tokens
+[31m[FLM]  Reading state at context length 286, K/V rows from 0[0m
+[FLM]  Prefix cache: saved slot 2 (end, 286 tokens, from row 0, 21 MiB)
+[FLM]  Start generating...
+
+[FLM]  Model RAW Output: 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+[🔵 ]  NPU Lock Released!
+================================================
+[🔒 ]  TCP connection closed - Remote: 127.0.0.1:53564
+[🔗 ]  TCP connection established - Remote: 127.0.0.1:60201
+[TCP]  Read 538 bytes from socket
+================================================
+[⬇️ ]  Incoming Request: POST
+[LOG]  Time stamp: 17:11:45 11:01:2026
+[LOG]  Target: /v1/chat/completions
+[LOG]  Version: 11
+[LOG]  Keep-Alive: 1
+[LOG]  Body: 
+{
+    "max_tokens": 256,
+    "messages": [
+        {
+            "content": "Calculate ...ator tool.",
+            "role": "user"
+        }
+    ],
+    "model": "qwen3.5:2b-unc",
+    "temperature": 0,
+    "tools": "..."
+}
+[🟢 ]  NPU Locked!
+[FLM]  Start prefill...
+[FLM]  Total images: 0
+[FLM]  No saved prefix matches: no snapshot is a prefix of the prompt (longest common prefix 32 tokens); prefilling 283 tokens
+[FLM]  Prefill chunk 1/1 with 283 tokens
+[31m[FLM]  Reading state at context length 283, K/V rows from 0[0m
+[FLM]  Prefix cache: saved slot 3 (end, 283 tokens, from row 0, 21 MiB)
+[FLM]  Start generating...
+
+[FLM]  Model RAW Output: 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+[🔵 ]  NPU Lock Released!
+================================================
+[🔒 ]  TCP connection closed - Remote: 127.0.0.1:60201

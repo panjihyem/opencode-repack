@@ -1,0 +1,72 @@
+{
+  "$note": "Contoh bentuk config provider lokal untuk Hyper AI. Bukan bundle OTA; rahasia tidak boleh ditulis di sini.",
+  "$schema": "https://opencode.ai/config.json",
+  "model": "ocg/mimo-v2.6-flash",
+  "providers": {
+    "flm": {
+      "name": "Hyper AI Local (lazy NPU/iGPU)",
+      "package": "@opencode/ai/providers/openai-compatible",
+      "settings": {
+        "baseURL": "http://127.0.0.1:52624/v1",
+        "apiKey": "local"
+      },
+      "models": {
+        "qwen3.5-2b": {
+          "name": "Qwen3.5 2B (NPU, default local)",
+          "modelID": "qwen3.5:2b",
+          "limit": { "context": 32768, "output": 4096 },
+          "capabilities": {
+            "temperature": true,
+            "tools": true,
+            "input": ["text"],
+            "output": ["text"]
+          },
+          "compatibility": { "maxTokensField": "max_tokens" }
+        },
+        "lfm3-1.7b": {
+          "name": "LFM3 1.7B (NPU, fast decode, tools 2/2)",
+          "modelID": "lfm3:1.7b",
+          "limit": { "context": 32768, "output": 4096 },
+          "capabilities": {
+            "temperature": true,
+            "tools": true,
+            "input": ["text"],
+            "output": ["text"]
+          },
+          "compatibility": { "maxTokensField": "max_tokens" }
+        },
+        "hauhaucs-qwen3.5-4b": {
+          "name": "HauhauCS Qwen3.5 4B (iGPU, reasoning off)",
+          "modelID": "hauhaucs-qwen3.5-4b",
+          "limit": { "context": 32768, "output": 4096 },
+          "capabilities": {
+            "temperature": true,
+            "tools": true,
+            "input": ["text"],
+            "output": ["text"]
+          },
+          "compatibility": { "maxTokensField": "max_tokens" }
+        }
+      }
+    },
+    "copilot-bridge": {
+      "name": "Windows Copilot Bridge (experimental, chat-only)",
+      "package": "@opencode/ai/providers/openai-compatible",
+      "settings": {
+        "baseURL": "http://127.0.0.1:57842/v1",
+        "apiKey": "{file:~/.config/opencode/copilot-bridge/bridge.key}"
+      },
+      "models": {
+        "copilot": {
+          "name": "Windows Copilot (chat-only)",
+          "capabilities": {
+            "tools": false,
+            "input": ["text"],
+            "output": ["text"]
+          },
+          "limit": { "context": 65536, "output": 2048 }
+        }
+      }
+    }
+  }
+}
