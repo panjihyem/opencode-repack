@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { caseModule, forensicModule, officeInstalled, officePython } from "./office"
+import { applyServicesScript, applySlidesSkill, slidesScripts } from "./slides-skill"
 
 // Office-work skills for the agent: Excel (including formulas), reports
 // (DOCX/PPTX/PDF), charts and tax-investigation documents. Written only while
@@ -15,7 +16,7 @@ const FORENSIC_PLACEHOLDER = "__FORENSIC_PY__"
 type SkillSpec = {
   id: string
   description: string
-  body: (python: string, forensic: string, caseCli: string) => string
+  body: (python: string, forensic: string, caseCli: string, scripts: string) => string
 }
 
 const skills: SkillSpec[] = [
@@ -325,14 +326,220 @@ asli di luar render lokal, hentikan dan minta keputusan manusia.
 - Simpan parameter sheet di folder project kasus, bukan di \`general\`.
 `,
   },
+  {
+    id: "hyper-slides",
+    description:
+      "Membuat slide PPTX modern (16:9): infografis native, chart tertanam Excel, animasi & transisi, ikon lucide, foto stok, QA render via PowerPoint. Gunakan untuk deck presentasi atau saat user minta slide bagus/modern.",
+    body: (_python, _forensic, _caseCli, scripts) => `---
+name: hyper-slides
+description: Membuat slide PPTX modern (16:9) dengan infografis native editable, chart tertanam Excel, animasi/transisi, dan QA render via PowerPoint. Gunakan untuk deck presentasi, laporan visual, atau saat user minta slide bagus/modern.
+---
+
+# Hyper Slides — PPTX Modern (Hyper AI)
+
+\`HYPER_AI_MANAGED\`
+
+Python: \`__PY__\`
+Folder script: \`__SCRIPTS__\\\`
+
+## Hukum editable (WAJIB)
+
+| Elemen | Cara | Hasil |
+|---|---|---|
+| Data/chart | \`native_chart()\` | double-click → data Excel tertanam |
+| Diagram/infografis | shape native (kpi/timeline/chevron/funnel/pyramid/matrix) | bisa digeser/diedit |
+| Tabel heatmap | \`heatmap_table()\` | sel warna, isi editable |
+| Foto/ikon | gambar (PNG/SVG) | jangan untuk data |
+
+Jangan pernah: screenshot HTML → slide (mati jadi gambar). HTML/Tailwind hanya lewat \`dom-to-pptx\` (jalur opsional, lihat bawah).
+
+## Alur baku
+
+1. **Konten dulu**: 1 ide per slide; angka penting besar; detail di speaker notes.
+2. **Build** dengan \`slides_lib.py\` (design token di \`theme.json\` — jangan hardcode warna).
+3. **Animasi**: \`set_animations(slide, [(shape, "fade", "click"), ...])\` + \`set_transition(slide, "fade")\`.
+   - trigger: \`click\` (klik), \`with\` (bersamaan), \`after\` (otomatis berikutnya).
+   - efek: fade, dissolve, wipe_up/down/left/right, box_in, circle_in, diamond_in, checkerboard, strips, wedge, wheel.
+4. **QA wajib** (jangan kirim tanpa ini):
+   \`\`\`
+   python <scripts>\\selftest.py                     # self-check pustaka
+   powershell -NoProfile -ExecutionPolicy Bypass -File <scripts>\\qa_render.ps1 -Pptx deck.pptx
+   \`\`\`
+   Lalu **lihat PNG hasil render** (\`deck-render\\slide-*.png\`): cek teks meluber, tumpang tindih, warna.
+5. Bounds otomatis: \`slides_lib.qa_bounds(prs)\` harus \`[]\`.
+
+## Komponen (slides_lib)
+
+\`kpi_card\` · \`timeline\` · \`chevron_process\` · \`funnel\` · \`pyramid\` · \`matrix_2x2\` · \`before_after\` · \`native_chart\` (bar/bar_h/line/area/pie/doughnut/radar) · \`heatmap_table\` · \`textbox\` · \`rect\`
+
+### Helper tata letak (WAJIB dipakai agar tidak kaku)
+
+| Helper | Guna |
+|---|---|
+| \`backdrop(slide, "bg")\` | latar lembut + blob aksen (mencegah slide datar) |
+| \`slide_header(slide, kicker, judul)\` | eyebrow + judul 40pt + garis aksen; posisi dari grid tema |
+| \`slide_footer(slide, teks, nomor)\` | garis tipis + teks + nomor halaman |
+| \`card(slide, ...)\` | kartu standar: sudut membulat, garis tipis, **bayangan lembut**, aksen kiri opsional |
+| \`icon_chip(slide, x, y, glyph)\` | ikon dalam lingkaran warna (native, editable); glyph dari \`ICON_GLYPHS\` atau unicode |
+| \`bullet_list(slide, x, y, w, items)\` | daftar poin: tiap baris shape sendiri → **bisa dianimasikan satu per satu** |
+| \`stagger(slide, shapes)\` | animasi berurutan: klik pertama, sisanya otomatis |
+| \`side_photo(slide, query, x, y, w, h)\` | panel foto di slide isi + kredit kecil |
+| \`svg_icon(slide, svg, x, y, w)\` | ikon **SVG asli** → PNG transparan (Chrome headless, cache di \`%LOCALAPPDATA%\\hyper-slides\\icons\`) |
+| \`svg_to_png(svg, out, size)\` | rasterisasi SVG mandiri (butuh Chrome/Edge; return \`None\` bila tidak ada) |
+| \`feature_card(slide, x, y, w, h, ikon, judul, desc)\` | kartu berikon lucide + judul + deskripsi |
+| \`kpi_card(..., icon="chart-bar")\` | kartu KPI dengan ikon di samping label |
+| \`set_shadow\` / \`set_alpha\` | bayangan & transparansi (python-pptx tak punya API-nya) |
+| \`tint("teal", 0..5)\` | skala warna tema untuk gradasi progresif |
+
+Ikon tersedia di \`ICON_GLYPHS\`: check, star, arrow, up, down, dot, plus, minus, info, target, chart, doc, lock, clock, flag.
+Tanpa dependensi konverter SVG — semua ikon berupa shape + glyph unicode, jadi tetap ter-edit di PowerPoint.
+
+## Ikon: lucide (\`icon_pack.py\`)
+
+Ikon siap pakai dari **lucide (ISC)** — diunduh sekali dari CDN, di-cache lokal, diwarnai sesuai tema.
+
+\`\`\`python
+import icon_pack
+icon_pack.icon(slide, "chart-bar", x=0.6, y=2.5, w=0.5, color="teal")
+icon_pack.icon_row(slide, ["target", "shield-check", "database"], x=0.8, y=2.8, w=0.55)
+L.feature_card(s, 0.6, 4.4, 3.85, 1.7, "shield-check", "QA akhir", "render membuktikan file valid")
+L.kpi_card(s, 0.6, 2.4, 2.9, 2.9, "33", "Uji Lulus", "tanpa kegagalan", icon="circle-check")
+\`\`\`
+
+CLI:
+\`\`\`
+python icon_pack.py common              # unduh 37 ikon bisnis/analisa
+python icon_pack.py get target rocket   # unduh tertentu
+python icon_pack.py list                # lihat cache
+\`\`\`
+
+- Cache: \`%LOCALAPPDATA%\\hyper-slides\\icons\\svg\\\` (SVG) + PNG per warna.
+- Nama ikon = nama lucide (\`chart-bar\`, \`trending-up\`, \`shield-check\`, \`users\`, \`calculator\`, \`scale\`, …). Lihat https://lucide.dev/icons.
+- Warna: nama tema (\`teal\`, \`amber\`, \`navy\`, \`blue\`, \`green\`, \`red\`, \`grey\`) atau hex.
+- Offline & belum di-cache → \`icon()\` mengembalikan \`None\`; \`feature_card\`/\`kpi_card\` otomatis jatuh ke \`icon_chip\`.
+- Lisensi ISC — aman dipakai komersial, sertakan atribusi di repositori bila didistribusikan ulang.
+
+## Ikon inline (tanpa unduhan)
+
+Butuh satu ikon sekaligus tanpa CDN? Pakai \`svg_icon()\` dengan markup SVG sendiri:
+
+\`\`\`python
+SVG = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" '
+       'stroke="#0D9488" stroke-width="2" stroke-linecap="round">'
+       '<path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/></svg>')
+L.svg_icon(s, SVG, x=0.75, y=5.85, w=0.62, cache_key="chart-bar")
+\`\`\`
+
+Glyph unicode tetap tersedia lewat \`icon_chip\` (15 glyph bawaan) bila tidak ingin bergantung jaringan sama sekali.
+
+## Transisi & morph
+
+\`\`\`python
+L.set_transition(s, "morph")   # PowerPoint 2016+ : morph byObject
+\`\`\`
+\`morph\` ditulis sebagai \`<p:transition><p:fade/>\` + \`mc:AlternateContent/p14:morph\`.
+Versi PowerPoint lama membaca fade (terbukti \`EntryEffect=3849\`), versi baru menjalankan morph — file tetap valid di keduanya.
+
+**Grid tetap** (dari \`theme.json\` → \`grid\`): header 0,5 · judul 1,0 · konten 2,3–6,6 · footer 6,86.
+Jangan melanggar grid: ruang kosong >25% di bawah konten = slide terlihat belum selesai.
+
+### Aturan desain (cegah hasil kaku)
+
+1. **Isi seluruh tinggi konten** — pasangan kartu/strip penjelas di bawah, bukan ruang kosong.
+2. **Satu hue dengan tinta progresif** untuk langkah/proses (bukan warna selang-seling).
+3. **Warna kartu = aksen kiri tipis**, bukan blok warna penuh.
+4. **Angka besar (≥40pt) + label kecil huruf kapital** — hierarki, bukan teks seragam.
+5. **Setiap kelompok butuh struktur**: kartu, badge nomor, garis pemisah.
+6. **Footer bernomor** di semua slide isi; cover boleh beda gaya.
+7. **Bayangan halus** hanya di kartu utama; jangan di semua bentuk (kotor).
+8. Teks isi minimal 11pt; warna \`grey\` untuk sekunder, \`navy\` untuk utama.
+
+### Contoh pola lengkap
+
+\`\`\`python
+import slides_lib as L
+
+s = prs.slides.add_slide(blank)
+L.backdrop(s, "bg")
+L.slide_header(s, "Analisa", "Judul Slide")
+L.slide_footer(s, "Nama deck", 3)
+
+L.kpi_card(s, 0.6, 2.3, 2.93, 2.6, "62", "Item", "keterangan", accent="teal", delta="+8")
+L.card(s, 0.6, 5.2, 12.1, 0.9)                 # strip penjelas pengisi ruang
+L.textbox(s, 0.9, 5.4, 11.5, 0.5, "catatan singkat", size=13, color="slate")
+
+# bullet + foto samping (pola slide ringkasan)
+rows = L.bullet_list(s, 0.75, 2.5, 7.2, ["Poin satu", "Poin dua", "Poin tiga"])
+L.stagger(s, rows, "fade")                     # muncul satu per satu
+L.side_photo(s, "team collaboration", x=8.3, y=2.4, w=4.4, h=3.55)
+\`\`\`
+
+
+Catatan:
+- \`heatmap_table\` default **low=blue → high=red** (untuk risiko). Untuk capaian/positif: \`low="red", high="green"\`.
+- Funnel/piramida: teks otomatis keluar shape bila terlalu sempit (sudah ditangani).
+- Font: \`theme.json\` → "Segoe UI" (aman di Windows).
+
+## Jalur opsional: HTML/Tailwind → PPTX (\`dom-to-pptx\`)
+
+Untuk slide hero/desain kompleks yang sulit dicapai shape:
+
+\`\`\`
+bunx dom-to-pptx-exporter slide.html --output out.pptx --width 13.333 --height 7.5 --bw 1280 --bh 720
+\`\`\`
+- Butuh Chrome terpasang (ada di PC ini); pertama kali mengunduh paket via bun.
+- Hasil = shape native (editable), font ter-embed, bisa pakai \`data-pptx-notes\` untuk speaker notes.
+- Animasi atribut \`data-pptx-animation\`/\`data-pptx-transition\` **belum terbukti** di v2.1.2 (diuji: tidak menghasilkan \`<p:timing>\`) → untuk animasi deck jalur ini, suntik pakai \`set_animations()\` setelah konversi.
+- Lisensi MIT.
+
+## QA render (PowerPoint COM + PDF24)
+
+\`qa_render.ps1\` membuka PPTX via PowerPoint COM (16.0) → PDF → PNG per slide (Ghostscript PDF24). PowerPoint juga membuktikan XML animasi valid (file rusak akan error/repair saat Open).
+
+## Gambar stok (Pexels)
+
+\`stock_images.py\` — key dibaca dari \`~\Desktop\cred.txt\` (format \`pexels <key>\`) atau env \`PEXELS_API_KEY\`. Key tidak pernah ditulis ke log.
+
+\`\`\`python
+import stock_images as S
+photo, kredit = S.hero_image(slide, "data analysis", overlay=0.55)  # potong + overlay otomatis
+S.search("tax office", per_page=5)     # metadata + URL
+S.download(6248959, width=1600)        # cache di %LOCALAPPDATA%\\hyper-slides\\stock
+S.credit(6248959)                      # "Foto: Nama / Pexels"
+\`\`\`
+CLI: \`python stock_images.py search "kata kunci" --n 5\` · \`get <id>\` · \`credit <id>\`
+
+- \`overlay\` 0–1: lapisan navy agar teks terbaca (0.55 aman untuk teks putih besar).
+- Crop otomatis ke rasio slide; hasil di-cache supaya tidak unduh ulang.
+- Lisensi Pexels: atribusi tidak wajib, tapi kredit tetap disertakan — sopan dan aman.
+
+## Layanan lokal (Hindsight + LM Studio)
+
+Kalau port **8888** (memori) atau **1234** (model lokal) mati:
+
+\`\`\`
+powershell -NoProfile -ExecutionPolicy Bypass -File <configDir>\bin\start-services.ps1
+\`\`\`
+
+Idempoten (yang hidup dilewati), polling sampai siap, \`rc=1\` bila gagal.
+Catatan: Hindsight butuh \`HINDSIGHT_API_LLM_*\` (diambil otomatis dari provider \`oc\` di \`opencode.json\`) dan **crash tanpa \`PYTHONUTF8=1\`** karena banner Unicode vs cp1252.
+
+## Self-check perubahan pustaka
+
+\`python <scripts>\\selftest.py\` → wajib \`SELFTEST PASS\` sebelum memakai komponen yang diubah.
+
+`.split("__SLIDES_SCRIPTS__").join(scripts).split("__PY__").join(_python),
+  },
 ]
 
 /** Writes the office skills next to the other Hyper AI skills; reports which were written/skipped/kept. */
 export async function applyOfficeSkills(configDir: string, dataDir: string) {
+  await applyServicesScript(configDir).catch(() => undefined)
   if (!(await officeInstalled(dataDir))) return ["skipped"] as const
   const python = officePython(dataDir)
   const forensic = forensicModule(dataDir)
   const caseCli = caseModule(dataDir)
+  const scripts = slidesScripts(configDir)
   const results: string[] = []
   for (const spec of skills) {
     const dir = path.join(configDir, "skill", spec.id)
@@ -343,7 +550,9 @@ export async function applyOfficeSkills(configDir: string, dataDir: string) {
       continue
     }
     await mkdir(dir, { recursive: true })
-    await writeFile(file, spec.body(python, forensic, caseCli).split(FORENSIC_PLACEHOLDER).join(forensic))
+    await writeFile(file, spec.body(python, forensic, caseCli, scripts).split(FORENSIC_PLACEHOLDER).join(forensic))
+    // hyper-slides butuh pustaka skripnya, bukan hanya SKILL.md.
+    if (spec.id === "hyper-slides") await applySlidesSkill(configDir)
     results.push("written")
   }
   return results
