@@ -221,7 +221,9 @@ def render(kind: str, data: dict, outdir: Path, only: list[str] | None = None) -
     report = validate(kind, data)
     if not report["valid"]:
         raise CaseError(f"parameter sheet belum valid: {report['field_wajib_kosong']}, {report['tipe_salah']}")
-    case_id = data["kasus_id"]
+    case_id = data.get("kasus_id")
+    if not case_id:
+        raise CaseError("field kasus_id wajib diisi sebelum render")
     if not re.fullmatch(r"[a-zA-Z0-9_-]+", case_id):
         raise CaseError("kasus_id hanya boleh berisi huruf, angka, '-' dan '_'")
     context = _docx_context(kind, data)

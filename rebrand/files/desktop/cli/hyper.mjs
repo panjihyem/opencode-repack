@@ -64,6 +64,46 @@ const resolveAppBinary = () => {
 const runViz = async (jobFile) => {
   const job = path.resolve(jobFile)
   if (!existsSync(job)) throw new Error(`job tidak ditemukan: ${job}`)
+  // Pra-cek DAG: sankey/graph butuh graf tanpa siklus; tolak di sini dengan
+  // pesan jelas sebelum Chromium app diluncurkan (hemat waktu + error lebih ramah).
+  try {
+    const parsed = JSON.parse(await readFileAsync(job, "utf8"))
+    const kind = parsed.type || parsed.chart || parsed.kind || ""
+    if (kind === "sankey" || kind === "graph") {
+      const links = parsed.links || parsed.edges || parsed.data?.links || parsed.data?.edges || []
+      const adjacency = new Map()
+      const nodes = new Set()
+      for (const link of links) {
+        const source = link?.source ?? link?.from
+        const target = link?.target ?? link?.to
+        if (source == null || target == null) continue
+        nodes.add(source)
+        nodes.add(target)
+        if (!adjacency.has(source)) adjacency.set(source, [])
+        adjacency.get(source).push(target)
+      }
+      const state = new Map()
+      const hasCycle = (node) => {
+        const seen = state.get(node)
+        if (seen === 1) return true
+        if (seen === 2) return false
+        state.set(node, 1)
+        for (const next of adjacency.get(node) || []) if (hasCycle(next)) return true
+        state.set(node, 2)
+        return false
+      }
+      for (const node of nodes) {
+        if (hasCycle(node)) {
+          throw new Error(
+            `graf ${kind} punya siklus pada node '${node}' — ${kind} butuh DAG (tanpa siklus); arahkan link agar berulang ke satu arah`,
+          )
+        }
+      }
+    }
+  } catch (error) {
+    if (error instanceof SyntaxError) throw new Error(`job JSON tidak valid: ${error.message}`)
+    throw error
+  }
   const binary = resolveAppBinary()
   if (!binary) throw new Error("binary Hyper AI tidak ditemukan (set HYPER_APP bila terpasang manual)")
   const code = await new Promise((resolve) => {

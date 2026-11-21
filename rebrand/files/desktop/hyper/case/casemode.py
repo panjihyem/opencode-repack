@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import os
+import base64
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -34,6 +35,7 @@ CONFIG_DIR = _config_dir()
 PRIVACY_FILE = CONFIG_DIR / "hyper" / "privacy.json"
 CONFIG_FILE = CONFIG_DIR / "opencode.json"
 PLUGIN_FILE = CONFIG_DIR / "plugin" / "hyper-memory.ts"
+PLUGIN_BACKUP_FILE = CONFIG_DIR / "hyper" / "hyper-memory.original.b64"
 MANAGED = "HYPER_AI_MANAGED"
 
 # OpenCode V2: policy bersifat biner dan menang atas permission, sehingga cocok
@@ -60,7 +62,7 @@ export default {{ id: "hyper-memory", setup: async () => {{}} }}
 
 def _read(path: Path, default):
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(path.read_text(encoding="utf-8-sig"))
     except FileNotFoundError:
         return default
     except json.JSONDecodeError as error:
@@ -100,19 +102,25 @@ def _neutralize_plugin() -> str:
         return "milik-user"
     if current == NOOP_PLUGIN:
         return "sudah-noop"
+    if not PLUGIN_BACKUP_FILE.exists():
+        PLUGIN_BACKUP_FILE.parent.mkdir(parents=True, exist_ok=True)
+        PLUGIN_BACKUP_FILE.write_bytes(base64.b64encode(PLUGIN_FILE.read_bytes()))
     PLUGIN_FILE.write_text(NOOP_PLUGIN, encoding="utf-8")
     return "dimatikan"
 
 
 def _clear_plugin() -> str:
-    """Hapus no-op yang kita tulis; plugin asli dibuat lagi saat aplikasi mulai."""
+    """Pulihkan plugin managed asli; jangan hapus file plugin saat mode off."""
     current = PLUGIN_FILE.read_text(encoding="utf-8") if PLUGIN_FILE.is_file() else None
     if current is None:
         return "absent"
     if current != NOOP_PLUGIN:
         return "bukan-noop"
-    PLUGIN_FILE.unlink()
-    return "dihapus"
+    if not PLUGIN_BACKUP_FILE.is_file():
+        return "backup-tidak-ada"
+    PLUGIN_FILE.write_bytes(base64.b64decode(PLUGIN_BACKUP_FILE.read_bytes(), validate=True))
+    PLUGIN_BACKUP_FILE.unlink()
+    return "dipulihkan"
 
 
 def _drop_legacy(config: dict, names: list[str]) -> list[str]:

@@ -2,10 +2,13 @@
 param(
   [string]$Spec,
   [switch]$SelfCheck,
-  [string]$Template = (Join-Path $PWD.Path 'Hyper-Hub-Spec-Template.md')
+  [string]$Template
 )
 
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($Template)) {
+  $Template = Join-Path $PSScriptRoot 'Hyper-Hub-Spec-Template.md'
+}
 
 $requiredSections = @(
   '## Tujuan',
