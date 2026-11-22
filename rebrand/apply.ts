@@ -106,15 +106,15 @@ const rules: Rule[] = [
   },
   {
     file: "packages/tui/src/app.tsx",
-    find: 'setTerminalTitle(renderer, "OpenCode")',
-    replace: `setTerminalTitle(renderer, "${NAME}")`,
+    find: 'renderer.setTerminalTitle("OpenCode")',
+    replace: `renderer.setTerminalTitle("${NAME}")`,
     min: 2,
   },
   { file: "packages/tui/src/app.tsx", find: 'title: "Update OpenCode"', replace: `title: "Update ${NAME}"` },
   {
     file: "packages/tui/src/mini/runtime.lifecycle.ts",
-    find: 'setTerminalTitle(renderer, "OpenCode")',
-    replace: `setTerminalTitle(renderer, "${NAME}")`,
+    find: 'renderer.setTerminalTitle("OpenCode")',
+    replace: `renderer.setTerminalTitle("${NAME}")`,
   },
   {
     file: "packages/tui/src/mini/footer.permission.tsx",
@@ -360,9 +360,11 @@ const rules: Rule[] = [
   // ---- Wordmark spacing, stats heading, resume hint ------------------------
   { file: "packages/tui/src/component/logo.tsx", find: "gap={1}", replace: "gap={2}", critical: true },
   {
+    // Upstream menaruh perintah resume di dalam template literal besar, jadi
+    // yang ditarget potongan "opencode -s <id>" tanpa backtick pembuka.
     file: "packages/tui/src/util/presentation.ts",
-    find: "`opencode -s ${input.session.sessionID}`",
-    replace: "`" + CLI + " -s ${input.session.sessionID}`",
+    find: "opencode -s ${input.sessionID}",
+    replace: `${CLI} -s \${input.sessionID}`,
     critical: true,
   },
   { file: "packages/tui/src/util/presentation.ts", find: "${left} ${right}", replace: "${left}  ${right}" },

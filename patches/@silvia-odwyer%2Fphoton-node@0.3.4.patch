@@ -1,5 +1,3 @@
-diff --git a/photon_rs.js b/photon_rs.js
-index 8f4144d..29a964a 100644
 --- a/photon_rs.js
 +++ b/photon_rs.js
 @@ -1,6 +1,7 @@
@@ -11,7 +9,7 @@ index 8f4144d..29a964a 100644
  let wasm;
  const { TextEncoder, TextDecoder } = require(`util`);
  
-@@ -4272,12 +4273,12 @@ class Rgba {
+@@ -4272,12 +4273,12 @@
  }
  module.exports.Rgba = Rgba;
  
@@ -26,7 +24,7 @@ index 8f4144d..29a964a 100644
      const ret = arg1.stack;
      const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
      const len1 = WASM_VECTOR_LEN;
-@@ -4285,7 +4286,7 @@ module.exports.__wbg_stack_658279fe44541cf6 = function(arg0, arg1) {
+@@ -4285,7 +4286,7 @@
      getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
  };
  
@@ -35,7 +33,7 @@ index 8f4144d..29a964a 100644
      let deferred0_0;
      let deferred0_1;
      try {
-@@ -4297,7 +4298,7 @@ module.exports.__wbg_error_f851667af71bcfc6 = function(arg0, arg1) {
+@@ -4297,7 +4298,7 @@
      }
  };
  
@@ -44,7 +42,7 @@ index 8f4144d..29a964a 100644
      let result;
      try {
          result = arg0 instanceof Window;
-@@ -4308,42 +4309,42 @@ module.exports.__wbg_instanceof_Window_c4b70662a0d2c5ec = function(arg0) {
+@@ -4308,42 +4309,42 @@
      return ret;
  };
  
@@ -95,7 +93,7 @@ index 8f4144d..29a964a 100644
      const ret = arg1.data;
      const ptr1 = passArray8ToWasm0(ret, wasm.__wbindgen_malloc);
      const len1 = WASM_VECTOR_LEN;
-@@ -4351,12 +4352,12 @@ module.exports.__wbg_data_fda507064d127f5b = function(arg0, arg1) {
+@@ -4351,12 +4352,12 @@
      getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
  };
  
@@ -110,7 +108,7 @@ index 8f4144d..29a964a 100644
      let result;
      try {
          result = arg0 instanceof CanvasRenderingContext2D;
-@@ -4367,24 +4368,24 @@ module.exports.__wbg_instanceof_CanvasRenderingContext2d_3abbe7ec7af32cae = fun
+@@ -4367,24 +4368,24 @@
      return ret;
  };
  
@@ -140,7 +138,7 @@ index 8f4144d..29a964a 100644
      let result;
      try {
          result = arg0 instanceof HTMLCanvasElement;
-@@ -4395,93 +4396,93 @@ module.exports.__wbg_instanceof_HtmlCanvasElement_25d964a0dde6717e = function(a
+@@ -4395,64 +4396,64 @@
      return ret;
  };
  
@@ -218,10 +216,7 @@ index 8f4144d..29a964a 100644
      const ret = global.global;
      return ret;
  }, arguments) };
- 
--module.exports.__wbindgen_is_undefined = function(arg0) {
-+__wbindgen_placeholder__.__wbindgen_is_undefined = function(arg0) {
-     const ret = arg0 === undefined;
+@@ -4462,21 +4463,21 @@
      return ret;
  };
  
@@ -247,36 +242,10 @@ index 8f4144d..29a964a 100644
      const ret = arg0.length;
      return ret;
  };
- 
--module.exports.__wbindgen_debug_string = function(arg0, arg1) {
-+__wbindgen_placeholder__.__wbindgen_debug_string = function(arg0, arg1) {
-     const ret = debugString(arg1);
-     const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-     const len1 = WASM_VECTOR_LEN;
-@@ -4489,16 +4490,16 @@ module.exports.__wbindgen_debug_string = function(arg0, arg1) {
-     getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
+@@ -4509,7 +4510,8 @@
+     ;
  };
  
--module.exports.__wbindgen_throw = function(arg0, arg1) {
-+__wbindgen_placeholder__.__wbindgen_throw = function(arg0, arg1) {
-     throw new Error(getStringFromWasm0(arg0, arg1));
- };
- 
--module.exports.__wbindgen_memory = function() {
-+__wbindgen_placeholder__.__wbindgen_memory = function() {
-     const ret = wasm.memory;
-     return ret;
- };
- 
--module.exports.__wbindgen_init_externref_table = function() {
-+__wbindgen_placeholder__.__wbindgen_init_externref_table = function() {
-     const table = wasm.__wbindgen_export_2;
-     const offset = table.grow(4);
-     table.set(0, undefined);
-@@ -4509,7 +4510,8 @@ module.exports.__wbindgen_init_externref_table = function() {
-      ;
-  };
-  
 -const path = require('path').join(__dirname, 'photon_rs_bg.wasm');
 +// Allow opencode's Bun compiled binary to point photon-node at its embedded wasm asset.
 +const path = globalThis.__OPENCODE_PHOTON_WASM_PATH || require('path').join(__dirname, 'photon_rs_bg.wasm');
