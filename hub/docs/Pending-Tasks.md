@@ -3,6 +3,7 @@
 Daftar pekerjaan yang belum selesai, dikelompokkan menurut siapa yang bisa membuka blokirnya.
 Sumber kebenaran status tetap `Hyper-AI-Backlog.csv`; berkas ini menambahkan item yang belum
 punya baris backlog.
+Rekomendasi untuk tiap keputusan owner: `Rekomendasi-Keputusan-Owner.md`. Rekomendasi bukan persetujuan gate.
 
 ## 1. Butuh keputusan owner
 
@@ -41,11 +42,14 @@ punya baris backlog.
 | `N-07` | Ulangi perbandingan model lokal dengan timeout seragam | run campur 0/3 lalu 3/3 |
 | `N-08` | Auto-start bridge setelah pairing | proses mati saat PC restart |
 | `N-09` | `remote -Sub run` untuk menjalankan bridge sebagai layanan | belum ada perintah |
+| `N-10` | Connector registry tervalidasi sebelum membuka `run`/`tick` | ADR-007; belum ada entri connector yang disetujui |
+| `N-11` | Audit anchor eksternal sebelum produksi | T20: admin lokal dapat menulis ulang state dan chain sekaligus |
+| `N-12` | Migrasi job prototipe lama ke JobSpec final | Validasi `state.json` kini menolak field tambahan serta aksi selain `local.status/self`; job lama perlu ditinjau, bukan dibuka otomatis |
 
-## 4. Terbuka di backlog (63)
+## 4. Terbuka di backlog (62)
 
 Prioritas P0: `A-01`, `B-01`, `B-03`, `B-04`, `B-05`, `C-01`, `C-02`, `C-03`, `C-04`,
-`C-05`, `C-06`, `C-09`, `D-01` sampai `D-07`, `D-09`, `D-10`, `F-01`, `F-02`, `F-04`,
+`C-05`, `C-06`, `C-09`, `D-01` sampai `D-07`, `D-09`, `D-10`, `F-02`, `F-04`,
 `F-05`, `F-06`, `F-07`, `F-10`, `M-00`, `M-01`, `M-02`, `M-04`, `M-05`, `M-06`, `M-08`.
 
 Prioritas P1: `B-08`, `C-07`, `D-08`, `E-02`, `E-03`, `E-04`, `F-03`, `F-08`, `F-09`,

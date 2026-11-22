@@ -37,7 +37,7 @@
 "E","Kanal komunikasi","E-04","Task","Integrasi Telegram inline approval","P1","3","E-02;D-07","Callback terikat user/chat/nonce dan expired callback ditolak","open",""
 "E","Kanal komunikasi","E-05","Task","Tentukan WhatsApp go/no-go dan risiko operasional","P2","1","A-03","Keputusan ditandatangani; nomor cadangan tersedia bila go","open",""
 "E","Kanal komunikasi","E-06","Task","Jika disetujui pasang WAHA loopback API key webhook HMAC","P3","4","E-05;D-04","Firewall allowlist API auth HTTPS/HMAC; tidak ada data kasus","open",""
-"F","Knowledge pipeline","F-01","Task","Perbaiki hyper fetch agar idempotent berbasis content hash","P0","2","B-01","Fetch ulang tanpa perubahan tidak mengubah file/mtime","open",""
+"F","Knowledge pipeline","F-01","Task","Perbaiki hyper fetch agar idempotent berbasis content hash","P0","2","B-01","Fetch ulang tanpa perubahan tidak mengubah file/mtime","done","2026-11-22: rebrand/files/desktop/cli/hyper.mjs; bun rebrand/test/fetch-idempotent.check.mjs PASS; hash konten sama menjaga mtime dan file user tidak ditimpa"
 "F","Knowledge pipeline","F-02","Task","Implementasi JDIH scheduled fetch sync","P0","2","C-03;F-01","Job sukses","open",""
 "F","Knowledge pipeline","F-03","Task","Implementasi ringkasan JDIH dengan tautan sumber","P1","2","F-02","Setiap item memiliki URL host resmi dan teks bukan klaim hukum","open",""
 "F","Knowledge pipeline","F-04","Task","Watch-folder ingest dengan fs.watch debounce dan stability check","P0","3","B-05","File setengah tertulis tidak diproses; event duplikat didedupe","open",""

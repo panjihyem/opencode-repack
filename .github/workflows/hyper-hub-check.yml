@@ -1,0 +1,47 @@
+name: hyper-hub-check
+
+on:
+  push:
+    branches: [dev, hub-control-plane]
+    paths:
+      - "hub/**"
+      - "rebrand/files/desktop/cli/hyper.mjs"
+      - "rebrand/test/fetch-idempotent.check.mjs"
+      - ".github/workflows/hyper-hub-check.yml"
+  pull_request:
+    branches: [dev, hub-control-plane]
+    paths:
+      - "hub/**"
+      - "rebrand/files/desktop/cli/hyper.mjs"
+      - "rebrand/test/fetch-idempotent.check.mjs"
+      - ".github/workflows/hyper-hub-check.yml"
+  workflow_dispatch:
+
+jobs:
+  hub:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: PowerShell 5.1 gates
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $checks = @(
+            @('Hyper-Hub.ps1', 'self-check'),
+            @('Hyper-Hub-SelfCheck.ps1'),
+            @('Hyper-Hub-ContractCheck.ps1'),
+            @('Hyper-Hub-SpecCheck.ps1', '-SelfCheck'),
+            @('Hyper-Hub-VersionCheck.ps1', '-SelfCheck')
+          )
+          foreach ($check in $checks) {
+            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path 'hub' $check[0]) @($check | Select-Object -Skip 1)
+            if ($LASTEXITCODE -ne 0) { throw "$($check[0]) exited $LASTEXITCODE" }
+          }
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.5"
+      - name: JDIH idempotency
+        run: bun rebrand/test/fetch-idempotent.check.mjs

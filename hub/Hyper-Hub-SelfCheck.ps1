@@ -51,7 +51,7 @@ try {
   if ((& $probe 'regular' 'https://jdih.go.id') -cne 'deny') { throw 'origin policy: JSON rusak harus deny' }
 
   # Health: ringkasan baca-saja dan hitungan job.
-  $addOut = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath add -Root $root -Id h1 -Name 'H1' -Zone regular -EveryMinutes 15 -Action a -Resource r 2>$null
+  $addOut = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath add -Root $root -Id h1 -Name 'H1' -Zone regular -EveryMinutes 15 -Action local.status -Resource self 2>$null
   if ($LASTEXITCODE -ne 0) { throw "add untuk health exited $LASTEXITCODE" }
   $healthOut = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath health -Root $root 2>$null | Out-String
   if ($LASTEXITCODE -ne 0) { throw "health exited $LASTEXITCODE" }
@@ -69,7 +69,7 @@ try {
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath init -Root $lockRoot 2>$null | Out-Null
     $o1 = Join-Path $lockRoot 'o1.txt'; $e1 = Join-Path $lockRoot 'e1.txt'
     $o2 = Join-Path $lockRoot 'o2.txt'; $e2 = Join-Path $lockRoot 'e2.txt'
-    $common = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$scriptPath`"", 'add', '-Root', "`"$lockRoot`"", '-Name', 'L', '-Zone', 'regular', '-EveryMinutes', '15', '-Action', 'a', '-Resource', 'r')
+    $common = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$scriptPath`"", 'add', '-Root', "`"$lockRoot`"", '-Name', 'L', '-Zone', 'regular', '-EveryMinutes', '15', '-Action', 'local.status', '-Resource', 'self')
     $p1 = Start-Process powershell.exe -PassThru -WindowStyle Hidden -RedirectStandardOutput $o1 -RedirectStandardError $e1 -ArgumentList (@($common) + @('-Id', 'lock-a'))
     $p2 = Start-Process powershell.exe -PassThru -WindowStyle Hidden -RedirectStandardOutput $o2 -RedirectStandardError $e2 -ArgumentList (@($common) + @('-Id', 'lock-b'))
     if (-not $p1.WaitForExit(120000) -or -not $p2.WaitForExit(120000)) { throw 'lock: proses tidak selesai dalam batas waktu' }

@@ -5,6 +5,7 @@
 // `viz` renders ECharts jobs through the app's own Chromium, even while the app is open.
 // Offered via resources/hyper-bundle/bin and linked into ~/.local/bin.
 import { performance } from "node:perf_hooks"
+import { createHash } from "node:crypto"
 import { existsSync } from "node:fs"
 import { mkdir as mkdirAsync, readFile as readFileAsync, writeFile as writeFileAsync } from "node:fs/promises"
 import os from "node:os"
@@ -159,15 +160,20 @@ async function main() {
       const file = path.join(root, `jdih-kemenkeu-${day}.md`)
       const existing = existsSync(file) ? await readFileAsync(file, "utf8") : ""
       if (existing && !existing.includes("HYPER_AI_MANAGED: JDIH catalog")) throw new Error(`menolak menimpa file user: ${file}`)
-      const lines = ["# Katalog regulasi terbaru — JDIH Kementerian Keuangan", "", "<!-- HYPER_AI_MANAGED: JDIH catalog -->", "", `Sumber feed resmi: https://jdih.kemenkeu.go.id/feed.json`, `Diambil: ${new Date().toISOString()}`, "", "> Katalog metadata dan tautan saja; bukan salinan atau pengganti naskah resmi. Buka tautan sumber untuk verifikasi/unduh naskah.", ""]
+      const lines = ["# Katalog regulasi terbaru — JDIH Kementerian Keuangan", "", "<!-- HYPER_AI_MANAGED: JDIH catalog -->", "", `Sumber feed resmi: https://jdih.kemenkeu.go.id/feed.json`, `Tanggal katalog: ${day}`, "", "> Katalog metadata dan tautan saja; bukan salinan atau pengganti naskah resmi. Buka tautan sumber untuk verifikasi/unduh naskah.", ""]
       for (const item of items) {
         const url = new URL(item.url || item.id)
         if (url.protocol !== "https:" || url.hostname !== "jdih.kemenkeu.go.id") continue
         const desc = String(item.content_text || item.content_html || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
         lines.push(`## ${String(item.title || "Tanpa judul").trim()}`, `- Tanggal: ${item.date_modified || "-"}`, `- Ringkasan feed: ${desc}`, `- Sumber: ${url.href}`, "")
       }
-      await writeFileAsync(file, lines.join("\n"))
-      console.log(`${items.length} entri katalog ditulis: ${file}`)
+      const content = lines.join("\n")
+      // ponytail: hash katalog final cukup untuk idempotensi; manifest lintas hari menyusul saat F-07.
+      const hash = (text) => createHash("sha256").update(text).digest("hex")
+      if (hash(existing) !== hash(content)) {
+        await writeFileAsync(file, content)
+        console.log(`${items.length} entri katalog ditulis: ${file}`)
+      } else console.log(`katalog tidak berubah: ${file}`)
       console.log("Jalankan `hyper sync` untuk ingest katalog; verifikasi dan unduh naskah resmi dari tautan sumber.")
     } catch (error) {
       console.error(`fetch JDIH gagal: ${error.message}`)

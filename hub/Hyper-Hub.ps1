@@ -74,16 +74,21 @@ function New-State {
 }
 
 function Get-JobError($Job) {
-  if ($null -eq $Job) { return 'job bukan objek' }
+  if ($null -eq $Job -or $Job -isnot [pscustomobject]) { return 'job bukan objek' }
+  $allowed = @('id', 'name', 'zone', 'cron', 'everyMinutes', 'enabled', 'nextRunUtc', 'action', 'resource', 'policy')
+  foreach ($field in $Job.PSObject.Properties.Name) { if ($field -cnotin $allowed) { return "field tidak dikenal: $field" } }
+  foreach ($field in $allowed) { if ($field -cnotin $Job.PSObject.Properties.Name) { return "field wajib hilang: $field" } }
   if ([string]$Job.id -notmatch $idPattern) { return 'id' }
-  if ([string]$Job.name -notmatch '\S') { return 'name' }
-  if ([string]$Job.enabled -notmatch '^(True|False)$') { return 'enabled' }
+  if ([string]$Job.name -notmatch '\S' -or ([string]$Job.name).Length -gt 80 -or [string]$Job.name -match '[\x00-\x1f\x7f]') { return 'name' }
+  if ($Job.enabled -isnot [bool]) { return 'enabled' }
   if ([string]$Job.nextRunUtc -notmatch $utcPattern) { return 'nextRunUtc' }
+  try { [DateTime]::ParseExact([string]$Job.nextRunUtc, 'yyyy-MM-ddTHH:mm:ssZ', [Globalization.CultureInfo]::InvariantCulture) | Out-Null } catch { return 'nextRunUtc' }
   if ([string]$Job.zone -cnotin @('case', 'regular')) { return 'zone' }
   if ([string]$Job.cron -notmatch $cronPattern) { return 'cron' }
-  if ([string]$Job.action -notmatch '\S') { return 'action' }
-  if ([string]$Job.resource -notmatch '\S') { return 'resource' }
+  if ($Job.action -cne 'local.status') { return 'action (hanya local.status selama registry kosong)' }
+  if ($Job.resource -cne 'self') { return 'resource (hanya self selama registry kosong)' }
   if ([string]$Job.policy -cnotin @('allow', 'ask', 'deny')) { return 'policy' }
+  if ($null -ne $Job.everyMinutes -and ($Job.everyMinutes -isnot [int] -or $Job.everyMinutes -lt 1 -or $Job.everyMinutes -gt 1440)) { return 'everyMinutes' }
   try { Read-Cron ([string]$Job.cron) | Out-Null } catch { return "cron ($($_.Exception.Message))" }
   return $null
 }
@@ -410,6 +415,7 @@ function Invoke-Add($State) {
   $jobZone = if ([string]::IsNullOrWhiteSpace($Zone)) { 'case' } else { $Zone }
   if ($jobZone -cnotin @('case', 'regular')) { throw "Zona tidak dikenal: $jobZone (hanya case atau regular)." }
   if ($Policy -cnotin @('allow', 'ask', 'deny')) { throw "Policy tidak dikenal: $Policy" }
+  if ($Action -cne 'local.status' -or $Resource -cne 'self') { throw 'Hanya local.status pada resource self boleh disimpan selama connector registry kosong.' }
   if (-not [string]::IsNullOrWhiteSpace($Cron) -and -not [string]::IsNullOrWhiteSpace($EveryMinutes)) {
     throw 'Pilih salah satu: -Cron atau -EveryMinutes, bukan keduanya.'
   }
@@ -907,16 +913,26 @@ if ($Command -eq 'self-check') {
 
     $validJob = [pscustomobject]@{
       id = 'j1'; name = 'J'; zone = 'regular'; cron = '30 9 * * *'; everyMinutes = $null
-      enabled = $true; nextRunUtc = (Format-Utc $nextHour); action = 'a'; resource = 'r'; policy = 'deny'
+      enabled = $true; nextRunUtc = (Format-Utc $nextHour); action = 'local.status'; resource = 'self'; policy = 'deny'
     }
     if ($null -ne (Get-JobError $validJob)) { throw 'job sah ditolak oleh Get-JobError.' }
     foreach ($field in @('id', 'name', 'zone', 'cron', 'enabled', 'nextRunUtc', 'action', 'resource', 'policy')) {
       $broken = [pscustomobject]@{
         id = 'j2'; name = 'J'; zone = 'regular'; cron = '30 9 * * *'; everyMinutes = $null
-        enabled = $true; nextRunUtc = '2026-01-01T00:00:00Z'; action = 'a'; resource = 'r'; policy = 'deny'
+        enabled = $true; nextRunUtc = '2026-01-01T00:00:00Z'; action = 'local.status'; resource = 'self'; policy = 'deny'
       }
       $broken.$field = ''
       if ($null -eq (Get-JobError $broken)) { throw "Get-JobError meloloskan field kosong: $field" }
+    }
+    foreach ($change in @(
+      @{ field = 'action'; value = 'external.send' },
+      @{ field = 'resource'; value = 'outside' },
+      @{ field = 'nextRunUtc'; value = '2026-99-99T00:00:00Z' },
+      @{ field = 'enabled'; value = 'true' }
+    )) {
+      $broken = $validJob.PSObject.Copy()
+      $broken.($change.field) = $change.value
+      if ($null -eq (Get-JobError $broken)) { throw "Get-JobError meloloskan nilai tak sah: $($change.field)" }
     }
 
     $chainState = New-State
@@ -1002,11 +1018,11 @@ try {
     'health' { Invoke-Health }
     'remote' { Invoke-Remote $Sub $Channel $Reset }
     'schedule' {
-      if ([string]::IsNullOrWhiteSpace($Id)) { Invoke-ScheduleList } else { Invoke-JobCommand 'schedule' }
+      if ([string]::IsNullOrWhiteSpace($Id)) { Invoke-ScheduleList } else { Invoke-WithLock -Body { Invoke-JobCommand 'schedule' } }
     }
-    'remove' { Invoke-JobCommand 'remove' }
-    'pause' { Invoke-JobCommand 'pause' }
-    'resume' { Invoke-JobCommand 'resume' }
+    'remove' { Invoke-WithLock -Body { Invoke-JobCommand 'remove' } }
+    'pause' { Invoke-WithLock -Body { Invoke-JobCommand 'pause' } }
+    'resume' { Invoke-WithLock -Body { Invoke-JobCommand 'resume' } }
     'run' { throw 'Manual run disabled: job execution is not implemented.' }
     'tick' { Invoke-Tick }
     'audit' {

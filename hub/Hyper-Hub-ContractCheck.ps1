@@ -30,7 +30,7 @@ try {
   $tick = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath tick -Root $root | Out-String
   if ($LASTEXITCODE -ne 0 -or $tick -notmatch 'Runner disabled') { throw 'fail-closed tick contract failed.' }
 
-  $addArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), 'add', '-Root', ('"' + $root + '"'), '-Id', 'contract-job', '-Name', '"Contract job"', '-Zone', 'regular', '-Cron', '"30 9 * * *"', '-Action', 'external.fetch', '-Resource', 'example.invalid')
+  $addArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), 'add', '-Root', ('"' + $root + '"'), '-Id', 'contract-job', '-Name', '"Contract job"', '-Zone', 'regular', '-Cron', '"30 9 * * *"', '-Action', 'local.status', '-Resource', 'self')
   $add = Start-Process -FilePath 'powershell.exe' -ArgumentList $addArgs -Wait -PassThru -WindowStyle Hidden -RedirectStandardOutput (Join-Path $root 'add.out')
   if ($add.ExitCode -ne 0) { throw 'add contract failed.' }
   $jobs = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath jobs -Root $root | ConvertFrom-Json
@@ -40,6 +40,16 @@ try {
   if ($LASTEXITCODE -ne 0 -or $schedule.count -ne 1 -or $schedule.executable -ne $false) { throw 'schedule contract failed.' }
   $dry = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath tick -Root $root -DryRun | ConvertFrom-Json
   if ($LASTEXITCODE -ne 0 -or $dry.mode -cne 'dry-run' -or $dry.launched -ne 0 -or $dry.executable -ne $false) { throw 'dry-run tick contract failed.' }
+  $held = [IO.File]::Open((Join-Path $root 'runner.lock'), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+  try {
+    foreach ($mode in @('pause', 'resume', 'remove', 'schedule')) {
+      $errorFile = Join-Path $root "$mode.lock.error"
+      $attempt = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), $mode, '-Root', ('"' + $root + '"'), '-Id', 'contract-job') -RedirectStandardError $errorFile -Wait -PassThru -WindowStyle Hidden
+      if ($attempt.ExitCode -eq 0) { throw "$mode must refuse mutation while writer lock held." }
+    }
+  } finally { $held.Dispose() }
+  $lockedJob = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath jobs -Root $root | ConvertFrom-Json
+  if ($lockedJob.count -ne 1 -or $lockedJob.jobs[0].enabled -ne $true) { throw 'Lock rejection changed job state.' }
   $pause = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath pause -Root $root -Id contract-job | ConvertFrom-Json
   if ($LASTEXITCODE -ne 0 -or $pause.enabled -ne $false) { throw 'pause contract failed.' }
   $resume = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath resume -Root $root -Id contract-job | ConvertFrom-Json
@@ -53,7 +63,8 @@ try {
     @('-Id', 'x', '-Name', 'X', '-Zone', 'cloud', '-Cron', '"0 8 * * *"', '-Action', 'a', '-Resource', 'r'),
     @('-Id', 'x', '-Name', 'X', '-Zone', 'regular', '-Cron', 'not-a-cron', '-Action', 'a', '-Resource', 'r'),
     @('-Id', '"bad id"', '-Name', 'X', '-Zone', 'regular', '-Cron', '"0 8 * * *"', '-Action', 'a', '-Resource', 'r'),
-    @('-Id', 'y', '-Name', 'Y', '-Zone', 'regular', '-Action', 'a', '-Resource', 'r')
+    @('-Id', 'y', '-Name', 'Y', '-Zone', 'regular', '-Action', 'local.status', '-Resource', 'self'),
+    @('-Id', 'x', '-Name', 'X', '-Zone', 'regular', '-Cron', '"0 8 * * *"', '-Action', 'local.status', '-Resource', 'other')
   )
   foreach ($extra in $rejectArgs) {
     $rejectFile = Join-Path $root 'reject.out'
@@ -61,6 +72,8 @@ try {
     $reject = Start-Process -FilePath 'powershell.exe' -ArgumentList (@('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), 'add', '-Root', ('"' + $root + '"')) + $extra) -Wait -PassThru -WindowStyle Hidden -RedirectStandardOutput $rejectFile -RedirectStandardError $rejectErr
     if ($reject.ExitCode -eq 0) { throw "invalid add accepted: $($extra -join ' ')" }
   }
+  $noConnector = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), 'add', '-Root', ('"' + $root + '"'), '-Id', 'external-test', '-Name', 'X', '-Zone', 'regular', '-Cron', '"0 8 * * *"', '-Action', 'external.send', '-Resource', 'self') -Wait -PassThru -WindowStyle Hidden -RedirectStandardError (Join-Path $root 'external.err')
+  if ($noConnector.ExitCode -eq 0) { throw 'External job must be rejected without reviewed connector.' }
   $jobs = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath jobs -Root $root 2>&1 | ConvertFrom-Json
   if ($jobs.count -ne 0) { throw 'invalid add must not store a job.' }
 
@@ -88,11 +101,12 @@ try {
   $state.lastAuditHash = ('0' * 64)
   [System.IO.File]::WriteAllText($stateFile, ($state | ConvertTo-Json -Depth 10))
   [System.IO.File]::WriteAllText($auditFile, '')
-  $tick = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath tick -Root $root | Out-String
-  if ($LASTEXITCODE -ne 0 -or $tick -notmatch 'Runner disabled') { throw 'Injected job must not run.' }
-  $dry = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath tick -Root $root -DryRun | ConvertFrom-Json
-  if ($LASTEXITCODE -ne 0 -or $dry.launched -ne 0 -or $dry.executable -ne $false) { throw 'Dry-run must never launch.' }
-  if (@($dry.due | Where-Object { $_.id -ceq 'injected' }).Count -ne 1) { throw 'Dry-run must report overdue injected job as due.' }
+  foreach ($arguments in @(@('tick'), @('tick', '-DryRun'))) {
+    $rejectFile = Join-Path $root 'injected.out'
+    $rejectErr = Join-Path $root 'injected.err'
+    $attempt = Start-Process -FilePath 'powershell.exe' -ArgumentList (@('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"')) + $arguments + @('-Root', ('"' + $root + '"'))) -Wait -PassThru -WindowStyle Hidden -RedirectStandardOutput $rejectFile -RedirectStandardError $rejectErr
+    if ($attempt.ExitCode -eq 0 -or [IO.File]::ReadAllText($rejectErr) -notmatch 'field tidak dikenal: executable') { throw 'Injected executable field must be rejected before tick.' }
+  }
   if (@((Get-Content -LiteralPath $stateFile -Raw | ConvertFrom-Json).runs).Count -ne 0) { throw 'Injected job produced a run.' }
 
   [System.IO.File]::WriteAllText($stateFile, $originalState)

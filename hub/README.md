@@ -49,3 +49,5 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-VersionCheck
 - Satu mesin, satu runner.
 - `tick` dan `run` menolak eksekusi: `Runner disabled` (ADR-007).
 - Kanal `whatsapp` masih `planned`; pairing dijalankan dari folder bridge.
+- State prototipe yang berisi field job tambahan atau aksi selain `local.status`/`self` kini ditolak saat dibaca. Tinjau dan migrasikan manual setelah backup; jangan menghapus audit/state untuk melewati validasi.
+- Gate CI Windows ada di `.github/workflows/hyper-hub-check.yml`; CI menguji kontrak, bukan memberi persetujuan owner atau membuka gate eksekusi.
