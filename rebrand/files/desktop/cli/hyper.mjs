@@ -161,18 +161,22 @@ async function main() {
       const existing = existsSync(file) ? await readFileAsync(file, "utf8") : ""
       if (existing && !existing.includes("HYPER_AI_MANAGED: JDIH catalog")) throw new Error(`menolak menimpa file user: ${file}`)
       const lines = ["# Katalog regulasi terbaru — JDIH Kementerian Keuangan", "", "<!-- HYPER_AI_MANAGED: JDIH catalog -->", "", `Sumber feed resmi: https://jdih.kemenkeu.go.id/feed.json`, `Tanggal katalog: ${day}`, "", "> Katalog metadata dan tautan saja; bukan salinan atau pengganti naskah resmi. Buka tautan sumber untuk verifikasi/unduh naskah.", ""]
+      let valid = 0
       for (const item of items) {
-        const url = new URL(item.url || item.id)
-        if (url.protocol !== "https:" || url.hostname !== "jdih.kemenkeu.go.id") continue
-        const desc = String(item.content_text || item.content_html || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
-        lines.push(`## ${String(item.title || "Tanpa judul").trim()}`, `- Tanggal: ${item.date_modified || "-"}`, `- Ringkasan feed: ${desc}`, `- Sumber: ${url.href}`, "")
+        let url
+        try { url = new URL(item.url || item.id) } catch { continue }
+        if (url.protocol !== "https:" || url.hostname !== "jdih.kemenkeu.go.id" || url.username || url.password) continue
+        const plain = (value) => String(value || "").replace(/<[^>]*>/g, " ").replace(/[\r\n\t]+/g, " ").replace(/([\\`*_{}\[\]()#+!|>])/g, "\\$1").replace(/\s+/g, " ").trim()
+        const desc = plain(item.content_text || item.content_html)
+        lines.push(`## ${plain(item.title) || "Tanpa judul"}`, `- Tanggal: ${plain(item.date_modified) || "-"}`, `- Ringkasan feed: ${desc}`, `- Sumber: ${url.href}`, "")
+        valid++
       }
       const content = lines.join("\n")
       // ponytail: hash katalog final cukup untuk idempotensi; manifest lintas hari menyusul saat F-07.
       const hash = (text) => createHash("sha256").update(text).digest("hex")
       if (hash(existing) !== hash(content)) {
         await writeFileAsync(file, content)
-        console.log(`${items.length} entri katalog ditulis: ${file}`)
+        console.log(`${valid} entri katalog ditulis: ${file}`)
       } else console.log(`katalog tidak berubah: ${file}`)
       console.log("Jalankan `hyper sync` untuk ingest katalog; verifikasi dan unduh naskah resmi dari tautan sumber.")
     } catch (error) {
