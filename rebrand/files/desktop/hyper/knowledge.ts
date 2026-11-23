@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
@@ -35,8 +36,24 @@ export async function ensureKnowledgeFolders(): Promise<KnowledgeDirs> {
   return { root, generalRoot, projectsRoot: path.join(root, "projects"), manifestFile: path.join(root, "ingest-manifest.json") }
 }
 
-type Manifest = { files: Record<string, { size: number; mtime: number; bank: string }> }
+type Manifest = { files: Record<string, { size: number; mtime: number; bank: string; hash?: string }> }
 type SyncResult = { ingested: string[]; failed: string[]; skipped: number; banks: string[] }
+
+/** Content hash: a touched-but-identical file must not be ingested again (F-07). */
+async function hashFile(file: string) {
+  return createHash("sha256").update(await readFile(file)).digest("hex")
+}
+
+/**
+ * F-07: decide whether a file needs ingest. `hash` is undefined when unreadable.
+ * Prior entries without a hash (legacy manifest) fall back to size+mtime.
+ */
+export function needsIngest(prior: { size: number; mtime: number; hash?: string } | undefined, size: number, mtime: number, hash: string | undefined) {
+  if (!prior) return { ingest: true, reason: "new" as const, hash }
+  if (prior.size === size && prior.mtime === mtime && prior.hash) return { ingest: false, reason: "unchanged" as const, hash }
+  if (hash && prior.hash === hash) return { ingest: false, reason: "same-content" as const, hash }
+  return { ingest: true, reason: "changed" as const, hash }
+}
 
 /** Rebuild factual inventory; preserve any unmarked user-authored page. */
 export async function writeProjectSummary(dir: string, slug: string, files: Array<[string, number]>, facts: string[] = []) {
@@ -133,7 +150,10 @@ export async function syncKnowledge(log?: (message: string) => void): Promise<Sy
       const info = await stat(full).catch(() => undefined)
       if (!info || info.size > MAX_BYTES || info.size === 0) continue
       const prior = state.files[full]
-      if (prior && prior.size === info.size && prior.mtime === info.mtimeMs) {
+      const hash = await hashFile(full).catch(() => undefined)
+      const decision = needsIngest(prior, info.size, info.mtimeMs, hash)
+      if (!decision.ingest) {
+        if (prior && decision.reason === "same-content") next[full] = { ...prior, mtime: info.mtimeMs }
         result.skipped++
         continue
       }
@@ -143,7 +163,7 @@ export async function syncKnowledge(log?: (message: string) => void): Promise<Sy
       const tags = [bank === "general" ? `knowledge:${scope}` : `project:${scope}`]
       try {
         await retainFile(bank, full, context, tags)
-        next[full] = { size: info.size, mtime: info.mtimeMs, bank }
+        next[full] = { size: info.size, mtime: info.mtimeMs, bank, hash }
         result.ingested.push(full)
         log?.(`ingest ${full} -> ${bank} (${tags[0]})`)
       } catch (error) {
