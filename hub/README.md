@@ -10,7 +10,7 @@ Status: prototipe. Eksekusi job diblokir (ADR-007).
 
 | Berkas | Isi |
 | --- | --- |
-| `Hyper-Hub.ps1` | Hub utama: `init`, `status`, `discover`, `policy-check`, `add`, `run`, `tick`, `audit`, `self-check`, `jobs`, `schedule`, `remove`, `pause`, `resume`, `health`, `backup`, `restore`, `secret`, `remote` |
+| `Hyper-Hub.ps1` | Hub utama: `init`, `status`, `discover`, `policy-check`, `add`, `run`, `tick`, `audit`, `self-check`, `jobs`, `schedule`, `remove`, `pause`, `resume`, `health`, `backup`, `restore`, `secret`, `api`, `remote` |
 | `Hyper-Hub-SelfCheck.ps1` | Self-check audit chain, cron, origin policy, lock, health |
 | `Hyper-Hub-ContractCheck.ps1` | Regresi fail-closed dan fungsional |
 | `Hyper-Hub-SpecCheck.ps1` | Gate struktur dokumen per berkas |

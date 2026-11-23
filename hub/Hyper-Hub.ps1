@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
   [Parameter(Position = 0)]
-  [ValidateSet('init', 'status', 'discover', 'policy-check', 'add', 'run', 'tick', 'audit', 'self-check', 'jobs', 'schedule', 'remove', 'pause', 'resume', 'health', 'remote', 'backup', 'restore', 'secret')]
+  [ValidateSet('init', 'status', 'discover', 'policy-check', 'add', 'run', 'tick', 'audit', 'self-check', 'jobs', 'schedule', 'remove', 'pause', 'resume', 'health', 'remote', 'backup', 'restore', 'secret', 'api')]
   [string]$Command = 'status',
   [string]$Zone,
   [string]$Operation,
@@ -23,6 +23,8 @@ param(
   [string]$Sub,
   [switch]$DryRun,
   [string]$BackupPath,
+  [string]$Port,
+  [string]$Timeout,
   [string]$Root = (Join-Path $PWD.Path '.hyper-hub')
 )
 
@@ -878,6 +880,105 @@ function Invoke-Secret([string]$Sub, [string]$Name) {
   }
 }
 
+function Get-HubApiPort { return (Join-Path $Root 'api.port') }
+
+function Get-HubApiToken {
+  # Token per instalasi; dibuat otomatis, disimpan DPAPI. Dikembalikan hanya ke pemanggil.
+  $store = Read-SecretStore
+  $existing = @($store.secrets.PSObject.Properties | Where-Object { $_.Name -ceq 'hub.api.token' })
+  if ($existing.Count -eq 1) { return (ConvertFrom-ProtectedSecret ([string]$existing[0].Value.blob)) }
+  $bytes = New-Object byte[] 32
+  $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+  try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
+  $token = ([BitConverter]::ToString($bytes)).Replace('-', '').ToLowerInvariant()
+  $store.secrets | Add-Member -NotePropertyName 'hub.api.token' -NotePropertyValue ([pscustomobject]@{ blob = (ConvertTo-ProtectedSecret $token); updatedAtUtc = (Format-Utc ([DateTime]::UtcNow)) }) -Force
+  Save-SecretStore $store
+  return $token
+}
+
+function Get-ApiPayload {
+  # B-04/T4: field allowlist; tidak ada secret, path, atau prompt mentah.
+  $state = Read-State
+  $auditOk = Test-Audit $state
+  $jobs = @($state.jobs)
+  return [pscustomobject]@{
+    status = $(if ($auditOk) { 'ok' } else { 'degraded' })
+    initialized = (Test-Path -LiteralPath $statePath)
+    auditChain = $(if ($auditOk) { 'valid' } else { 'invalid' })
+    jobs = @{ total = $jobs.Count; enabled = @($jobs | Where-Object { $_.enabled }).Count }
+    executable = $false
+    valuesExposed = $false
+  }
+}
+
+function Invoke-Api([string]$Sub, [string]$Port) {
+  switch ($Sub) {
+    'token' {
+      $token = Get-HubApiToken
+      return ([pscustomobject]@{ token = $token; note = 'tampilkan sekali; jangan simpan di berkas tersinkron' } | ConvertTo-Json -Depth 3)
+    }
+    'check' {
+      if ([string]::IsNullOrWhiteSpace($Port)) { throw 'Parameter -Port wajib untuk api check.' }
+      $token = Get-HubApiToken
+      $stopwatch = [Diagnostics.Stopwatch]::StartNew()
+      $response = Invoke-WebRequest -Uri "http://127.0.0.1:$Port/health" -Headers @{ Authorization = "Bearer $token" } -UseBasicParsing -TimeoutSec 5
+      $stopwatch.Stop()
+      $body = ConvertFrom-Json -InputObject $response.Content
+      return ([pscustomobject]@{ httpStatus = $response.StatusCode; elapsedMs = $stopwatch.ElapsedMilliseconds; status = $body.status; valuesExposed = $body.valuesExposed } | ConvertTo-Json -Depth 3)
+    }
+    'start' {
+      $seconds = if ([string]::IsNullOrWhiteSpace($Timeout)) { 0 } else { [int]$Timeout }
+      $candidatePorts = if ([string]::IsNullOrWhiteSpace($Port) -or $Port -eq '0') { 47800..47820 } else { @([int]$Port) }
+      $listener = $null
+      $bound = 0
+      foreach ($candidate in $candidatePorts) {
+        $probe = New-Object System.Net.HttpListener
+        $probe.Prefixes.Clear()
+        # Hanya loopback: 127.0.0.1, bukan wildcard.
+        $probe.Prefixes.Add("http://127.0.0.1:$candidate/")
+        try { $probe.Start(); $listener = $probe; $bound = $candidate; break } catch { $probe.Close() }
+      }
+      if ($null -eq $listener) { throw 'Tidak ada port loopback yang bisa dipakai.' }
+      try {
+        [IO.File]::WriteAllText((Get-HubApiPort), "$bound`n", $utf8)
+        $token = Get-HubApiToken
+        $deadline = [DateTime]::UtcNow.AddSeconds($seconds)
+        $served = 0
+        while ($listener.IsListening) {
+          if ($seconds -gt 0 -and [DateTime]::UtcNow -ge $deadline) { break }
+          $async = $listener.BeginGetContext($null, $null)
+          $wait = if ($seconds -gt 0) { [Math]::Max(0, [int]($deadline - [DateTime]::UtcNow).TotalMilliseconds) } else { -1 }
+          if (-not $async.AsyncWaitHandle.WaitOne($wait)) { break }
+          $context = $listener.EndGetContext($async)
+          $request = $context.Request
+          $response = $context.Response
+          try {
+            if ($request.Headers['Authorization'] -cne "Bearer $token") { $response.StatusCode = 401 } else {
+              $payload = switch ($request.Url.AbsolutePath) {
+                '/health' { Get-ApiPayload }
+                '/status' { Get-ApiPayload }
+                default { $null }
+              }
+              if ($null -eq $payload) { $response.StatusCode = 404 } else {
+                $bytes = $utf8.GetBytes((ConvertTo-Json -InputObject $payload -Compress -Depth 4))
+                $response.StatusCode = 200
+                $response.ContentType = 'application/json'
+                $response.ContentLength64 = $bytes.Length
+                $response.OutputStream.Write($bytes, 0, $bytes.Length)
+                $served++
+              }
+            }
+          } finally { $response.OutputStream.Close() }
+        }
+        return ([pscustomobject]@{ listening = "http://127.0.0.1:$bound"; served = $served; stopped = $true; executable = $false } | ConvertTo-Json -Depth 3)
+      } finally {
+        try { $listener.Stop(); $listener.Close() } catch { }
+      }
+    }
+    default { throw 'Sub api: token, check, start.' }
+  }
+}
+
 function Invoke-Remote([string]$Sub, [string]$Channel, [switch]$Reset) {
   # ponytail: hanya mengurus konfigurasi kanal remote; rahasia tidak pernah masuk state/audit/argumen.
   $BotToken = $null
@@ -1189,8 +1290,11 @@ function Assert-Parameters {
   if (-not [string]::IsNullOrWhiteSpace($Zone) -and $Command -cnotin @('add', 'policy-check')) { throw "Parameter -Zone hanya berlaku untuk add dan policy-check." }
   if (-not [string]::IsNullOrWhiteSpace($Operation) -and $Command -cne 'policy-check') { throw 'Parameter -Operation hanya berlaku untuk policy-check.' }
   if (-not [string]::IsNullOrWhiteSpace($Origin) -and $Command -cne 'policy-check') { throw 'Parameter -Origin hanya berlaku untuk policy-check.' }
-  if (-not [string]::IsNullOrWhiteSpace($Sub) -and $Command -cnotin @('remote', 'secret')) { throw 'Parameter -Sub hanya berlaku untuk remote dan secret.' }
+  if (-not [string]::IsNullOrWhiteSpace($Sub) -and $Command -cnotin @('remote', 'secret', 'api')) { throw 'Parameter -Sub hanya berlaku untuk remote, secret, dan api.' }
   if ($Command -eq 'secret' -and [string]::IsNullOrWhiteSpace($Sub)) { throw 'Parameter -Sub wajib untuk secret (set, list, remove, check).' }
+  if ($Command -eq 'api' -and [string]::IsNullOrWhiteSpace($Sub)) { throw 'Parameter -Sub wajib untuk api (token, check, start).' }
+  if (-not [string]::IsNullOrWhiteSpace($Port) -and $Command -cne 'api') { throw 'Parameter -Port hanya berlaku untuk api.' }
+  if (-not [string]::IsNullOrWhiteSpace($Timeout) -and $Command -cne 'api') { throw 'Parameter -Timeout hanya berlaku untuk api start.' }
   if (-not [string]::IsNullOrWhiteSpace($BackupPath) -and $Command -cnotin @('backup', 'restore')) { throw 'Parameter -BackupPath hanya berlaku untuk backup dan restore.' }
   if ($Command -ceq 'restore' -and [string]::IsNullOrWhiteSpace($BackupPath)) { throw 'Parameter -BackupPath wajib untuk restore.' }
   if (-not [string]::IsNullOrWhiteSpace($Channel) -and $Command -cne 'remote') { throw 'Parameter -Channel hanya berlaku untuk remote.' }
@@ -1199,7 +1303,7 @@ function Assert-Parameters {
   }
 }
 
-if ($Command -cnotin @('init', 'discover', 'policy-check', 'remote') -and -not (Test-Path -LiteralPath $Root -PathType Container)) {
+if ($Command -cnotin @('init', 'discover', 'policy-check', 'remote', 'api') -and -not (Test-Path -LiteralPath $Root -PathType Container)) {
   [Console]::Error.WriteLine('Hub not initialized; run init first.')
   exit $exitFailure
 }
@@ -1239,6 +1343,7 @@ try {
     'restore' { Invoke-Restore }
     'remote' { Invoke-Remote $Sub $Channel $Reset }
     'secret' { Invoke-Secret $Sub $Name }
+    'api' { Invoke-Api $Sub $Port }
     'schedule' {
       if ([string]::IsNullOrWhiteSpace($Id)) { Invoke-ScheduleList } else { Invoke-WithLock -Body { Invoke-JobCommand 'schedule' } }
     }

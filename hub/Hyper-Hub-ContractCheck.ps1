@@ -109,6 +109,36 @@ try {
   $missing = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), 'secret', '-Root', ('"' + $root + '"'), '-Sub', 'remove', '-Name', 'tidak-ada') -Wait -PassThru -WindowStyle Hidden -RedirectStandardError (Join-Path $root 'secret-missing.err')
   if ($missing.ExitCode -eq 0) { throw 'removing absent secret must fail.' }
 
+  # B-04: API loopback + bearer. Tanpa token harus 401; payload tidak memuat secret.
+  $apiPort = 47800 + (Get-Random -Minimum 1 -Maximum 100)
+  $apiOut = Join-Path $root 'api.out'
+  $apiErr = Join-Path $root 'api.err'
+  $api = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), 'api', '-Root', ('"' + $root + '"'), '-Sub', 'start', '-Port', "$apiPort", '-Timeout', '25') -PassThru -WindowStyle Hidden -RedirectStandardOutput $apiOut -RedirectStandardError $apiErr
+  try {
+    $ready = $false
+    for ($i = 0; $i -lt 40; $i++) {
+      Start-Sleep -Milliseconds 250
+      try { $probe = Invoke-WebRequest -Uri "http://127.0.0.1:$apiPort/health" -UseBasicParsing -TimeoutSec 1 -ErrorAction Stop; $ready = $true; break } catch {
+        if ($_.Exception.Response -and [int]$_.Exception.Response.StatusCode -eq 401) { $ready = $true; break }
+      }
+    }
+    if (-not $ready) { throw 'api start did not become reachable.' }
+    $unauthorized = $false
+    try { Invoke-WebRequest -Uri "http://127.0.0.1:$apiPort/health" -UseBasicParsing -TimeoutSec 3 -ErrorAction Stop | Out-Null } catch { if ([int]$_.Exception.Response.StatusCode -eq 401) { $unauthorized = $true } }
+    if (-not $unauthorized) { throw 'api must reject requests without bearer.' }
+    $checked = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath api -Root $root -Sub check -Port "$apiPort" | ConvertFrom-Json
+    if ($LASTEXITCODE -ne 0 -or $checked.httpStatus -ne 200 -or $checked.elapsedMs -ge 1000 -or $checked.valuesExposed -ne $false) { throw 'api check contract failed (status/latency/redaction).' }
+    $token = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath api -Root $root -Sub token | ConvertFrom-Json).token
+    if ([string]::IsNullOrWhiteSpace($token) -or $token.Length -lt 32) { throw 'api token must be long random.' }
+    $body = (Invoke-WebRequest -Uri "http://127.0.0.1:$apiPort/status" -Headers @{ Authorization = "Bearer $token" } -UseBasicParsing -TimeoutSec 3).Content
+    if ($body -match [regex]::Escape($token) -or $body -match 'blob|secret') { throw 'api payload must not expose secrets.' }
+    $notFound = $false
+    try { Invoke-WebRequest -Uri "http://127.0.0.1:$apiPort/nope" -Headers @{ Authorization = "Bearer $token" } -UseBasicParsing -TimeoutSec 3 -ErrorAction Stop | Out-Null } catch { if ([int]$_.Exception.Response.StatusCode -eq 404) { $notFound = $true } }
+    if (-not $notFound) { throw 'api must 404 unknown paths.' }
+  } finally {
+    if (-not $api.HasExited) { $api.WaitForExit(30000) | Out-Null; if (-not $api.HasExited) { $api.Kill() } }
+  }
+
   foreach ($command in @('add', 'run')) {
     $errorFile = Join-Path $root "$command.error"
     $attempt = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), $command, '-Root', ('"' + $root + '"')) -RedirectStandardError $errorFile -Wait -PassThru -WindowStyle Hidden
