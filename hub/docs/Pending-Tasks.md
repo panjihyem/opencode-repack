@@ -47,21 +47,36 @@ Rekomendasi untuk tiap keputusan owner: `Rekomendasi-Keputusan-Owner.md`. Rekome
 | `N-12` | Migrasi job prototipe lama ke JobSpec final | Validasi `state.json` kini menolak field tambahan serta aksi selain `local.status/self`; job lama perlu ditinjau, bukan dibuka otomatis |
 | `N-13` | Jalankan `Hyper-Hub-SecurityCheck.ps1` di mesin yang punya Hyper AI terpasang | Suite ada dan lulus offline; uji end-to-end ke engine belum |
 | `N-14` | Hubungkan hook/kanal ke runtime nyata (plugin V2, bridge Telegram) | Logika dan kontrak sudah diuji; integrasi butuh engine/token |
+| `N-15` | Pasang Hyper AI di mesin uji untuk verifikasi end-to-end | Semua gate berjalan offline; executable belum ada di mesin ini |
 
-## 4. Terbuka di backlog (23)
+## 4. Terbuka di backlog (16)
 
-Status: 82 task, **59 done / 23 open** per 23 November 2026.
+Status: 82 task, **66 done / 16 open** per 23 November 2026.
 
-Sisa P0 (keputusan manusia): `A-01`, `M-00`, `F-10`, `M-06`, `M-08`.
-Sisa P1–P3 (butuh runtime/kredensial eksternal): `B-08` (uji orang lain),
-`E-05`, `E-06`, `G-01`, `G-03`, `G-04`, `H-02`, `H-03`, `H-04`, `I-02`, `I-03`,
-`J-01` sampai `J-03`, `K-02`, `K-03`, `L-02`, `L-03`.
+| Task | Blokir konkret | Yang harus disiapkan |
+| --- | --- | --- |
+| `B-08` | Definition of Done: "diuji orang selain penulis" | Reviewer manusia menjalankan `Hyper-Hub-RunbookCheck.ps1` + prosedur manual, lalu mencatat nama/tanggal |
+| `E-06` | `E-05` sudah no-go; WAHA belum dipasang | Owner menyetujui risiko + menyediakan nomor WhatsApp khusus |
+| `F-10` | Butuh 14 hari kalender nyata + sign-off | Jadwal pilot, data non-sensitif, owner menandatangani hasil |
+| `H-02` | `HG-DESKTOP-GO` masih no-go; Windows-MCP belum terpasang | VM/akun terpisah, keputusan owner |
+| `H-03` | Bergantung `H-02` | Sama |
+| `H-04` | Bergantung `H-03` + 10 alur GUI | Sama + skenario UAT |
+| `I-02` | Butuh akun Composio + DPA vendor | Kredensial uji, kontrak/DPA |
+| `I-03` | Butuh deployment Activepieces self-host | Docker/WSL (tidak ada di mesin ini) |
+| `J-02` | Butuh Neo4j/FalkorDB lokal | Docker/WSL atau instalasi native |
+| `J-03` | Bergantung `J-01` (baseline ada) + `J-02` | Hasil spike J-02 |
+| `K-02` | Butuh model STT + dataset audio berizin | Unduhan model, dataset, waktu pengukuran |
+| `K-03` | Butuh LiveKit/Pipecat + realtime | Infrastruktur media + use case disetujui |
+| `L-02` | `HG-REMOTE-GO` masih no-go | Keputusan owner + server |
+| `L-03` | Bergantung `L-02` | Sama |
+| `M-06` | Pilot 14 hari; bergantung `F-10` | Pilot nyata + sign-off |
+| `M-08` | Setelah `M-06` | Hasil pilot |
 
-Catatan kesiapan: lapisan Hub (policy, audit, approval, secret, runner lokal,
-registry connector, redaksi, karantina, SBOM, rilis) sudah diimplementasikan dan
-diuji offline. Yang belum bisa dibuktikan tanpa mesin/runtime/kredensial:
-Hyper AI terpasang, bot Telegram, nomor WhatsApp, Playwright/Docling,
-Windows-MCP, SaaS vendor, graph DB, STT, dan MeshCentral.
+Catatan kesiapan: seluruh lapisan Hub yang dapat diuji offline sudah diimplementasikan
+dan hijau (27 gate PowerShell, 25 uji keamanan, 9 uji load, 9 suite overlay, SBOM
+42 paket tanpa temuan). Yang belum terbukti adalah integrasi ke runtime nyata
+(Hyper AI, Telegram, Playwright/Docling, Windows-MCP, SaaS, graph DB, STT, MeshCentral)
+dan penerimaan manusia.
 
 ## 5. Kendala lingkungan
 
