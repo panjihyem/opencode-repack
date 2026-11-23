@@ -34,6 +34,11 @@ Status: prototipe. Eksekusi job diblokir (ADR-007).
 | `Hyper-Hub-Channel.ps1` | Logika kanal: dedupe update_id, rate limit, perintah, callback approval (E-02..E-04) |
 | `Hyper-Hub-Hook.ps1` | Hook audit plugin/bridge: nama tool + hash, tanpa payload mentah (D-06) |
 | `Hyper-Hub-NativeAdapter.ps1` | Kontrak adapter scheduler native 2.2.x dengan capability + opt-in (C-08) |
+| `Hyper-Hub-Browser.ps1` | Validasi sidecar browser: versi pin, profil isolasi, telemetry mati (G-01) |
+| `Hyper-Hub-Download.ps1` | Unduhan JDIH terkontrol: allowlist, MIME, ukuran, nama hash (G-03) |
+| `Hyper-Hub-Provenance.ps1` | Provenance naskah resmi: URL, hash ganda, versi alat (G-04) |
+| `Hyper-Hub-GraphBaseline.ps1` | Baseline 50 pertanyaan relasi hindsight vs graph (J-01) |
+| `Hyper-Hub-Acceptance.ps1` | Harness simulasi 14 hari: JDIH, karantina, rerun idempoten, rekap (F-10) |
 | `agents/hyper-ops.md` | Agent operasi lokal baca-saja tanpa shell/edit/jaringan/subagent |
 | `Hyper-Hub-Spec-Template.md` | Templat dokumen yang lolos gate spec |
 | `Hyper-AI-Backlog.csv` | Backlog 82 task (13 epic) + kolom `Status` dan `Bukti` |
@@ -80,6 +85,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Release.ps1 
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Channel.ps1 -SelfCheck
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Hook.ps1 -SelfCheck
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-NativeAdapter.ps1 -SelfCheck
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Browser.ps1 -SelfCheck
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Download.ps1 -SelfCheck
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Provenance.ps1 -SelfCheck
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-GraphBaseline.ps1 -SelfCheck
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Acceptance.ps1 -SelfCheck
 ```
 
 ## Batasan

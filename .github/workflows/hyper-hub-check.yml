@@ -55,7 +55,12 @@ jobs:
             @('Hyper-Hub-Release.ps1', '-SelfCheck'),
             @('Hyper-Hub-Channel.ps1', '-SelfCheck'),
             @('Hyper-Hub-Hook.ps1', '-SelfCheck'),
-            @('Hyper-Hub-NativeAdapter.ps1', '-SelfCheck')
+            @('Hyper-Hub-NativeAdapter.ps1', '-SelfCheck'),
+            @('Hyper-Hub-Acceptance.ps1', '-SelfCheck'),
+            @('Hyper-Hub-Browser.ps1', '-SelfCheck'),
+            @('Hyper-Hub-Download.ps1', '-SelfCheck'),
+            @('Hyper-Hub-Provenance.ps1', '-SelfCheck'),
+            @('Hyper-Hub-GraphBaseline.ps1', '-SelfCheck')
           )
           foreach ($check in $checks) {
             & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path 'hub' $check[0]) @($check | Select-Object -Skip 1)
