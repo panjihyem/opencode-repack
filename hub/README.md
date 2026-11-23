@@ -32,6 +32,8 @@ Status: prototipe. Eksekusi job diblokir (ADR-007).
 | `Hyper-Hub-RunbookCheck.ps1` | Drill runbook otomatis: start/stop/backup/restore/rollback (B-08) |
 | `Hyper-Hub-Release.ps1` | Manifest rilis + tanda tangan RSA-SHA256, verifikasi, rollback artifact (M-07) |
 | `Hyper-Hub-Channel.ps1` | Logika kanal: dedupe update_id, rate limit, perintah, callback approval (E-02..E-04) |
+| `Hyper-Hub-Hook.ps1` | Hook audit plugin/bridge: nama tool + hash, tanpa payload mentah (D-06) |
+| `Hyper-Hub-NativeAdapter.ps1` | Kontrak adapter scheduler native 2.2.x dengan capability + opt-in (C-08) |
 | `agents/hyper-ops.md` | Agent operasi lokal baca-saja tanpa shell/edit/jaringan/subagent |
 | `Hyper-Hub-Spec-Template.md` | Templat dokumen yang lolos gate spec |
 | `Hyper-AI-Backlog.csv` | Backlog 82 task (13 epic) + kolom `Status` dan `Bukti` |
@@ -76,6 +78,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Recap.ps1 -S
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-RunbookCheck.ps1 -SelfCheck
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Release.ps1 -SelfCheck
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Channel.ps1 -SelfCheck
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Hook.ps1 -SelfCheck
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-NativeAdapter.ps1 -SelfCheck
 ```
 
 ## Batasan
