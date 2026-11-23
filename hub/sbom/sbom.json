@@ -1,0 +1,308 @@
+{
+    "summary":  {
+                    "generatedAtUtc":  "2026-11-23T12:14:07.5255872Z",
+                    "root":  "C:\\Users\\SER\\AppData\\Local\\Temp\\opencode\\hyper-ai-review",
+                    "packageCount":  42,
+                    "allowed":  33,
+                    "internal":  9,
+                    "review":  0,
+                    "unknown":  0,
+                    "policy":  "allowed: MIT/ISC/Apache-2.0/BSD/MPL-2.0; internal: paket privat repo; review: (A)GPL/SSPL/EPL/EUPL; unknown: dependency tanpa lisensi"
+                },
+    "packages":  [
+                     {
+                         "name":  "github",
+                         "version":  "",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "github/package.json"
+                     },
+                     {
+                         "name":  "opencode",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "package.json"
+                     },
+                     {
+                         "name":  "@opencode/ai",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/ai/package.json"
+                     },
+                     {
+                         "name":  "@opencode/app",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/app/package.json"
+                     },
+                     {
+                         "name":  "@opencode/cli",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/cli/package.json"
+                     },
+                     {
+                         "name":  "@opencode/client",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/client/package.json"
+                     },
+                     {
+                         "name":  "@opencode/codemode",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/codemode/package.json"
+                     },
+                     {
+                         "name":  "@opencode/console-app",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/console/app/package.json"
+                     },
+                     {
+                         "name":  "@opencode/console-function",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/console/function/package.json"
+                     },
+                     {
+                         "name":  "@opencode/console-resource",
+                         "version":  "",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/console/resource/package.json"
+                     },
+                     {
+                         "name":  "@opencode/core",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/core/package.json"
+                     },
+                     {
+                         "name":  "@opencode/desktop",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/desktop/package.json"
+                     },
+                     {
+                         "name":  "@opencode/function",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/function/package.json"
+                     },
+                     {
+                         "name":  "@opencode/gui-extensions",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/gui-extensions/package.json"
+                     },
+                     {
+                         "name":  "@opencode/httpapi-codegen",
+                         "version":  "2.0.32",
+                         "license":  "",
+                         "class":  "internal",
+                         "path":  "packages/httpapi-codegen/package.json"
+                     },
+                     {
+                         "name":  "@opencode/http-recorder",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/http-recorder/package.json"
+                     },
+                     {
+                         "name":  "@opencode/latex",
+                         "version":  "2.0.32",
+                         "license":  "",
+                         "class":  "internal",
+                         "path":  "packages/latex/package.json"
+                     },
+                     {
+                         "name":  "@opencode/merman",
+                         "version":  "2.0.32",
+                         "license":  "",
+                         "class":  "internal",
+                         "path":  "packages/merman/package.json"
+                     },
+                     {
+                         "name":  "@opencode/plugin",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/plugin/package.json"
+                     },
+                     {
+                         "name":  "@opencode/plugin-browser",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/plugin-browser/package.json"
+                     },
+                     {
+                         "name":  "@opencode/plugin-figma",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/plugins/figma/package.json"
+                     },
+                     {
+                         "name":  "@opencode/posts",
+                         "version":  "",
+                         "license":  "",
+                         "class":  "internal",
+                         "path":  "packages/posts/package.json"
+                     },
+                     {
+                         "name":  "@opencode/protocol",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/protocol/package.json"
+                     },
+                     {
+                         "name":  "@opencode/schema",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/schema/package.json"
+                     },
+                     {
+                         "name":  "@opencode/script",
+                         "version":  "",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/script/package.json"
+                     },
+                     {
+                         "name":  "@opencode/sdk",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/sdk/package.json"
+                     },
+                     {
+                         "name":  "@opencode/server",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/server/package.json"
+                     },
+                     {
+                         "name":  "@opencode/session-ui",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/session-ui/package.json"
+                     },
+                     {
+                         "name":  "@opencode/simulation",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/simulation/package.json"
+                     },
+                     {
+                         "name":  "@opencode/stats-app",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/stats/app/package.json"
+                     },
+                     {
+                         "name":  "@opencode/stats-core",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/stats/core/package.json"
+                     },
+                     {
+                         "name":  "@opencode/stats-server",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/stats/server/package.json"
+                     },
+                     {
+                         "name":  "@opencode/storybook",
+                         "version":  "",
+                         "license":  "",
+                         "class":  "internal",
+                         "path":  "packages/storybook/package.json"
+                     },
+                     {
+                         "name":  "@opencode/theme",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/theme/package.json"
+                     },
+                     {
+                         "name":  "@opencode/tui",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/tui/package.json"
+                     },
+                     {
+                         "name":  "@opencode/ui",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/ui/package.json"
+                     },
+                     {
+                         "name":  "@opencode/util",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/util/package.json"
+                     },
+                     {
+                         "name":  "@opencode/web",
+                         "version":  "2.0.32",
+                         "license":  "MIT",
+                         "class":  "allowed",
+                         "path":  "packages/web/package.json"
+                     },
+                     {
+                         "name":  "@opencode/changelog",
+                         "version":  "",
+                         "license":  "",
+                         "class":  "internal",
+                         "path":  "services/changelog/package.json"
+                     },
+                     {
+                         "name":  "@opencode/files",
+                         "version":  "",
+                         "license":  "",
+                         "class":  "internal",
+                         "path":  "services/files/package.json"
+                     },
+                     {
+                         "name":  "@opencode/update",
+                         "version":  "2.0.32",
+                         "license":  "",
+                         "class":  "internal",
+                         "path":  "services/update/package.json"
+                     },
+                     {
+                         "name":  "@opencode/www",
+                         "version":  "",
+                         "license":  "",
+                         "class":  "internal",
+                         "path":  "services/www/package.json"
+                     }
+                 ]
+}
