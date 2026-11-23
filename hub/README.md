@@ -31,6 +31,7 @@ Status: prototipe. Eksekusi job diblokir (ADR-007).
 | `Hyper-Hub-Recap.ps1` | Rekap mingguan ber-provenance dan reminder snooze/done lokal (F-08, F-09) |
 | `Hyper-Hub-RunbookCheck.ps1` | Drill runbook otomatis: start/stop/backup/restore/rollback (B-08) |
 | `Hyper-Hub-Release.ps1` | Manifest rilis + tanda tangan RSA-SHA256, verifikasi, rollback artifact (M-07) |
+| `Hyper-Hub-Channel.ps1` | Logika kanal: dedupe update_id, rate limit, perintah, callback approval (E-02..E-04) |
 | `agents/hyper-ops.md` | Agent operasi lokal baca-saja tanpa shell/edit/jaringan/subagent |
 | `Hyper-Hub-Spec-Template.md` | Templat dokumen yang lolos gate spec |
 | `Hyper-AI-Backlog.csv` | Backlog 82 task (13 epic) + kolom `Status` dan `Bukti` |
@@ -74,6 +75,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-ContractVers
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Recap.ps1 -Sub self-check
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-RunbookCheck.ps1 -SelfCheck
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Release.ps1 -SelfCheck
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Channel.ps1 -SelfCheck
 ```
 
 ## Batasan
