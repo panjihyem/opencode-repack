@@ -197,7 +197,7 @@ async function main() {
     const result = await knowledge.syncKnowledge((message) => console.log(" ", message))
     const secs = ((performance.now() - start) / 1000).toFixed(1)
     console.log("")
-    console.log(`${result.ingested.length} ter-ingest, ${result.skipped} dilewati, ${result.failed.length} gagal — ${secs}s`)
+    console.log(`${result.ingested.length} ter-ingest, ${result.skipped} dilewati, ${result.deferred.length} ditunda, ${result.failed.length} gagal — ${secs}s`)
     console.log("bank:", result.banks.join(", "))
     if (result.failed.length) {
       console.log("gagal:")

@@ -51,3 +51,5 @@ jobs:
         run: |
           bun rebrand/files/desktop/hyper/manifest-hash.check.ts
           bun rebrand/files/desktop/hyper/knowledge.test.ts
+      - name: Watch-folder stability
+        run: bun rebrand/files/desktop/hyper/watcher.check.ts

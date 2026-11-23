@@ -54,7 +54,8 @@ fs.writeFileSync(
     2,
   ) + "\n",
 )
-fs.writeFileSync(pluginFile, "// HYPER_AI_MANAGED - persistent local memory\nexport default { id: 'hyper-memory' }\n")
+const originalPlugin = "// HYPER_AI_MANAGED - persistent local memory\nexport default { id: 'hyper-memory' }\n"
+fs.writeFileSync(pluginFile, originalPlugin)
 fs.mkdirSync(path.dirname(privacyFile), { recursive: true })
 fs.writeFileSync(privacyFile, JSON.stringify({ managed_permissions: ["websearch"] }))
 
@@ -94,7 +95,8 @@ const disabled = readConfig()
 check("policy buatan mode dicabut", ours(disabled).length === 0)
 check("policy user bertahan setelah off", disabled.policies.length === 1 && disabled.policies[0].resource === "cx")
 check("permission user bertahan setelah off", disabled.permission["*"] === "allow" && disabled.permission.webfetch === "deny" && disabled.permission.bash === "ask")
-check("plugin no-op dibersihkan", !fs.existsSync(pluginFile))
+check("plugin managed dipulihkan byte-identik", fs.existsSync(pluginFile) && fs.readFileSync(pluginFile, "utf8") === originalPlugin)
+check("backup plugin dibersihkan", !fs.existsSync(path.join(configDir, "hyper", "hyper-memory.original.b64")))
 
 const offAgain = run("off")
 check("mode off idempoten", offAgain.status === 0)

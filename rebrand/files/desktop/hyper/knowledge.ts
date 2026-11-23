@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto"
 import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises"
+import { canReadFully, waitStable } from "./watcher"
 import os from "node:os"
 import path from "node:path"
 import { manifest } from "./manifest"
@@ -37,7 +38,7 @@ export async function ensureKnowledgeFolders(): Promise<KnowledgeDirs> {
 }
 
 type Manifest = { files: Record<string, { size: number; mtime: number; bank: string; hash?: string }> }
-type SyncResult = { ingested: string[]; failed: string[]; skipped: number; banks: string[] }
+type SyncResult = { ingested: string[]; failed: string[]; skipped: number; deferred: string[]; banks: string[] }
 
 /** Content hash: a touched-but-identical file must not be ingested again (F-07). */
 async function hashFile(file: string) {
@@ -117,10 +118,11 @@ async function retainFile(bank: string, file: string, context: string, tags: str
  * new or changed into the memory server; also creates a bank per project
  * folder. Safe to run on every app start — unchanged files are skipped.
  */
-export async function syncKnowledge(log?: (message: string) => void): Promise<SyncResult> {
+export async function syncKnowledge(log?: (message: string) => void, options: { waitOnChange?: boolean } = {}): Promise<SyncResult> {
   const dirs = await ensureKnowledgeFolders()
   const state = await readManifest(dirs.manifestFile)
-  const result: SyncResult = { ingested: [], failed: [], skipped: 0, banks: [] }
+  const result: SyncResult = { ingested: [], failed: [], skipped: 0, deferred: [], banks: [] }
+  const waitOnChange = options.waitOnChange ?? false
 
   await ensureBank("general", "Pengetahuan umum lintas project: regulasi, putusan, template, referensi kerja kantor.")
   result.banks.push("general")
@@ -156,6 +158,20 @@ export async function syncKnowledge(log?: (message: string) => void): Promise<Sy
         if (prior && decision.reason === "same-content") next[full] = { ...prior, mtime: info.mtimeMs }
         result.skipped++
         continue
+      }
+      // F-04: berkas baru/berubah harus stabil dan terbaca penuh sebelum di-ingest.
+      if (waitOnChange) {
+        const stability = await waitStable(full)
+        if (!stability.stable) {
+          result.deferred.push(full)
+          log?.(`tunda ${full}: ${stability.reason}`)
+          continue
+        }
+        if (!(await canReadFully(full))) {
+          result.deferred.push(full)
+          log?.(`tunda ${full}: belum terbaca penuh`)
+          continue
+        }
       }
       const scopeDir = bank === "general" ? dirs.generalRoot : dirs.projectsRoot
       const scope = path.relative(scopeDir, path.dirname(full)).split(path.sep)[0] || "umum"
