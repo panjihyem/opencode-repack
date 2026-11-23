@@ -40,8 +40,8 @@ Rekomendasi untuk tiap keputusan owner: `Rekomendasi-Keputusan-Owner.md`. Rekome
 | `N-05` | Turunkan `permission: {"*":"allow"}` ke deny-by-default | SELESAI (alat): `Hyper-Hub-Permission.ps1` + rollback; penerapan ke config pengguna menunggu izin |
 | `N-06` | Indeks `flm-results/` (model x decode x kualitas) | SELESAI: `hub/flm-results/INDEX.md`, 77 artefak |
 | `N-07` | Ulangi perbandingan model lokal dengan timeout seragam | TERBLOKIR: klasifikasi komparabilitas selesai (`Hyper-Hub-Rerun.ps1`, 14/19 komparabel), tetapi pengukuran ulang butuh runtime FLM yang sudah tidak terpasang - lihat `docs/Benchmark-Comparability.md` |
-| `N-08` | Auto-start bridge setelah pairing | proses mati saat PC restart |
-| `N-09` | `remote -Sub run` untuk menjalankan bridge sebagai layanan | belum ada perintah |
+| `N-08` | Auto-start bridge setelah pairing | SELESAI (alat): `remote -Sub run -Reset` memasang entri Startup per-user; diuji dengan stub, idempoten |
+| `N-09` | `remote -Sub run` untuk menjalankan bridge sebagai layanan | SELESAI (alat): `remote -Sub run`/`stop` mengelola proses bridge; diuji 8/8 dengan stub, tanpa duplikat |
 | `N-10` | Connector registry tervalidasi sebelum membuka `run`/`tick` | SUDAH ADA `Hyper-Hub-Connector.ps1`; sisa: entri connector nyata yang disetujui reviewer |
 | `N-11` | Audit anchor eksternal sebelum produksi | SUDAH ADA `Hyper-Hub-AuditAnchor.ps1`; sisa: lokasi anchor yang tidak dapat ditulis akun yang sama |
 | `N-12` | Migrasi job prototipe lama ke JobSpec final | Validasi `state.json` kini menolak field tambahan serta aksi selain `local.status/self`; job lama perlu ditinjau, bukan dibuka otomatis |

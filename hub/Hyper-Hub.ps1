@@ -1209,6 +1209,57 @@ function Invoke-Remote([string]$Sub, [string]$Channel, [switch]$Reset) {
     return ([pscustomobject]@{ channels = @(Get-RemoteChannels | ForEach-Object { [pscustomobject]@{ id = $_.id; supported = $_.supported; status = $_.status; note = $_.note } }); executable = $false } | ConvertTo-Json -Depth 5)
   }
 
+  if ($Sub -ceq 'run') {
+    # N-09: jalankan/hentikan bridge sebagai proses terkelola (bukan layanan Windows).
+    # N-08: -Reset memasang autostart per-user sehingga bridge hidup lagi setelah login.
+    $runMeta = Get-RemoteChannel $Channel
+    $runDir = Get-RemoteDir $runMeta.id
+    $runEnv = Join-Path $runDir '.env'
+    $startupDir = Join-Path ([Environment]::GetFolderPath('Startup')) 'HyperHub'
+    $shortcut = Join-Path $startupDir "bridge-$($runMeta.id).cmd"
+
+    if ($Sub -ceq 'run' -and $Reset) {
+      if (-not (Test-Path -LiteralPath $runDir)) { throw "Folder kanal belum ada: $runDir (jalankan setup lebih dulu)." }
+      [void][IO.Directory]::CreateDirectory($startupDir)
+      $bootstrap = @(
+        '@echo off'
+        "rem HyperHub autostart bridge $($runMeta.id)"
+        "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" remote -Channel $($runMeta.id) -Sub run"
+        'exit /b 0'
+      ) -join "`r`n"
+      [IO.File]::WriteAllText($shortcut, $bootstrap + "`r`n", (New-Object System.Text.UTF8Encoding($false)))
+      return ([pscustomobject]@{ channel = $runMeta.id; autostart = $true; path = $shortcut; executable = $false } | ConvertTo-Json -Compress)
+    }
+
+    if ($runMeta.id -cne 'telegram') { throw "run hanya untuk kanal yang punya bridge terpasang (telegram)." }
+    $bun = Join-Path $env:USERPROFILE '.bun\bin\bun.exe'
+    if (-not (Test-Path -LiteralPath $bun)) { throw 'bun tidak ditemukan; pasang dari https://bun.sh.' }
+    $entry = Join-Path $runDir 'dist\index.js'
+    if (-not (Test-Path -LiteralPath $entry)) { throw "Bridge belum dibangun di $entry (kopi bridge lalu bun build)." }
+    if (-not (Test-Path -LiteralPath $runEnv)) { throw "Konfigurasi kanal belum ada: $runEnv (jalankan remote -Sub setup)." }
+    $runMap = Read-DotEnv $runEnv
+    if ([string]::IsNullOrWhiteSpace($runMap['TELEGRAM_BOT_TOKEN'])) { throw 'Token bot belum diisi; jalankan remote -Sub setup.' }
+    if ([string]::IsNullOrWhiteSpace($runMap['TELEGRAM_ALLOWED_USERS'])) { throw 'Allowlist kosong; bridge tidak boleh dijalankan.' }
+
+    $running = @(Get-RemoteProcess $runDir)
+    if ($running.Count -gt 0) {
+      return ([pscustomobject]@{ channel = 'telegram'; running = $true; pid = @($running | ForEach-Object { $_.ProcessId }); note = 'sudah berjalan' } | ConvertTo-Json -Compress)
+    }
+    $log = Join-Path $runDir 'bridge.log'
+    $proc = Start-Process -FilePath $bun -ArgumentList @('run', $entry) -WorkingDirectory $runDir -WindowStyle Hidden -PassThru -RedirectStandardOutput $log -RedirectStandardError "$log.err"
+    Start-Sleep -Seconds 2
+    $alive = -not $proc.HasExited
+    return ([pscustomobject]@{ channel = 'telegram'; started = $true; pid = $proc.Id; running = $alive; log = $log } | ConvertTo-Json -Compress)
+  }
+
+  if ($Sub -ceq 'stop') {
+    $stopMeta = Get-RemoteChannel $Channel
+    $stopDir = Get-RemoteDir $stopMeta.id
+    $procs = @(Get-RemoteProcess $stopDir)
+    foreach ($pr in $procs) { try { Stop-Process -Id $pr.ProcessId -Force -ErrorAction Stop } catch { } }
+    return ([pscustomobject]@{ channel = $stopMeta.id; stopped = @($procs).Count; executable = $false } | ConvertTo-Json -Compress)
+  }
+
   $meta = Get-RemoteChannel $Channel
   $dir = Get-RemoteDir $meta.id
   $envPath = Join-Path $dir '.env'
@@ -1389,7 +1440,7 @@ function Invoke-Remote([string]$Sub, [string]$Channel, [switch]$Reset) {
           executable = $false
         } | ConvertTo-Json -Compress)
     }
-    default { throw "Subperintah remote tidak dikenal: $Sub (pakai channels|status|setup|allow|pair|unpair|clear)." }
+    default { throw "Subperintah remote tidak dikenal: $Sub (pakai channels|status|setup|allow|pair|unpair|clear|model|run|stop)." }
   }
 }
 
@@ -1619,7 +1670,7 @@ try {
     'health' { Invoke-Health }
     'backup' { Invoke-Backup }
     'restore' { Invoke-Restore }
-    'remote' { Invoke-Remote $Sub $Channel $Reset }
+    'remote' { Invoke-Remote -Sub $Sub -Channel $Channel -Reset:$Reset }
     'secret' { Invoke-Secret $Sub $Name }
     'api' { Invoke-Api $Sub $Port }
     'connector' { Invoke-ConnectorCommand }

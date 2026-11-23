@@ -163,6 +163,14 @@ try {
   $revokedHealth = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath health -Root $root | ConvertFrom-Json
   if ($revokedHealth.connectors.allowed -ne 0) { throw 'revoked connector must be denied.' }
 
+  # N-01/regresi: subperintah remote harus menerima nilai switch dengan benar.
+  # Bug lama: -Reset diteruskan posisional sehingga nilainya hilang.
+  $previousEap = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  try { $remoteHelp = [string](& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath remote -Channel telegram -Sub __nope__ 2>&1) }
+  finally { $ErrorActionPreference = $previousEap }
+  if ($remoteHelp -notmatch 'run\|stop') { throw 'remote harus mendokumentasikan run dan stop.' }
+
   # D-07: approval broker nonce sekali pakai dan self-approval ditolak.
   $requested = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath approval -Root $root -Sub request -Id approval-job -Actor requester -Reason contract | ConvertFrom-Json
   if ($LASTEXITCODE -ne 0 -or $requested.state -cne 'pending') { throw 'approval request contract failed.' }
