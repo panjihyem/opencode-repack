@@ -19,6 +19,9 @@ Status: prototipe. Eksekusi job diblokir (ADR-007).
 | `Hyper-Hub-Attachment.ps1` | Gate lampiran: whitelist ekstensi, batas ukuran, magic bytes, virus scan wajib, karantina (F-05, F-06, D-09) |
 | `Hyper-Hub-Connector.ps1` | Registry connector ADR-007: gate `validated`, egress allowlist, secret_ref, review (N-10) |
 | `Hyper-Hub-Policy.ps1` | Policy engine deterministik aksi x resource x zona; baseline `config/policy.default.json` (D-03) |
+| `Hyper-Hub-Migrate.ps1` | Migrasi permission V1 -> policies V2 dengan backup dan rollback terverifikasi (D-01) |
+| `Hyper-Hub-AgentCheck.ps1` | Gate izin minimal agent `hyper-ops` (D-02) |
+| `agents/hyper-ops.md` | Agent operasi lokal baca-saja tanpa shell/edit/jaringan/subagent |
 | `Hyper-Hub-Spec-Template.md` | Templat dokumen yang lolos gate spec |
 | `Hyper-AI-Backlog.csv` | Backlog 82 task (13 epic) + kolom `Status` dan `Bukti` |
 | `Hyper-AI-Research-and-Plan.md` | Riset dan rencana awal |
@@ -49,6 +52,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Redaction.ps
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Attachment.ps1 -SelfCheck
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Connector.ps1 -SelfCheck
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Policy.ps1 -SelfCheck
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Migrate.ps1 -SelfCheck
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-AgentCheck.ps1 -SelfCheck
 ```
 
 ## Batasan
