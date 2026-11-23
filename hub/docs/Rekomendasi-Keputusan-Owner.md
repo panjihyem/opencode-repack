@@ -10,10 +10,10 @@ Status seluruh butir: **rekomendasi teknis, belum persetujuan owner atau legal**
 | Retensi audit/regular/log/backup | Angka rancangan: audit 90 hari, regular 90 hari, log tanpa prompt 14 hari, backup harian 30 hari. **Jangan jalankan pemusnahan otomatis** sebelum kebijakan resmi; backup perlu enkripsi dan uji restore. | Owner dan kepatuhan sahkan jangka waktu serta kewajiban simpan. |
 | Artefak kasus | Lokal saja, tidak di folder cloud-sync; tidak ada auto-delete; pertahankan sampai aturan retensi resmi dan penutupan perkara disahkan. | Owner/kepatuhan tentukan lokasi, ACL, penanggung jawab, dan jadwal pemusnahan. |
 | Arsip Hindsight dan penurunan zona | Perlakukan memori dengan data kasus sebagai `case`. Data kasus teredaksi tetap `case`; tidak boleh cloud. **Jangan izinkan** penurunan `case` ke `regular` sampai reviewer ditunjuk dan isolasi memori terbukti. | Penunjukan reviewer dan prosedur klasifikasi bertanda tangan. |
-| `HG-DESKTOP-GO` | **No-go** Windows-MCP; tidak ada isolasi sesi dan approval per aksi yang terbukti. | VM/akun terpisah, approval/audit, emergency stop, UAT non-sensitif. |
-| `HG-REMOTE-GO` | **No-go** MeshCentral/remote support pada mesin kasus. | Consent per sesi, akses berbatas waktu, audit, pencabutan seketika, uji isolasi. |
-| `HG-SAAS-LIST` | Daftar kosong; Composio/Activepieces tidak diberi kredensial atau data kasus. | Daftar endpoint, pemilik, klasifikasi data, retensi vendor, DPA, dan review keamanan. |
-| `HG-VOICE-SCOPE` | Voice realtime **tidak masuk MVP**; jangan merekam/transkripsi kasus. | Use case, dataset berizin, izin perekaman, dan retensi disahkan. |
+| `HG-DESKTOP-GO` | **No-go** Windows-MCP; tidak ada isolasi sesi terverifikasi. Lapisan approval/audit sudah ada (`Hyper-Hub-Desktop.ps1`, `H-03`), tetapi sidecar dan isolasi sesi belum. | VM/akun terpisah, sidecar terpasang, UAT non-sensitif |
+| `HG-REMOTE-GO` | **No-go** MeshCentral/remote support pada mesin kasus. | Consent per sesi, akses berbatas waktu, audit, pencabutan seketika |
+| `HG-SAAS-LIST` | Daftar kosong; Composio/Activepieces tidak diberi kredensial atau data kasus. Kontrak provenance graph ada (`J-02`), vendor belum. | Daftar endpoint, pemilik, klasifikasi data, retensi vendor, DPA |
+| `HG-VOICE-SCOPE` | Voice realtime **tidak masuk MVP**; jangan merekam/transkripsi kasus. | Use case, dataset berizin, izin perekaman, retensi |
 | Telegram/WhatsApp | Tidak aktif dalam pilot pertama; WhatsApp tetap `planned`. Jangan buat token/nomor atas nama pengguna. | Owner menyediakan akun/nomor khusus, allowlist, review kanal, dan uji pairing nyata. |
 | Token GitHub lama | Anggap bocor karena pernah disimpan di `Desktop/cred.txt`; revoke dan buat token baru dengan hak minimal. | Pemilik akun GitHub melakukan revoke dan memverifikasi akses lama mati. |
 
