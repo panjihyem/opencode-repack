@@ -7,9 +7,11 @@ try {
   foreach ($zone in @('case', 'regular', 'unknown')) {
     foreach ($operation in @('local.status', 'external.send', 'model.cloud', 'job.run')) {
       $result = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath policy-check -Zone $zone -Operation $operation -Root $root | ConvertFrom-Json
-      $expected = if ($operation -ceq 'local.status' -and $zone -cin @('case', 'regular')) { 'allow' } else { 'deny' }
+      # Kontrak satu sumber: matriks baseline. Allow hanya status di zona dikenal;
+      # external.send/model.cloud = ask; job.run selalu deny; zona unknown selalu deny.
+      $expected = if ($zone -cin @('case', 'regular') -and $operation -ceq 'local.status') { 'allow' } elseif ($zone -ceq 'regular' -and $operation -in @('external.send', 'model.cloud')) { 'ask' } else { 'deny' }
       if ($LASTEXITCODE -ne 0 -or $result.decision -cne $expected -or $result.executable -ne $false -or (Test-Path -LiteralPath $root)) {
-        throw "policy contract failed: zone=$zone operation=$operation"
+        throw "policy contract failed: zone=$zone operation=$operation (got $($result.decision), expected $expected)"
       }
     }
   }

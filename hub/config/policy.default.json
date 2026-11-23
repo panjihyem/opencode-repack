@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "note": "Matriks baseline Hyper Hub. Dipakai bila root tidak punya policy.json. Runner tetap tertutup: job.run selalu deny.",
+  "rules": [
+    { "zone": "regular", "action": "local.status", "resource": "self", "effect": "allow", "alasan": "baca-saja tanpa egress" },
+    { "zone": "regular", "action": "external.send", "resource": "*", "effect": "ask", "alasan": "butuh connector tervalidasi dan approval" },
+    { "zone": "regular", "action": "connector.call", "resource": "*", "effect": "allow", "alasan": "hanya bila connector validated; gate ADR-007 tetap berlaku" },
+    { "zone": "regular", "action": "model.cloud", "resource": "*", "effect": "ask", "alasan": "biaya dan egress data" },
+    { "zone": "regular", "action": "job.run", "resource": "self", "effect": "deny", "alasan": "runner tertutup sampai ADR-007 dipenuhi" },
+    { "zone": "regular", "action": "browser.navigate", "resource": "*", "effect": "deny", "alasan": "pakai origin allowlist G-02" },
+    { "zone": "case", "action": "local.status", "resource": "self", "effect": "allow", "alasan": "lantai keras zona case" },
+    { "zone": "case", "action": "external.send", "resource": "*", "effect": "deny", "alasan": "zona case menolak egress" },
+    { "zone": "case", "action": "connector.call", "resource": "*", "effect": "deny", "alasan": "zona case menolak connector" },
+    { "zone": "case", "action": "model.cloud", "resource": "*", "effect": "deny", "alasan": "zona case hanya model lokal" },
+    { "zone": "case", "action": "job.run", "resource": "self", "effect": "deny", "alasan": "zona case tidak menjalankan job" },
+    { "zone": "case", "action": "browser.navigate", "resource": "*", "effect": "deny", "alasan": "zona case tanpa browser" }
+  ]
+}

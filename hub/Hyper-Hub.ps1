@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
   [Parameter(Position = 0)]
-  [ValidateSet('init', 'status', 'discover', 'policy-check', 'add', 'run', 'tick', 'audit', 'self-check', 'jobs', 'schedule', 'remove', 'pause', 'resume', 'health', 'remote', 'backup', 'restore', 'secret', 'api', 'connector')]
+  [ValidateSet('init', 'status', 'discover', 'policy-check', 'add', 'run', 'tick', 'audit', 'self-check', 'jobs', 'schedule', 'remove', 'pause', 'resume', 'health', 'remote', 'backup', 'restore', 'secret', 'api', 'connector', 'policy')]
   [string]$Command = 'status',
   [string]$Zone,
   [string]$Operation,
@@ -260,20 +260,28 @@ function Test-OriginPolicy([string]$DataZone, [string]$RawOrigin) {
   [pscustomobject]@{ zone = $DataZone; operation = 'browser.navigate'; origin = $origin.text; decision = $decision; reason = $reason; executable = $false } | ConvertTo-Json -Compress
 }
 
+function Get-EngineDecision([string]$DataZone, [string]$RequestedOperation, [string]$ResourceId, [string]$ConnectorId) {
+  # D-03: satu mesin keputusan untuk Hub dan connector. Fail-closed bila engine gagal.
+  $policyScript = Join-Path $PSScriptRoot 'Hyper-Hub-Policy.ps1'
+  if (-not [IO.File]::Exists($policyScript)) { throw 'Policy engine tidak ditemukan; tolak.' }
+  $args = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $policyScript + '"'), '-Matrix', ('"' + (Get-PolicyPath) + '"'), '-Zone', ('"' + $DataZone + '"'), '-Operation', ('"' + $RequestedOperation + '"'))
+  if (-not [string]::IsNullOrWhiteSpace($ResourceId)) { $args += @('-Resource', ('"' + $ResourceId + '"')) }
+  if (-not [string]::IsNullOrWhiteSpace($ConnectorId)) { $args += @('-Connector', ('"' + $ConnectorId + '"')) }
+  $raw = & powershell.exe @args 2>&1
+  if ($LASTEXITCODE -ne 0) { throw 'Policy engine gagal; tolak aksi.' }
+  return (ConvertFrom-Json -InputObject ([string]($raw | Out-String)).Trim())
+}
+
 function Test-HubPolicy([string]$DataZone, [string]$RequestedOperation, [string]$RawOrigin) {
-  # ponytail: kontrak lokal Hub saja; connector wajib menegakkan policy sebelum eksekusi.
+  # browser.navigate tetap memakai origin allowlist G-02, bukan matriks aksi.
   if ($RequestedOperation -ceq 'browser.navigate') { return (Test-OriginPolicy $DataZone $RawOrigin) }
   $decision = 'deny'
-  $reason = 'zone or operation not classified'
-  if ($DataZone -ceq 'case' -and $RequestedOperation -ceq 'local.status') {
-    $decision = 'allow'; $reason = 'case local status only'
-  } elseif ($DataZone -ceq 'case') {
-    $reason = 'case zone blocks all other operations'
-  } elseif ($DataZone -ceq 'regular' -and $RequestedOperation -ceq 'local.status') {
-    $decision = 'allow'; $reason = 'regular local status'
-  } elseif ($DataZone -ceq 'regular' -and $RequestedOperation -ceq 'external.send') {
-    $reason = 'regular external operation needs reviewed connector and approval'
-  }
+  $reason = 'policy engine unavailable: fail-closed'
+  try {
+    $engine = Get-EngineDecision $DataZone $RequestedOperation 'self' ''
+    $decision = [string]$engine.decision
+    $reason = [string]$engine.reason
+  } catch { }
   [pscustomobject]@{ zone = $DataZone; operation = $RequestedOperation; decision = $decision; reason = $reason; executable = $false } | ConvertTo-Json -Compress
 }
 
@@ -688,6 +696,25 @@ function Invoke-ConnectorCommand {
   $code = $LASTEXITCODE
   $output | ForEach-Object { $_ }
   if ($code -ne 0) { throw "Perintah connector gagal (exit $code)." }
+}
+
+function Get-PolicyPath {
+  $local = Join-Path $Root 'policy.json'
+  if ([IO.File]::Exists($local)) { return $local }
+  # Matriks baseline bawaan; root tetap boleh menimpanya.
+  return (Join-Path $PSScriptRoot 'config\policy.default.json')
+}
+
+function Invoke-PolicyCommand {
+  $policyScript = Join-Path $PSScriptRoot 'Hyper-Hub-Policy.ps1'
+  if (-not [IO.File]::Exists($policyScript)) { throw 'Hyper-Hub-Policy.ps1 tidak ditemukan.' }
+  $args = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $policyScript + '"'), '-Matrix', ('"' + (Get-PolicyPath) + '"'))
+  if ($Sub -ceq 'list') { $args += '-List' }
+  else { $args += @('-Zone', ('"' + $Zone + '"'), '-Operation', ('"' + $Operation + '"')); if (-not [string]::IsNullOrWhiteSpace($Id)) { $args += @('-Resource', ('"' + $Id + '"')) } }
+  $output = & powershell.exe @args 2>&1
+  $code = $LASTEXITCODE
+  $output | ForEach-Object { $_ }
+  if ($code -ne 0) { throw "Perintah policy gagal (exit $code)." }
 }
 
 function Invoke-Health {
@@ -1318,20 +1345,21 @@ if ($Command -eq 'self-check') {
 }
 
 function Assert-Parameters {
-  $idCommands = @('add', 'remove', 'pause', 'resume', 'schedule', 'connector')
+  $idCommands = @('add', 'remove', 'pause', 'resume', 'schedule', 'connector', 'policy')
   if ($DryRun -and $Command -cne 'tick') { throw "Flag -DryRun hanya berlaku untuk tick, bukan $Command." }
   if (-not [string]::IsNullOrWhiteSpace($Id) -and $Command -cnotin $idCommands) { throw "Parameter -Id tidak berlaku untuk $Command." }
   foreach ($pair in @(@('Name', $Name), @('Cron', $Cron), @('EveryMinutes', $EveryMinutes), @('Action', $Action), @('Resource', $Resource))) {
     $owner = if ($pair[0] -ceq 'Name') { @('add', 'secret') } else { @('add') }
     if (-not [string]::IsNullOrWhiteSpace($pair[1]) -and $Command -cnotin $owner) { throw "Parameter -$($pair[0]) hanya berlaku untuk $($owner -join '/')." }
   }
-  if (-not [string]::IsNullOrWhiteSpace($Zone) -and $Command -cnotin @('add', 'policy-check')) { throw "Parameter -Zone hanya berlaku untuk add dan policy-check." }
-  if (-not [string]::IsNullOrWhiteSpace($Operation) -and $Command -cne 'policy-check') { throw 'Parameter -Operation hanya berlaku untuk policy-check.' }
+  if (-not [string]::IsNullOrWhiteSpace($Zone) -and $Command -cnotin @('add', 'policy-check', 'policy')) { throw "Parameter -Zone hanya berlaku untuk add, policy-check, dan policy." }
+  if (-not [string]::IsNullOrWhiteSpace($Operation) -and $Command -cnotin @('policy-check', 'policy')) { throw 'Parameter -Operation hanya berlaku untuk policy-check dan policy.' }
   if (-not [string]::IsNullOrWhiteSpace($Origin) -and $Command -cne 'policy-check') { throw 'Parameter -Origin hanya berlaku untuk policy-check.' }
-  if (-not [string]::IsNullOrWhiteSpace($Sub) -and $Command -cnotin @('remote', 'secret', 'api', 'connector')) { throw 'Parameter -Sub hanya berlaku untuk remote, secret, api, dan connector.' }
+  if (-not [string]::IsNullOrWhiteSpace($Sub) -and $Command -cnotin @('remote', 'secret', 'api', 'connector', 'policy')) { throw 'Parameter -Sub hanya berlaku untuk remote, secret, api, connector, dan policy.' }
   if ($Command -eq 'secret' -and [string]::IsNullOrWhiteSpace($Sub)) { throw 'Parameter -Sub wajib untuk secret (set, list, remove, check).' }
   if ($Command -eq 'api' -and [string]::IsNullOrWhiteSpace($Sub)) { throw 'Parameter -Sub wajib untuk api (token, check, start).' }
   if ($Command -eq 'connector' -and $Sub -notin @('list', 'validate', 'revoke')) { throw 'Parameter -Sub wajib untuk connector (list, validate, revoke).' }
+  if ($Command -eq 'policy' -and $Sub -notin @('list', 'check')) { throw 'Parameter -Sub wajib untuk policy (list, check).' }
   if (-not [string]::IsNullOrWhiteSpace($Reviewer) -and $Command -cne 'connector') { throw 'Parameter -Reviewer hanya berlaku untuk connector.' }
   if (-not [string]::IsNullOrWhiteSpace($Port) -and $Command -cne 'api') { throw 'Parameter -Port hanya berlaku untuk api.' }
   if (-not [string]::IsNullOrWhiteSpace($Timeout) -and $Command -cne 'api') { throw 'Parameter -Timeout hanya berlaku untuk api start.' }
@@ -1385,6 +1413,7 @@ try {
     'secret' { Invoke-Secret $Sub $Name }
     'api' { Invoke-Api $Sub $Port }
     'connector' { Invoke-ConnectorCommand }
+    'policy' { Invoke-PolicyCommand }
     'schedule' {
       if ([string]::IsNullOrWhiteSpace($Id)) { Invoke-ScheduleList } else { Invoke-WithLock -Body { Invoke-JobCommand 'schedule' } }
     }

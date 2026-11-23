@@ -10,7 +10,7 @@ Status: prototipe. Eksekusi job diblokir (ADR-007).
 
 | Berkas | Isi |
 | --- | --- |
-| `Hyper-Hub.ps1` | Hub utama: `init`, `status`, `discover`, `policy-check`, `add`, `run`, `tick`, `audit`, `self-check`, `jobs`, `schedule`, `remove`, `pause`, `resume`, `health`, `backup`, `restore`, `secret`, `api`, `connector`, `remote` |
+| `Hyper-Hub.ps1` | Hub utama: `init`, `status`, `discover`, `policy-check`, `add`, `run`, `tick`, `audit`, `self-check`, `jobs`, `schedule`, `remove`, `pause`, `resume`, `health`, `backup`, `restore`, `secret`, `api`, `connector`, `policy`, `remote` |
 | `Hyper-Hub-SelfCheck.ps1` | Self-check audit chain, cron, origin policy, lock, health |
 | `Hyper-Hub-ContractCheck.ps1` | Regresi fail-closed dan fungsional |
 | `Hyper-Hub-SpecCheck.ps1` | Gate struktur dokumen per berkas |
@@ -18,6 +18,7 @@ Status: prototipe. Eksekusi job diblokir (ADR-007).
 | `Hyper-Hub-Redaction.ps1` | Redaksi pola PII/secret sebelum teks keluar zona case (D-09) |
 | `Hyper-Hub-Attachment.ps1` | Gate lampiran: whitelist ekstensi, batas ukuran, magic bytes, virus scan wajib, karantina (F-05, F-06, D-09) |
 | `Hyper-Hub-Connector.ps1` | Registry connector ADR-007: gate `validated`, egress allowlist, secret_ref, review (N-10) |
+| `Hyper-Hub-Policy.ps1` | Policy engine deterministik aksi x resource x zona; baseline `config/policy.default.json` (D-03) |
 | `Hyper-Hub-Spec-Template.md` | Templat dokumen yang lolos gate spec |
 | `Hyper-AI-Backlog.csv` | Backlog 82 task (13 epic) + kolom `Status` dan `Bukti` |
 | `Hyper-AI-Research-and-Plan.md` | Riset dan rencana awal |
@@ -47,6 +48,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-VersionCheck
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Redaction.ps1 -SelfCheck
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Attachment.ps1 -SelfCheck
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Connector.ps1 -SelfCheck
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Policy.ps1 -SelfCheck
 ```
 
 ## Batasan
