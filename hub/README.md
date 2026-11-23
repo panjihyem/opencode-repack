@@ -16,6 +16,7 @@ Status: prototipe. Eksekusi job diblokir (ADR-007).
 | `Hyper-Hub-SpecCheck.ps1` | Gate struktur dokumen per berkas |
 | `Hyper-Hub-VersionCheck.ps1` | Cek versi executable tanpa HTTP |
 | `Hyper-Hub-Redaction.ps1` | Redaksi pola PII/secret sebelum teks keluar zona case (D-09) |
+| `Hyper-Hub-Attachment.ps1` | Gate lampiran: whitelist ekstensi, batas ukuran, magic bytes, karantina (F-05, D-09) |
 | `Hyper-Hub-Spec-Template.md` | Templat dokumen yang lolos gate spec |
 | `Hyper-AI-Backlog.csv` | Backlog 82 task (13 epic) + kolom `Status` dan `Bukti` |
 | `Hyper-AI-Research-and-Plan.md` | Riset dan rencana awal |
@@ -43,6 +44,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-ContractChec
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-SpecCheck.ps1 -SelfCheck
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-VersionCheck.ps1 -SelfCheck
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Redaction.ps1 -SelfCheck
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Attachment.ps1 -SelfCheck
 ```
 
 ## Batasan
