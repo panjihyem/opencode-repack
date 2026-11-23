@@ -42,6 +42,49 @@ try {
   if ($LASTEXITCODE -ne 0 -or $schedule.count -ne 1 -or $schedule.executable -ne $false) { throw 'schedule contract failed.' }
   $dry = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath tick -Root $root -DryRun | ConvertFrom-Json
   if ($LASTEXITCODE -ne 0 -or $dry.mode -cne 'dry-run' -or $dry.launched -ne 0 -or $dry.executable -ne $false) { throw 'dry-run tick contract failed.' }
+
+  # C-01..C-06: runner opt-in, satu langkah lokal, retry/dead-letter, dan blokir policy.
+  $runnerStatus = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath runner -Root $root -Sub status | ConvertFrom-Json
+  if ($LASTEXITCODE -ne 0 -or $runnerStatus.enabled -ne $false) { throw 'runner must be disabled by default.' }
+  $noActor = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), 'runner', '-Root', ('"' + $root + '"'), '-Sub', 'enable') -Wait -PassThru -WindowStyle Hidden -RedirectStandardError (Join-Path $root 'runner-noactor.err')
+  if ($noActor.ExitCode -eq 0) { throw 'runner enable without actor must fail.' }
+  $tickNoOptIn = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath tick -Root $root | Out-String
+  if ($tickNoOptIn -notmatch 'Runner disabled') { throw 'tick without opt-in must stay disabled.' }
+  $enable = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath runner -Root $root -Sub enable -Actor 'contract-reviewer' | ConvertFrom-Json
+  if ($LASTEXITCODE -ne 0 -or $enable.enabled -ne $true) { throw 'runner enable contract failed.' }
+  $stateFile = Join-Path $root 'state.json'
+  $dueState = [IO.File]::ReadAllText($stateFile) | ConvertFrom-Json
+  $dueState.jobs = @(@($dueState.jobs) + @([pscustomobject]@{
+    id = 'runner-job'; name = 'Runner job'; zone = 'regular'; cron = '0 9 * * *'; everyMinutes = $null; enabled = $true
+    nextRunUtc = '2020-01-01T00:00:00Z'; action = 'local.status'; resource = 'self'; policy = 'allow'
+  }))
+  [IO.File]::WriteAllText($stateFile, ($dueState | ConvertTo-Json -Depth 10))
+  $live = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath tick -Root $root | ConvertFrom-Json
+  if ($LASTEXITCODE -ne 0 -or $live.launched -ne 1 -or @($live.results | Where-Object { $_.status -ceq 'succeeded' }).Count -ne 1) { throw 'live tick contract failed.' }
+  $afterRun = [IO.File]::ReadAllText($stateFile) | ConvertFrom-Json
+  if (@($afterRun.runs | Where-Object { $_.status -ceq 'succeeded' }).Count -ne 1) { throw 'run record missing.' }
+  $runnerJob = @($afterRun.jobs | Where-Object { $_.id -ceq 'runner-job' })[0]
+  if ([string]$runnerJob.nextRunUtc -eq '2020-01-01T00:00:00Z') { throw 'nextRunUtc not advanced after run.' }
+  $auditAfterRun = [IO.File]::ReadAllText((Join-Path $root 'audit.jsonl'))
+  if ($auditAfterRun -notmatch 'job.succeeded') { throw 'run must be audited.' }
+  $disabledRunner = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath runner -Root $root -Sub disable -Actor 'contract-reviewer' | ConvertFrom-Json
+  if ($LASTEXITCODE -ne 0 -or $disabledRunner.enabled -ne $false) { throw 'runner disable contract failed.' }
+  $afterDisable = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath tick -Root $root | Out-String
+  if ($afterDisable -notmatch 'Runner disabled') { throw 'tick must stop after runner disable.' }
+  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath remove -Root $root -Id runner-job | Out-Null
+
+  # C-05/C-06: timeout harus membunuh child process lalu masuk dead-letter (retry terbatas).
+  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath runner -Root $root -Sub enable -Actor 'contract-reviewer' | Out-Null
+  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath add -Root $root -Id timeout-job -Name 'Timeout job' -Zone regular -Cron '0 9 * * *' -Action local.status -Resource self | Out-Null
+  $timeoutState = [IO.File]::ReadAllText($stateFile) | ConvertFrom-Json
+  foreach ($job in @($timeoutState.jobs)) { if ([string]$job.id -ceq 'timeout-job') { $job.nextRunUtc = '2020-01-01T00:00:00Z'; $job | Add-Member -NotePropertyName timeoutSeconds -NotePropertyValue 1 -Force } }
+  [IO.File]::WriteAllText($stateFile, ($timeoutState | ConvertTo-Json -Depth 10))
+  $slow = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath tick -Root $root | ConvertFrom-Json
+  if ($LASTEXITCODE -ne 0 -or $slow.deadLetter -ne 1) { throw 'timeout must end in dead-letter.' }
+  $deadRun = @(([IO.File]::ReadAllText($stateFile) | ConvertFrom-Json).runs | Where-Object { $_.jobId -ceq 'timeout-job' })[0]
+  if ([string]$deadRun.status -cne 'dead-letter' -or [string]$deadRun.error -cne 'timeout' -or [int]$deadRun.attempts -ne 3) { throw "dead-letter record invalid: $($deadRun | ConvertTo-Json -Compress)" }
+  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath remove -Root $root -Id timeout-job | Out-Null
+  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath runner -Root $root -Sub disable -Actor 'contract-reviewer' | Out-Null
   $held = [IO.File]::Open((Join-Path $root 'runner.lock'), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
   try {
     foreach ($mode in @('pause', 'resume', 'remove', 'schedule')) {
@@ -178,6 +221,7 @@ try {
     executable = 'powershell.exe'; arguments = @('-Command', 'throw "unexpected execution"')
   })
   $state.lastAuditHash = ('0' * 64)
+  $state.runs = @()
   [System.IO.File]::WriteAllText($stateFile, ($state | ConvertTo-Json -Depth 10))
   [System.IO.File]::WriteAllText($auditFile, '')
   foreach ($arguments in @(@('tick'), @('tick', '-DryRun'))) {

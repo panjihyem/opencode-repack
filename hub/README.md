@@ -10,7 +10,7 @@ Status: prototipe. Eksekusi job diblokir (ADR-007).
 
 | Berkas | Isi |
 | --- | --- |
-| `Hyper-Hub.ps1` | Hub utama: `init`, `status`, `discover`, `policy-check`, `add`, `run`, `tick`, `audit`, `self-check`, `jobs`, `schedule`, `remove`, `pause`, `resume`, `health`, `backup`, `restore`, `secret`, `api`, `connector`, `policy`, `remote` |
+| `Hyper-Hub.ps1` | Hub utama: `init`, `status`, `discover`, `policy-check`, `add`, `run`, `tick`, `audit`, `self-check`, `jobs`, `schedule`, `remove`, `pause`, `resume`, `health`, `backup`, `restore`, `secret`, `api`, `connector`, `policy`, `runner`, `remote` |
 | `Hyper-Hub-SelfCheck.ps1` | Self-check audit chain, cron, origin policy, lock, health |
 | `Hyper-Hub-ContractCheck.ps1` | Regresi fail-closed dan fungsional |
 | `Hyper-Hub-SpecCheck.ps1` | Gate struktur dokumen per berkas |
@@ -55,7 +55,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Policy.ps1 -
 
 - Windows + PowerShell 5.1. Runtime lain belum didukung (ADR-002, `docs/Runtime-Decision.md`).
 - Satu mesin, satu runner.
-- `tick` dan `run` menolak eksekusi: `Runner disabled` (ADR-007).
+- `tick` dan `run` menolak eksekusi tanpa opt-in: `runner enable -Actor <nama>` menulis `runner.enabled`; tanpa itu `Runner disabled`. Runner hanya menjalankan `local.status`; `connector.call`/`external.send` tetap ditolak policy.
+- Runner memakai `runner.lock` eksklusif, timeout 30 detik (kill process tree), retry 3x backoff eksponensial, lalu dead-letter di `state.json.runs`.
 - Kanal `whatsapp` masih `planned`; pairing dijalankan dari folder bridge.
 - State prototipe yang berisi field job tambahan atau aksi selain `local.status`/`self` kini ditolak saat dibaca. Tinjau dan migrasikan manual setelah backup; jangan menghapus audit/state untuk melewati validasi.
 - Gate CI Windows ada di `.github/workflows/hyper-hub-check.yml`; CI menguji kontrak, bukan memberi persetujuan owner atau membuka gate eksekusi.

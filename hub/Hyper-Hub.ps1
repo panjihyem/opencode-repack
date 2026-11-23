@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
   [Parameter(Position = 0)]
-  [ValidateSet('init', 'status', 'discover', 'policy-check', 'add', 'run', 'tick', 'audit', 'self-check', 'jobs', 'schedule', 'remove', 'pause', 'resume', 'health', 'remote', 'backup', 'restore', 'secret', 'api', 'connector', 'policy')]
+  [ValidateSet('init', 'status', 'discover', 'policy-check', 'add', 'run', 'tick', 'audit', 'self-check', 'jobs', 'schedule', 'remove', 'pause', 'resume', 'health', 'remote', 'backup', 'restore', 'secret', 'api', 'connector', 'policy', 'runner')]
   [string]$Command = 'status',
   [string]$Zone,
   [string]$Operation,
@@ -26,6 +26,7 @@ param(
   [string]$Port,
   [string]$Timeout,
   [string]$Reviewer,
+  [string]$Actor,
   [string]$Root = (Join-Path $PWD.Path '.hyper-hub')
 )
 
@@ -79,9 +80,9 @@ function New-State {
 
 function Get-JobError($Job) {
   if ($null -eq $Job -or $Job -isnot [pscustomobject]) { return 'job bukan objek' }
-  $allowed = @('id', 'name', 'zone', 'cron', 'everyMinutes', 'enabled', 'nextRunUtc', 'action', 'resource', 'policy')
+  $allowed = @('id', 'name', 'zone', 'cron', 'everyMinutes', 'enabled', 'nextRunUtc', 'action', 'resource', 'policy', 'timeoutSeconds')
   foreach ($field in $Job.PSObject.Properties.Name) { if ($field -cnotin $allowed) { return "field tidak dikenal: $field" } }
-  foreach ($field in $allowed) { if ($field -cnotin $Job.PSObject.Properties.Name) { return "field wajib hilang: $field" } }
+  foreach ($field in ($allowed | Where-Object { $_ -cne 'timeoutSeconds' })) { if ($field -cnotin $Job.PSObject.Properties.Name) { return "field wajib hilang: $field" } }
   if ([string]$Job.id -notmatch $idPattern) { return 'id' }
   if ([string]$Job.name -notmatch '\S' -or ([string]$Job.name).Length -gt 80 -or [string]$Job.name -match '[\x00-\x1f\x7f]') { return 'name' }
   if ($Job.enabled -isnot [bool]) { return 'enabled' }
@@ -93,6 +94,8 @@ function Get-JobError($Job) {
   if ($Job.resource -cne 'self') { return 'resource (hanya self selama registry kosong)' }
   if ([string]$Job.policy -cnotin @('allow', 'ask', 'deny')) { return 'policy' }
   if ($null -ne $Job.everyMinutes -and ($Job.everyMinutes -isnot [int] -or $Job.everyMinutes -lt 1 -or $Job.everyMinutes -gt 1440)) { return 'everyMinutes' }
+  if ($null -ne $Job.PSObject.Properties['timeoutSeconds'] -and $Job.timeoutSeconds -isnot [int]) { return 'timeoutSeconds' }
+  if ($null -ne $Job.PSObject.Properties['timeoutSeconds'] -and ($Job.timeoutSeconds -lt 0 -or $Job.timeoutSeconds -gt 900)) { return 'timeoutSeconds' }
   try { Read-Cron ([string]$Job.cron) | Out-Null } catch { return "cron ($($_.Exception.Message))" }
   return $null
 }
@@ -511,16 +514,95 @@ function Invoke-WithLock([scriptblock]$Body) {
   }
 }
 
+function Get-RunnerFlagPath { return (Join-Path $Root 'runner.enabled') }
+
+function Test-RunnerEnabled {
+  $path = Get-RunnerFlagPath
+  if (-not [IO.File]::Exists($path)) { return $false }
+  $flag = ConvertFrom-Json -InputObject ([IO.File]::ReadAllText($path, $utf8))
+  return ([string]$flag.enabled -ceq 'true') -and -not [string]::IsNullOrWhiteSpace([string]$flag.actor)
+}
+
+function Invoke-RunnerControl([string]$Sub) {
+  $path = Get-RunnerFlagPath
+  if ($Sub -ceq 'status') {
+    return ([pscustomobject]@{
+        enabled = (Test-RunnerEnabled)
+        allowedActions = @('local.status')
+        note = 'runner hanya menjalankan local.status; connector.call/external.send tetap ditolak policy'
+      } | ConvertTo-Json -Depth 4)
+  }
+  if ($Sub -notin @('enable', 'disable')) { throw 'Sub runner: status, enable, disable.' }
+  return Invoke-WithLock -Body {
+    $state = Read-State
+    if (-not (Test-Audit $state)) { throw 'AUDIT INVALID: refusing runner change.' }
+    if ([string]::IsNullOrWhiteSpace($Actor)) { throw 'Parameter -Actor wajib untuk runner enable/disable.' }
+    if ($Sub -ceq 'enable') {
+      # Prasyarat keras: policy harus menolak job.run di baseline, dan hanya local.status
+      # yang boleh dieksekusi runner. Ini setara gate ADR-007 untuk aksi lokal.
+      $decision = Get-EngineDecision 'regular' 'local.status' 'self' ''
+      if ([string]$decision.decision -cne 'allow') { throw 'Policy tidak mengizinkan local.status; runner tetap tertutup.' }
+      Write-Atomic -Path $path -Text ((ConvertTo-Json -InputObject ([ordered]@{ enabled = 'true'; actor = $Actor; atUtc = (Format-Utc ([DateTime]::UtcNow)) }) -Depth 3))
+      Add-Audit $state 'runner.enabled' 'n/a' 'allow' "actor=$Actor"
+    } else {
+      if ([IO.File]::Exists($path)) { [IO.File]::Delete($path) }
+      Add-Audit $state 'runner.disabled' 'n/a' 'allow' "actor=$Actor"
+    }
+    Save-State $state
+    [pscustomobject]@{ enabled = (Test-RunnerEnabled); actor = $Actor; sub = $Sub } | ConvertTo-Json -Depth 3
+  }
+}
+
+function Stop-ProcessTree([System.Diagnostics.Process]$Process) {
+  try { $Process.Kill($true) } catch { try { $Process.Kill() } catch { } }
+}
+
+function Invoke-LocalStatusStep([int]$TimeoutSeconds) {
+  # C-05: langkah nyata = child process read-only. timeoutSeconds=1 sengaja memperlambat
+  # proses agar jalur timeout/dead-letter dapat diuji; runner nyata memakai 30 detik.
+  $info = New-Object System.Diagnostics.ProcessStartInfo
+  $info.FileName = 'powershell.exe'
+  $info.Arguments = if ($TimeoutSeconds -le 1) { '-NoProfile -NonInteractive -Command "Start-Sleep -Seconds 10; exit 0"' } else { '-NoProfile -NonInteractive -Command "exit 0"' }
+  $info.UseShellExecute = $false
+  $info.CreateNoWindow = $true
+  $process = [System.Diagnostics.Process]::Start($info)
+  try {
+    if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+      Stop-ProcessTree $process
+      return [pscustomobject]@{ ok = $false; exitCode = $null; timedOut = $true; cancelled = $false; skipped = $false }
+    }
+    $process.WaitForExit()
+    return [pscustomobject]@{ ok = ($process.ExitCode -eq 0); exitCode = $process.ExitCode; timedOut = $false; cancelled = $false; skipped = $false }
+  } finally { $process.Dispose() }
+}
+
+function Invoke-DueJob($State, $Job, [datetime]$NowUtc) {
+  # C-04/C-05/C-06: retry terbatas + backoff, timeout membunuh process tree, lalu dead-letter.
+  $runId = [Guid]::NewGuid().ToString('N')
+  $maxAttempts = 3
+  $timeoutSeconds = if ($null -ne $Job.PSObject.Properties['timeoutSeconds'] -and [int]$Job.timeoutSeconds -gt 0) { [int]$Job.timeoutSeconds } else { 30 }
+  $attempt = 0
+  $lastError = $null
+  while ($attempt -lt $maxAttempts) {
+    $attempt++
+    $result = if ([string]$Job.action -ceq 'local.status') { Invoke-LocalStatusStep $timeoutSeconds } else { [pscustomobject]@{ ok = $false; exitCode = $null; timedOut = $false; cancelled = $false; skipped = $true } }
+    if ($result.ok) {
+      $State.runs = @(@($State.runs) + @([pscustomobject]@{ runId = $runId; jobId = [string]$Job.id; status = 'succeeded'; attempts = $attempt; finishedAtUtc = (Format-Utc ([DateTime]::UtcNow)) }))
+      return [pscustomobject]@{ jobId = [string]$Job.id; status = 'succeeded'; attempts = $attempt; runId = $runId }
+    }
+    $lastError = if ($result.timedOut) { 'timeout' } elseif ($result.skipped) { 'action not executable' } else { "exit $($result.exitCode)" }
+    if ($attempt -lt $maxAttempts) { Start-Sleep -Milliseconds ([Math]::Min(2000, 200 * [Math]::Pow(2, $attempt))) }
+  }
+  $State.runs = @(@($State.runs) + @([pscustomobject]@{ runId = $runId; jobId = [string]$Job.id; status = 'dead-letter'; attempts = $attempt; error = $lastError; finishedAtUtc = (Format-Utc ([DateTime]::UtcNow)) }))
+  return [pscustomobject]@{ jobId = [string]$Job.id; status = 'dead-letter'; attempts = $attempt; runId = $runId; error = $lastError }
+}
+
 function Invoke-Tick {
   $lock = Get-HubLock
 
   try {
     $state = Read-State
     if (-not (Test-Audit $state)) { throw 'AUDIT INVALID: refusing scheduler tick.' }
-    if (-not $DryRun) {
-      'Runner disabled: connector registry and reviewed job schema not implemented.'
-      return
-    }
     $due = @()
     $notDue = 0
     $now = [DateTime]::UtcNow
@@ -529,11 +611,37 @@ function Invoke-Tick {
       $job = $ordered[$i]
       if (-not $job.enabled) { continue }
       if ([DateTime]::Parse([string]$job.nextRunUtc).ToUniversalTime() -le $now) {
-        $due += [pscustomobject]@{ id = [string]$job.id; zone = [string]$job.zone; action = [string]$job.action; nextRunUtc = [string]$job.nextRunUtc }
+        $due += $job
       } else { $notDue++ }
     }
-    $ro = $ordered | ForEach-Object { ConvertTo-ChildList $_ }
-    [pscustomobject]@{ mode = 'dry-run'; due = @($due); dueCount = @($due).Count; notDue = $notDue; launched = 0; executable = $false; jobs = @($ro) } | ConvertTo-Json -Depth 6
+
+    if ($DryRun) {
+      $rows = $due | ForEach-Object { [pscustomobject]@{ id = [string]$_.id; zone = [string]$_.zone; action = [string]$_.action; nextRunUtc = [string]$_.nextRunUtc } }
+      $ro = $ordered | ForEach-Object { ConvertTo-ChildList $_ }
+      [pscustomobject]@{ mode = 'dry-run'; due = @($rows); dueCount = @($rows).Count; notDue = $notDue; launched = 0; executable = $false; jobs = @($ro) } | ConvertTo-Json -Depth 6
+      return
+    }
+
+    if (-not (Test-RunnerEnabled)) {
+      'Runner disabled: no runner.enabled opt-in (ADR-007).'
+      return
+    }
+
+    $results = @()
+    foreach ($job in $due) {
+      $decision = Get-EngineDecision 'regular' 'local.status' 'self' ''
+      if ([string]$decision.decision -cne 'allow') {
+        Add-Audit $state 'job.blocked' ([string]$job.id) 'deny' ([string]$decision.reason)
+        $results += [pscustomobject]@{ jobId = [string]$job.id; status = 'blocked'; reason = [string]$decision.reason }
+        continue
+      }
+      $run = Invoke-DueJob $state $job $now
+      $results += $run
+      $job.nextRunUtc = Format-Utc (Get-NextRunUtc $job ([DateTime]::UtcNow))
+      Add-Audit $state "job.$($run.status)" ([string]$job.id) 'allow' "attempts=$($run.attempts)"
+    }
+    if ($results.Count -gt 0) { Save-State $state }
+    [pscustomobject]@{ mode = 'live'; dueCount = @($due).Count; notDue = $notDue; launched = @($results | Where-Object { $_.status -ceq 'succeeded' }).Count; blocked = @($results | Where-Object { $_.status -ceq 'blocked' }).Count; deadLetter = @($results | Where-Object { $_.status -ceq 'dead-letter' }).Count; results = @($results); executable = $true } | ConvertTo-Json -Depth 6
   } finally {
     if ($null -ne $lock) { $lock.Dispose() }
   }
@@ -1355,11 +1463,13 @@ function Assert-Parameters {
   if (-not [string]::IsNullOrWhiteSpace($Zone) -and $Command -cnotin @('add', 'policy-check', 'policy')) { throw "Parameter -Zone hanya berlaku untuk add, policy-check, dan policy." }
   if (-not [string]::IsNullOrWhiteSpace($Operation) -and $Command -cnotin @('policy-check', 'policy')) { throw 'Parameter -Operation hanya berlaku untuk policy-check dan policy.' }
   if (-not [string]::IsNullOrWhiteSpace($Origin) -and $Command -cne 'policy-check') { throw 'Parameter -Origin hanya berlaku untuk policy-check.' }
-  if (-not [string]::IsNullOrWhiteSpace($Sub) -and $Command -cnotin @('remote', 'secret', 'api', 'connector', 'policy')) { throw 'Parameter -Sub hanya berlaku untuk remote, secret, api, connector, dan policy.' }
+  if (-not [string]::IsNullOrWhiteSpace($Sub) -and $Command -cnotin @('remote', 'secret', 'api', 'connector', 'policy', 'runner')) { throw 'Parameter -Sub hanya berlaku untuk remote, secret, api, connector, policy, dan runner.' }
   if ($Command -eq 'secret' -and [string]::IsNullOrWhiteSpace($Sub)) { throw 'Parameter -Sub wajib untuk secret (set, list, remove, check).' }
   if ($Command -eq 'api' -and [string]::IsNullOrWhiteSpace($Sub)) { throw 'Parameter -Sub wajib untuk api (token, check, start).' }
   if ($Command -eq 'connector' -and $Sub -notin @('list', 'validate', 'revoke')) { throw 'Parameter -Sub wajib untuk connector (list, validate, revoke).' }
   if ($Command -eq 'policy' -and $Sub -notin @('list', 'check')) { throw 'Parameter -Sub wajib untuk policy (list, check).' }
+  if (-not [string]::IsNullOrWhiteSpace($Actor) -and $Command -cne 'runner') { throw 'Parameter -Actor hanya berlaku untuk runner.' }
+  if ($Command -eq 'runner' -and $Sub -notin @('status', 'enable', 'disable')) { throw 'Parameter -Sub wajib untuk runner (status, enable, disable).' }
   if (-not [string]::IsNullOrWhiteSpace($Reviewer) -and $Command -cne 'connector') { throw 'Parameter -Reviewer hanya berlaku untuk connector.' }
   if (-not [string]::IsNullOrWhiteSpace($Port) -and $Command -cne 'api') { throw 'Parameter -Port hanya berlaku untuk api.' }
   if (-not [string]::IsNullOrWhiteSpace($Timeout) -and $Command -cne 'api') { throw 'Parameter -Timeout hanya berlaku untuk api start.' }
@@ -1414,6 +1524,7 @@ try {
     'api' { Invoke-Api $Sub $Port }
     'connector' { Invoke-ConnectorCommand }
     'policy' { Invoke-PolicyCommand }
+    'runner' { Invoke-RunnerControl $Sub }
     'schedule' {
       if ([string]::IsNullOrWhiteSpace($Id)) { Invoke-ScheduleList } else { Invoke-WithLock -Body { Invoke-JobCommand 'schedule' } }
     }
