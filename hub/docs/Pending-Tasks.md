@@ -33,13 +33,13 @@ Rekomendasi untuk tiap keputusan owner: `Rekomendasi-Keputusan-Owner.md`. Rekome
 
 | ID usul | Task | Bukti kebutuhan |
 | --- | --- | --- |
-| `N-01` | `remote -Sub model` untuk daftar/pilih provider dan model | config punya 7 provider |
-| `N-02` | Supervisi server FLM (start/stop/health) di `health` | server mati -> `ECONNREFUSED` |
-| `N-03` | Supervisi Copilot bridge + verifikasi kunci loopback | port 57842 |
-| `N-04` | Turunkan atau buktikan klaim `tools:true` milik `copilot-bridge/copilot` | uji tool calling gagal |
-| `N-05` | Turunkan `permission: {"*":"allow"}` ke deny-by-default | ADR-003 |
-| `N-06` | Indeks `flm-results/` (model x decode x kualitas) | 60+ artefak tanpa indeks |
-| `N-07` | Ulangi perbandingan model lokal dengan timeout seragam | run campur 0/3 lalu 3/3 |
+| `N-01` | `remote -Sub model` untuk daftar/pilih provider dan model | SELESAI: membaca config nyata (8 provider), apiKey tidak ditampilkan |
+| `N-02` | Supervisi server FLM (start/stop/health) di `health` | USANG: provider `flm` sudah tidak ada di config; LM Studio loopback yang hidup |
+| `N-03` | Supervisi Copilot bridge + verifikasi kunci loopback | USANG: port 57842 tidak ada, provider `copilot-bridge` sudah dihapus |
+| `N-04` | Turunkan atau buktikan klaim `tools:true` milik `copilot-bridge/copilot` | USANG: provider tersebut tidak ada lagi |
+| `N-05` | Turunkan `permission: {"*":"allow"}` ke deny-by-default | SELESAI (alat): `Hyper-Hub-Permission.ps1` + rollback; penerapan ke config pengguna menunggu izin |
+| `N-06` | Indeks `flm-results/` (model x decode x kualitas) | SELESAI: `hub/flm-results/INDEX.md`, 77 artefak |
+| `N-07` | Ulangi perbandingan model lokal dengan timeout seragam | TERBLOKIR: klasifikasi komparabilitas selesai (`Hyper-Hub-Rerun.ps1`, 14/19 komparabel), tetapi pengukuran ulang butuh runtime FLM yang sudah tidak terpasang - lihat `docs/Benchmark-Comparability.md` |
 | `N-08` | Auto-start bridge setelah pairing | proses mati saat PC restart |
 | `N-09` | `remote -Sub run` untuk menjalankan bridge sebagai layanan | belum ada perintah |
 | `N-10` | Connector registry tervalidasi sebelum membuka `run`/`tick` | SUDAH ADA `Hyper-Hub-Connector.ps1`; sisa: entri connector nyata yang disetujui reviewer |

@@ -1282,6 +1282,56 @@ function Invoke-Remote([string]$Sub, [string]$Channel, [switch]$Reset) {
       Write-DotEnv $envPath $map
       return ([pscustomobject]@{ channel = $meta.id; added = $OwnerId; allowed = @(Read-RemoteAllowlist $map $meta.id); executable = $false } | ConvertTo-Json -Compress -Depth 4)
     }
+    'model' {
+      # N-01: daftar/pilih provider+model dari config OpenCode nyata. Tanpa nilai rahasia:
+      # hanya nama, id model, dan apakah apiKey/baseURL terisi.
+      $configPath = Join-Path $env:USERPROFILE '.config\opencode\opencode.json'
+      if (-not (Test-Path -LiteralPath $configPath)) { throw "Config OpenCode tidak ditemukan: $configPath" }
+      $config = ConvertFrom-Json -InputObject ([IO.File]::ReadAllText($configPath, $utf8))
+      $providers = @()
+      if ($null -ne $config.provider) {
+        foreach ($entry in $config.provider.PSObject.Properties) {
+          $models = @()
+          if ($null -ne $entry.Value.models) {
+            foreach ($model in $entry.Value.models.PSObject.Properties) {
+              $models += [pscustomobject]@{ id = [string]$model.Name; name = [string]$model.Value.name; toolCall = ($model.Value.tool_call -eq $true) }
+            }
+          }
+          $providers += [pscustomobject]@{
+            id = $entry.Name
+            baseURL = $(if ($entry.Value.options.baseURL) { [string]$entry.Value.options.baseURL } else { $null })
+            hasCredentials = (-not [string]::IsNullOrWhiteSpace([string]$entry.Value.options.apiKey))
+            models = @($models)
+          }
+        }
+      }
+      if ([string]::IsNullOrWhiteSpace($ModelProvider)) {
+        $list = [pscustomobject]@{
+          config = $configPath
+          providers = @($providers)
+          note = 'pilih dengan -ModelProvider <id> -ModelId <id>; nilai apiKey tidak pernah ditampilkan'
+          valuesExposed = $false
+        }
+        if (-not [string]::IsNullOrWhiteSpace($envPath) -and (Test-Path -LiteralPath $envPath)) {
+          $current = Read-DotEnv $envPath
+          $list | Add-Member -NotePropertyName current -NotePropertyValue ([pscustomobject]@{ provider = [string]$current['OPENCODE_MODEL_PROVIDER']; model = [string]$current['OPENCODE_MODEL_ID'] })
+        }
+        return ($list | ConvertTo-Json -Depth 6)
+      }
+      $chosen = @($providers | Where-Object { $_.id -ceq $ModelProvider })
+      if ($chosen.Count -ne 1) { throw "Provider tidak ada di config: $ModelProvider" }
+      if (@($chosen[0].models).Count -eq 0) { throw "Provider $ModelProvider tidak punya model terdaftar." }
+      if ([string]::IsNullOrWhiteSpace($ModelId)) { throw 'Parameter -ModelId wajib saat memilih provider.' }
+      if (@($chosen[0].models | Where-Object { $_.id -ceq $ModelId }).Count -ne 1) { throw "Model $ModelId tidak ada di provider $ModelProvider." }
+      if ([string]::IsNullOrWhiteSpace($Channel)) { throw 'Parameter -Channel wajib saat menyimpan pilihan model.' }
+      if ([string]::IsNullOrWhiteSpace($envPath)) { throw 'Kanal tidak memiliki folder konfigurasi.' }
+      $map = Read-DotEnv $envPath
+      $map['OPENCODE_MODEL_PROVIDER'] = $ModelProvider
+      $map['OPENCODE_MODEL_ID'] = $ModelId
+      if (-not [string]::IsNullOrWhiteSpace($chosen[0].baseURL)) { $map['OPENCODE_API_URL'] = [string]$chosen[0].baseURL }
+      Write-DotEnv $envPath $map
+      return ([pscustomobject]@{ channel = $meta.id; provider = $ModelProvider; model = $ModelId; saved = $true; valuesExposed = $false } | ConvertTo-Json -Compress)
+    }
     'unpair' {
       # Putus perangkat tertaut: hapus sesi login WhatsApp. Nomor harus login ulang.
       if ($meta.id -cne 'whatsapp') { throw "unpair hanya untuk kanal yang memakai sesi tertaut (whatsapp). Telegram cukup 'remote -Sub clear'." }
