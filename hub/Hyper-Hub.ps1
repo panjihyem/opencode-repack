@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
   [Parameter(Position = 0)]
-  [ValidateSet('init', 'status', 'discover', 'policy-check', 'add', 'run', 'tick', 'audit', 'self-check', 'jobs', 'schedule', 'remove', 'pause', 'resume', 'health', 'remote', 'backup', 'restore', 'secret', 'api', 'connector', 'policy', 'runner')]
+  [ValidateSet('init', 'status', 'discover', 'policy-check', 'add', 'run', 'tick', 'audit', 'self-check', 'jobs', 'schedule', 'remove', 'pause', 'resume', 'health', 'remote', 'backup', 'restore', 'secret', 'api', 'connector', 'policy', 'runner', 'approval')]
   [string]$Command = 'status',
   [string]$Zone,
   [string]$Operation,
@@ -27,6 +27,7 @@ param(
   [string]$Timeout,
   [string]$Reviewer,
   [string]$Actor,
+  [string]$Reason,
   [string]$Root = (Join-Path $PWD.Path '.hyper-hub')
 )
 
@@ -825,6 +826,19 @@ function Invoke-PolicyCommand {
   if ($code -ne 0) { throw "Perintah policy gagal (exit $code)." }
 }
 
+function Invoke-ApprovalCommand {
+  $approvalScript = Join-Path $PSScriptRoot 'Hyper-Hub-Approval.ps1'
+  if (-not [IO.File]::Exists($approvalScript)) { throw 'Hyper-Hub-Approval.ps1 tidak ditemukan.' }
+  $args = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $approvalScript + '"'), '-Action', ('"' + $Sub + '"'), '-Root', ('"' + $Root + '"'))
+  if (-not [string]::IsNullOrWhiteSpace($Id)) { $args += @('-Id', ('"' + $Id + '"')) }
+  if (-not [string]::IsNullOrWhiteSpace($Actor)) { $args += @('-Actor', ('"' + $Actor + '"')) }
+  if (-not [string]::IsNullOrWhiteSpace($Reason)) { $args += @('-Reason', ('"' + $Reason + '"')) }
+  $output = & powershell.exe @args 2>&1
+  $code = $LASTEXITCODE
+  $output | ForEach-Object { $_ }
+  if ($code -ne 0) { throw "Perintah approval gagal (exit $code)." }
+}
+
 function Invoke-Health {
   # ponytail: ringkasan baca-saja; tanpa prompt mentah, tanpa HTTP, tanpa eksekusi.
   $state = Read-State
@@ -861,8 +875,8 @@ function Invoke-Health {
       invalidSchedule = $invalid
       nextRunUtc = $(if ($null -ne $next) { Format-Utc $next } else { $null })
     }
-    queue = @{ pending = 0; running = 0; deadLetter = 0; note = 'runner disabled: no job is ever launched' }
-    approvals = @{ pending = 0; note = 'approval broker not implemented (D-07)' }
+    queue = @{ pending = 0; running = 0; deadLetter = $(try { $state = Read-State; @($state.runs | Where-Object { [string]$_.status -ceq 'dead-letter' }).Count } catch { 0 }); note = $(if (Test-RunnerEnabled) { 'runner opt-in aktif: hanya local.status' } else { 'runner disabled: no job is ever launched' }) }
+    approvals = @{ pending = $(try { $broker = ConvertFrom-Json -InputObject ([IO.File]::ReadAllText((Join-Path $Root 'approvals.json'), $utf8)); @($broker.requests.PSObject.Properties | Where-Object { [string]$_.Value.state -ceq 'pending' }).Count } catch { 0 }); note = 'broker lokal: nonce sekali pakai, expiry deny (D-07)' }
     connectors = (Get-ConnectorSummary)
     executable = $false
   } | ConvertTo-Json -Depth 5
@@ -1453,7 +1467,7 @@ if ($Command -eq 'self-check') {
 }
 
 function Assert-Parameters {
-  $idCommands = @('add', 'remove', 'pause', 'resume', 'schedule', 'connector', 'policy')
+  $idCommands = @('add', 'remove', 'pause', 'resume', 'schedule', 'connector', 'policy', 'approval')
   if ($DryRun -and $Command -cne 'tick') { throw "Flag -DryRun hanya berlaku untuk tick, bukan $Command." }
   if (-not [string]::IsNullOrWhiteSpace($Id) -and $Command -cnotin $idCommands) { throw "Parameter -Id tidak berlaku untuk $Command." }
   foreach ($pair in @(@('Name', $Name), @('Cron', $Cron), @('EveryMinutes', $EveryMinutes), @('Action', $Action), @('Resource', $Resource))) {
@@ -1463,17 +1477,19 @@ function Assert-Parameters {
   if (-not [string]::IsNullOrWhiteSpace($Zone) -and $Command -cnotin @('add', 'policy-check', 'policy')) { throw "Parameter -Zone hanya berlaku untuk add, policy-check, dan policy." }
   if (-not [string]::IsNullOrWhiteSpace($Operation) -and $Command -cnotin @('policy-check', 'policy')) { throw 'Parameter -Operation hanya berlaku untuk policy-check dan policy.' }
   if (-not [string]::IsNullOrWhiteSpace($Origin) -and $Command -cne 'policy-check') { throw 'Parameter -Origin hanya berlaku untuk policy-check.' }
-  if (-not [string]::IsNullOrWhiteSpace($Sub) -and $Command -cnotin @('remote', 'secret', 'api', 'connector', 'policy', 'runner')) { throw 'Parameter -Sub hanya berlaku untuk remote, secret, api, connector, policy, dan runner.' }
+  if (-not [string]::IsNullOrWhiteSpace($Sub) -and $Command -cnotin @('remote', 'secret', 'api', 'connector', 'policy', 'runner', 'approval')) { throw 'Parameter -Sub hanya berlaku untuk remote, secret, api, connector, policy, runner, dan approval.' }
+  if ($Command -eq 'approval' -and $Sub -notin @('request', 'list', 'approve', 'reject', 'expire', 'consume')) { throw 'Parameter -Sub wajib untuk approval (request, list, approve, reject, expire, consume).' }
   if ($Command -eq 'secret' -and [string]::IsNullOrWhiteSpace($Sub)) { throw 'Parameter -Sub wajib untuk secret (set, list, remove, check).' }
   if ($Command -eq 'api' -and [string]::IsNullOrWhiteSpace($Sub)) { throw 'Parameter -Sub wajib untuk api (token, check, start).' }
   if ($Command -eq 'connector' -and $Sub -notin @('list', 'validate', 'revoke')) { throw 'Parameter -Sub wajib untuk connector (list, validate, revoke).' }
   if ($Command -eq 'policy' -and $Sub -notin @('list', 'check')) { throw 'Parameter -Sub wajib untuk policy (list, check).' }
-  if (-not [string]::IsNullOrWhiteSpace($Actor) -and $Command -cne 'runner') { throw 'Parameter -Actor hanya berlaku untuk runner.' }
+  if (-not [string]::IsNullOrWhiteSpace($Actor) -and $Command -cnotin @('runner', 'approval')) { throw 'Parameter -Actor hanya berlaku untuk runner dan approval.' }
   if ($Command -eq 'runner' -and $Sub -notin @('status', 'enable', 'disable')) { throw 'Parameter -Sub wajib untuk runner (status, enable, disable).' }
   if (-not [string]::IsNullOrWhiteSpace($Reviewer) -and $Command -cne 'connector') { throw 'Parameter -Reviewer hanya berlaku untuk connector.' }
   if (-not [string]::IsNullOrWhiteSpace($Port) -and $Command -cne 'api') { throw 'Parameter -Port hanya berlaku untuk api.' }
   if (-not [string]::IsNullOrWhiteSpace($Timeout) -and $Command -cne 'api') { throw 'Parameter -Timeout hanya berlaku untuk api start.' }
   if (-not [string]::IsNullOrWhiteSpace($BackupPath) -and $Command -cnotin @('backup', 'restore')) { throw 'Parameter -BackupPath hanya berlaku untuk backup dan restore.' }
+  if (-not [string]::IsNullOrWhiteSpace($Reason) -and $Command -cne 'approval') { throw 'Parameter -Reason hanya berlaku untuk approval.' }
   if ($Command -ceq 'restore' -and [string]::IsNullOrWhiteSpace($BackupPath)) { throw 'Parameter -BackupPath wajib untuk restore.' }
   if (-not [string]::IsNullOrWhiteSpace($Channel) -and $Command -cne 'remote') { throw 'Parameter -Channel hanya berlaku untuk remote.' }
   foreach ($extra in @(@('OwnerId', $OwnerId), @('ServerVersion', $ServerVersion), @('ApiUrl', $ApiUrl), @('ModelProvider', $ModelProvider), @('ModelId', $ModelId))) {
@@ -1525,6 +1541,7 @@ try {
     'connector' { Invoke-ConnectorCommand }
     'policy' { Invoke-PolicyCommand }
     'runner' { Invoke-RunnerControl $Sub }
+    'approval' { Invoke-ApprovalCommand }
     'schedule' {
       if ([string]::IsNullOrWhiteSpace($Id)) { Invoke-ScheduleList } else { Invoke-WithLock -Body { Invoke-JobCommand 'schedule' } }
     }

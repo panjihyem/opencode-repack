@@ -162,6 +162,21 @@ try {
   & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath connector -Root $root -Sub revoke -Id test-conn | Out-Null
   $revokedHealth = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath health -Root $root | ConvertFrom-Json
   if ($revokedHealth.connectors.allowed -ne 0) { throw 'revoked connector must be denied.' }
+
+  # D-07: approval broker nonce sekali pakai dan self-approval ditolak.
+  $requested = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath approval -Root $root -Sub request -Id approval-job -Actor requester -Reason contract | ConvertFrom-Json
+  if ($LASTEXITCODE -ne 0 -or $requested.state -cne 'pending') { throw 'approval request contract failed.' }
+  $selfApprove = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), 'approval', '-Root', ('"' + $root + '"'), '-Sub', 'approve', '-Id', 'approval-job', '-Actor', 'requester') -Wait -PassThru -WindowStyle Hidden -RedirectStandardError (Join-Path $root 'approval-self.err')
+  if ($selfApprove.ExitCode -eq 0) { throw 'self-approval must be rejected.' }
+  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath approval -Root $root -Sub approve -Id approval-job -Actor approver | Out-Null
+  $consumed = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath approval -Root $root -Sub consume -Id approval-job | ConvertFrom-Json
+  if ($consumed.allowed -ne $true) { throw 'approved nonce must be consumable once.' }
+  $reused = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath approval -Root $root -Sub consume -Id approval-job | ConvertFrom-Json
+  if ($reused.allowed -ne $false) { throw 'consumed nonce must not be reusable.' }
+  $approvalAudit = Join-Path $root 'approvals-audit.jsonl'
+  if (-not [IO.File]::Exists($approvalAudit)) { throw 'approval audit missing.' }
+  $first = ([IO.File]::ReadAllLines($approvalAudit) | Where-Object { $_.Length -gt 0 } | Select-Object -First 1 | ConvertFrom-Json)
+  if ([string]$first.previousHash -notmatch '^0{64}$') { throw 'approval audit chain must start at zero.' }
   $noSub = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), 'secret', '-Root', ('"' + $root + '"')) -Wait -PassThru -WindowStyle Hidden -RedirectStandardError (Join-Path $root 'secret-nosub.err')
   if ($noSub.ExitCode -eq 0) { throw 'secret without -Sub must fail.' }
   $badName = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), 'secret', '-Root', ('"' + $root + '"'), '-Sub', 'set', '-Name', '"bad name!"') -Wait -PassThru -WindowStyle Hidden -RedirectStandardError (Join-Path $root 'secret-bad.err')

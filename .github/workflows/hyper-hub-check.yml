@@ -40,7 +40,9 @@ jobs:
             @('Hyper-Hub-Connector.ps1', '-SelfCheck'),
             @('Hyper-Hub-Policy.ps1', '-SelfCheck'),
             @('Hyper-Hub-Migrate.ps1', '-SelfCheck'),
-            @('Hyper-Hub-AgentCheck.ps1', '-SelfCheck')
+            @('Hyper-Hub-AgentCheck.ps1', '-SelfCheck'),
+            @('Hyper-Hub-AuditAnchor.ps1', '-SelfCheck'),
+            @('Hyper-Hub-Approval.ps1', '-Action', 'self-check')
           )
           foreach ($check in $checks) {
             & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path 'hub' $check[0]) @($check | Select-Object -Skip 1)

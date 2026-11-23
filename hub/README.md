@@ -10,7 +10,7 @@ Status: prototipe. Eksekusi job diblokir (ADR-007).
 
 | Berkas | Isi |
 | --- | --- |
-| `Hyper-Hub.ps1` | Hub utama: `init`, `status`, `discover`, `policy-check`, `add`, `run`, `tick`, `audit`, `self-check`, `jobs`, `schedule`, `remove`, `pause`, `resume`, `health`, `backup`, `restore`, `secret`, `api`, `connector`, `policy`, `runner`, `remote` |
+| `Hyper-Hub.ps1` | Hub utama: `init`, `status`, `discover`, `policy-check`, `add`, `run`, `tick`, `audit`, `self-check`, `jobs`, `schedule`, `remove`, `pause`, `resume`, `health`, `backup`, `restore`, `secret`, `api`, `connector`, `policy`, `runner`, `approval`, `remote` |
 | `Hyper-Hub-SelfCheck.ps1` | Self-check audit chain, cron, origin policy, lock, health |
 | `Hyper-Hub-ContractCheck.ps1` | Regresi fail-closed dan fungsional |
 | `Hyper-Hub-SpecCheck.ps1` | Gate struktur dokumen per berkas |
@@ -21,6 +21,8 @@ Status: prototipe. Eksekusi job diblokir (ADR-007).
 | `Hyper-Hub-Policy.ps1` | Policy engine deterministik aksi x resource x zona; baseline `config/policy.default.json` (D-03) |
 | `Hyper-Hub-Migrate.ps1` | Migrasi permission V1 -> policies V2 dengan backup dan rollback terverifikasi (D-01) |
 | `Hyper-Hub-AgentCheck.ps1` | Gate izin minimal agent `hyper-ops` (D-02) |
+| `Hyper-Hub-AuditAnchor.ps1` | Anchor harian audit di luar root state; deteksi truncation/rewrite (D-05) |
+| `Hyper-Hub-Approval.ps1` | Approval broker: nonce sekali pakai, expiry deny, audit sendiri (D-07) |
 | `agents/hyper-ops.md` | Agent operasi lokal baca-saja tanpa shell/edit/jaringan/subagent |
 | `Hyper-Hub-Spec-Template.md` | Templat dokumen yang lolos gate spec |
 | `Hyper-AI-Backlog.csv` | Backlog 82 task (13 epic) + kolom `Status` dan `Bukti` |
@@ -54,6 +56,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Connector.ps
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Policy.ps1 -SelfCheck
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Migrate.ps1 -SelfCheck
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-AgentCheck.ps1 -SelfCheck
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-AuditAnchor.ps1 -SelfCheck
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Approval.ps1 -Action self-check
 ```
 
 ## Batasan
