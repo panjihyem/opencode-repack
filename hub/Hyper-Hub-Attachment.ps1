@@ -53,14 +53,59 @@ function Get-HeaderBytes([string]$FilePath, [int]$Count) {
   } finally { $stream.Dispose() }
 }
 
-function Test-UnderRoot([string]$FullPath, [string]$FullRoot) {
-  $separator = [IO.Path]::DirectorySeparatorChar
+function Test-UnderRoot([string]$FullPath, [string]$FullRoot) {  $separator = [IO.Path]::DirectorySeparatorChar
   $prefix = $FullRoot.TrimEnd($separator) + $separator
   return $FullPath.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)
 }
 
+function Test-FileScan {
+  # F-06: wajib. Scanner tidak ada / gagal / timeout => tidak boleh accept.
+  param([Parameter(Mandatory)][string]$FilePath, [string]$ScannerPath, [int]$TimeoutSeconds = 120)
+
+  if ([string]::IsNullOrWhiteSpace($ScannerPath)) {
+    $candidate = Join-Path $env:ProgramFiles 'Windows Defender\MpCmdRun.exe'
+    $ScannerPath = if ([IO.File]::Exists($candidate)) { $candidate } else { '' }
+  }
+  if ([string]::IsNullOrWhiteSpace($ScannerPath) -or -not [IO.File]::Exists($ScannerPath)) { return [pscustomobject]@{ scanned = $false; clean = $false; detail = 'scanner tidak tersedia' } }
+
+  $stdout = Join-Path ([IO.Path]::GetTempPath()) ("hyper-scan-" + [Guid]::NewGuid().ToString('N') + '.out')
+  $stderr = "$stdout.err"
+  $process = $null
+  try {
+    $info = New-Object System.Diagnostics.ProcessStartInfo
+    $info.FileName = $ScannerPath
+    $info.Arguments = "-Scan -ScanType 3 -File `"$FilePath`" -DisableRemediation"
+    $info.UseShellExecute = $false
+    $info.CreateNoWindow = $true
+    $info.RedirectStandardOutput = $true
+    $info.RedirectStandardError = $true
+    $process = [System.Diagnostics.Process]::Start($info)
+    $out = $process.StandardOutput.ReadToEndAsync()
+    $err = $process.StandardError.ReadToEndAsync()
+    if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+      try { $process.Kill() } catch { }
+      return [pscustomobject]@{ scanned = $false; clean = $false; detail = 'scanner timeout' }
+    }
+    $process.WaitForExit()
+    $text = (($out.Result + ' ' + $err.Result) -replace '\s+', ' ').Trim()
+    # MpCmdRun: 0 = tidak ada ancaman, 2 = ancaman ditemukan.
+    if ($process.ExitCode -eq 0) { return [pscustomobject]@{ scanned = $true; clean = $true; detail = 'bersih' } }
+    if ($process.ExitCode -eq 2) { return [pscustomobject]@{ scanned = $true; clean = $false; detail = 'ancaman terdeteksi' } }
+    return [pscustomobject]@{ scanned = $false; clean = $false; detail = "scanner kode $($process.ExitCode): $($text.Substring(0, [Math]::Min(200, $text.Length)))" }
+  } catch {
+    return [pscustomobject]@{ scanned = $false; clean = $false; detail = "scanner gagal dijalankan: $($_.Exception.Message)" }
+  } finally {
+    if ($null -ne $process) { $process.Dispose() }
+  }
+}
+
+function Read-LooseText([string]$Path) {
+  if (-not [IO.File]::Exists($Path)) { return '' }
+  try { return [IO.File]::ReadAllText($Path) } catch { return '' }
+}
+
 function Get-AttachmentVerdict {
-  param([Parameter(Mandatory)][string]$FilePath, [Parameter(Mandatory)][string]$RootPath, [int]$Limit = 26214400)
+  param([Parameter(Mandatory)][string]$FilePath, [Parameter(Mandatory)][string]$RootPath, [int]$Limit = 26214400, [string]$ScannerPath)
 
   $fullRoot = [IO.Path]::GetFullPath($RootPath).TrimEnd([IO.Path]::DirectorySeparatorChar)
   if (-not [IO.Directory]::Exists($fullRoot)) { throw "Root tidak ada: $fullRoot" }
@@ -87,7 +132,11 @@ function Get-AttachmentVerdict {
   $ok = if ($expected -eq 'text') { $detected -eq 'text' } else { $detected -eq $expected }
   if (-not $ok) { return [pscustomobject]@{ path = $full; decision = 'quarantine'; reason = "isi $detected tidak cocok dengan $extension" } }
 
-  return [pscustomobject]@{ path = $full; decision = 'accept'; reason = 'lolos gate dasar (belum antivirus)' }
+  $scan = Test-FileScan -FilePath $full -ScannerPath $ScannerPath
+  if (-not $scan.scanned) { return [pscustomobject]@{ path = $full; decision = 'quarantine'; reason = "scan gagal: $($scan.detail)" } }
+  if (-not $scan.clean) { return [pscustomobject]@{ path = $full; decision = 'quarantine'; reason = "terinfeksi: $($scan.detail)" } }
+
+  return [pscustomobject]@{ path = $full; decision = 'accept'; reason = 'lolos gate: tipe cocok, ukuran, scan bersih' }
 }
 
 function Move-ToQuarantine([string]$FilePath, [string]$RootPath, [string]$QuarantinePath, [string]$Reason) {
@@ -128,6 +177,12 @@ if ($SelfCheck) {
     $utf16md = & $write 'lebar.md' ($utf16.GetBytes('teks lebar'))
     $empty = & $write 'kosong.txt' ([byte[]]@())
     $big = & $write 'besar.txt' ($utf8.GetBytes('x' * 4096))
+    $infected = & $write 'infected.md' ($utf8.GetBytes('isi'))
+    $broken = & $write 'broken.md' ($utf8.GetBytes('isi'))
+
+    # Stub scanner: kontrak exit code MpCmdRun (0 bersih, 2 ancaman) tanpa bergantung Defender di CI.
+    $stub = Join-Path $temp 'scan.cmd'
+    [IO.File]::WriteAllText($stub, "@echo off`r`necho %* | findstr /i /c:infected >nul && exit /b 2`r`necho %* | findstr /i /c:broken >nul && exit /b 3`r`nexit /b 0`r`n")
 
     $cases = @(
       @{ path = $md; expect = 'accept' },
@@ -140,13 +195,19 @@ if ($SelfCheck) {
       @{ path = $utf16md; expect = 'quarantine' },
       @{ path = $empty; expect = 'quarantine' },
       @{ path = $big; expect = 'quarantine' },
+      @{ path = $infected; expect = 'quarantine' },
+      @{ path = $broken; expect = 'quarantine' },
       @{ path = (Join-Path $root 'tidak-ada.txt'); expect = 'reject' },
       @{ path = (Join-Path $temp 'luar.txt'); expect = 'reject' }
     )
     foreach ($case in $cases) {
-      $verdict = Get-AttachmentVerdict -FilePath $case.path -RootPath $root -Limit 2048
+      $verdict = Get-AttachmentVerdict -FilePath $case.path -RootPath $root -Limit 2048 -ScannerPath $stub
       if ($verdict.decision -cne $case.expect) { $failures.Add("$($case.path): $($verdict.decision), harus $($case.expect) ($($verdict.reason))") }
     }
+    $noScanner = Get-AttachmentVerdict -FilePath $md -RootPath $root -ScannerPath (Join-Path $temp 'tidak-ada-scanner.exe')
+    if ($noScanner.decision -cne 'quarantine' -or $noScanner.reason -notmatch 'scan gagal') { $failures.Add('scanner tidak ada harus quarantine (fail-closed)') }
+    $realScan = Test-FileScan -FilePath $md
+    if ($realScan.scanned -and -not $realScan.clean) { $failures.Add('Defender menandai file teks uji') }
 
     $traversal = Get-AttachmentVerdict -FilePath (Join-Path $root '..\luar.txt') -RootPath $root
     if ($traversal.decision -cne 'reject') { $failures.Add('path traversal harus ditolak') }
