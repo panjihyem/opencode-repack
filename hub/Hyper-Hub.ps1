@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
   [Parameter(Position = 0)]
-  [ValidateSet('init', 'status', 'discover', 'policy-check', 'add', 'run', 'tick', 'audit', 'self-check', 'jobs', 'schedule', 'remove', 'pause', 'resume', 'health', 'remote')]
+  [ValidateSet('init', 'status', 'discover', 'policy-check', 'add', 'run', 'tick', 'audit', 'self-check', 'jobs', 'schedule', 'remove', 'pause', 'resume', 'health', 'remote', 'backup', 'restore')]
   [string]$Command = 'status',
   [string]$Zone,
   [string]$Operation,
@@ -22,6 +22,7 @@ param(
   [string]$ModelId,
   [string]$Sub,
   [switch]$DryRun,
+  [string]$BackupPath,
   [string]$Root = (Join-Path $PWD.Path '.hyper-hub')
 )
 
@@ -538,6 +539,118 @@ function Invoke-ScheduleList {
   [pscustomobject]@{ checkedAtUtc = (Format-Utc ([DateTime]::UtcNow)); timeZoneId = $timeZoneId; zone = $zone; count = $rows.Count; jobs = $rows; executable = $false } | ConvertTo-Json -Depth 5
 }
 
+function Get-UnitHash([string]$Path) {
+  if (-not [System.IO.File]::Exists($Path)) { return $null }
+  return Get-Hash ([System.IO.File]::ReadAllText($Path, $utf8))
+}
+
+function Get-BackupTarget {
+  if ([string]::IsNullOrWhiteSpace($BackupPath)) {
+    $stamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ')
+    return (Join-Path (Split-Path -Parent $Root) ("backups\hyper-hub-$stamp"))
+  }
+  $full = [System.IO.Path]::GetFullPath($BackupPath)
+  $rootFull = [System.IO.Path]::GetFullPath($Root).TrimEnd([System.IO.Path]::DirectorySeparatorChar)
+  if ($full.StartsWith($rootFull + [System.IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -or $full -ceq $rootFull) {
+    throw 'Backup tidak boleh berada di dalam root state.'
+  }
+  return $full
+}
+
+function Invoke-Backup {
+  # B-05/M-04: salin state+audit sebagai satu tangkapan, beri checksum, dan tolak rantai rusak.
+  return Invoke-WithLock -Body {
+    $state = Read-State
+    if (-not (Test-Audit $state)) { throw 'AUDIT INVALID: refusing backup of broken chain.' }
+    $target = Get-BackupTarget
+    if ([System.IO.Directory]::Exists($target) -and @([System.IO.Directory]::GetFiles($target)).Count -gt 0) {
+      throw "Folder backup sudah berisi berkas: $target"
+    }
+    [void][System.IO.Directory]::CreateDirectory($target)
+    $files = [ordered]@{}
+    foreach ($name in @('state.json', 'audit.jsonl')) {
+      $source = Join-Path $Root $name
+      if (-not [System.IO.File]::Exists($source)) { throw "Berkas wajib hilang saat backup: $name" }
+      $destination = Join-Path $target $name
+      [System.IO.File]::Copy($source, $destination, $false)
+      $files[$name] = Get-UnitHash $destination
+    }
+    $manifest = [ordered]@{
+      createdAtUtc = (Format-Utc ([DateTime]::UtcNow))
+      sourceRoot = [System.IO.Path]::GetFullPath($Root)
+      lastAuditHash = [string]$state.lastAuditHash
+      jobs = @($state.jobs).Count
+      files = $files
+      restore = 'jalankan: Hyper-Hub.ps1 restore -BackupPath <folder ini>'
+    }
+    Write-Atomic -Path (Join-Path $target 'SHA256SUMS.json') -Text (ConvertTo-Json -InputObject $manifest -Depth 5)
+    Add-Audit $state 'hub.backup' 'n/a' 'allow' "backup $target"
+    Save-State $state
+    [pscustomobject]@{ backup = $target; jobs = @($state.jobs).Count; files = $files; auditChain = 'valid' } | ConvertTo-Json -Depth 5
+  }
+}
+
+function Invoke-Restore {
+  if ([string]::IsNullOrWhiteSpace($BackupPath)) { throw 'Parameter -BackupPath wajib untuk restore.' }
+  $source = [System.IO.Path]::GetFullPath($BackupPath)
+  $manifestPath = Join-Path $source 'SHA256SUMS.json'
+  if (-not [System.IO.File]::Exists($manifestPath)) { throw "Manifest backup tidak ditemukan: $manifestPath" }
+  $manifest = ConvertFrom-Json -InputObject ([System.IO.File]::ReadAllText($manifestPath, $utf8))
+  if ($null -eq $manifest.files -or [string]::IsNullOrWhiteSpace([string]$manifest.lastAuditHash)) { throw 'Manifest backup tidak sah.' }
+
+  return Invoke-WithLock -Body {
+    # Verifikasi seluruh backup SEBELUM menyentuh state aktif.
+    foreach ($name in @('state.json', 'audit.jsonl')) {
+      $path = Join-Path $source $name
+      if (-not [System.IO.File]::Exists($path)) { throw "Berkas backup hilang: $name" }
+      $expected = [string]$manifest.files.$name
+      if ($expected -notmatch '^[a-f0-9]{64}$') { throw "Checksum backup tidak sah: $name" }
+      if ((Get-UnitHash $path) -cne $expected) { throw "Checksum tidak cocok: $name; restore dibatalkan." }
+    }
+    $restoredState = ConvertFrom-Json -InputObject ([System.IO.File]::ReadAllText((Join-Path $source 'state.json'), $utf8))
+    if ([string]$restoredState.lastAuditHash -cne [string]$manifest.lastAuditHash) { throw 'lastAuditHash backup tidak cocok dengan manifest; restore dibatalkan.' }
+
+    $currentState = Read-State
+    if (-not (Test-Audit $currentState)) { throw 'AUDIT INVALID: state aktif rusak; restore butuh -Force dari owner.' }
+
+    # Snapshot state aktif lebih dulu agar restore yang gagal di tengah bisa dibalik.
+    $backup = Join-Path ([System.IO.Path]::GetTempPath()) ('hyper-hub-rollback-' + [Guid]::NewGuid().ToString('N'))
+    [void][System.IO.Directory]::CreateDirectory($backup)
+    $originals = @{}
+    foreach ($name in @('state.json', 'audit.jsonl')) {
+      $path = Join-Path $Root $name
+      if ([System.IO.File]::Exists($path)) {
+        [System.IO.File]::Copy($path, (Join-Path $backup $name), $true)
+        $originals[$name] = Get-UnitHash $path
+      }
+    }
+    try {
+      foreach ($name in @('audit.jsonl', 'state.json')) {
+        Write-Atomic -Path (Join-Path $Root $name) -Text ([System.IO.File]::ReadAllText((Join-Path $source $name), $utf8))
+      }
+      $verify = Read-State
+      if ([string]$verify.lastAuditHash -cne [string]$manifest.lastAuditHash -or -not (Test-Audit $verify)) {
+        throw 'Verifikasi pasca-restore gagal.'
+      }
+    } catch {
+      foreach ($name in @('state.json', 'audit.jsonl')) {
+        $target = Join-Path $Root $name
+        if ($originals.ContainsKey($name)) {
+          [System.IO.File]::Copy((Join-Path $backup $name), $target, $true)
+        } elseif ([System.IO.File]::Exists($target)) { [System.IO.File]::Delete($target) }
+      }
+      throw "Restore dibatalkan dan rollback diterapkan: $($_.Exception.Message)"
+    } finally {
+      Remove-Item -LiteralPath $backup -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    $state = Read-State
+    Add-Audit $state 'hub.restore' 'n/a' 'allow' "restored from $source"
+    Save-State $state
+    [pscustomobject]@{ restoredFrom = $source; jobs = @($state.jobs).Count; auditChain = 'valid'; rollback = 'not needed' } | ConvertTo-Json -Depth 5
+  }
+}
+
 function Invoke-Health {
   # ponytail: ringkasan baca-saja; tanpa prompt mentah, tanpa HTTP, tanpa eksekusi.
   $state = Read-State
@@ -974,6 +1087,8 @@ function Assert-Parameters {
   if (-not [string]::IsNullOrWhiteSpace($Operation) -and $Command -cne 'policy-check') { throw 'Parameter -Operation hanya berlaku untuk policy-check.' }
   if (-not [string]::IsNullOrWhiteSpace($Origin) -and $Command -cne 'policy-check') { throw 'Parameter -Origin hanya berlaku untuk policy-check.' }
   if (-not [string]::IsNullOrWhiteSpace($Sub) -and $Command -cne 'remote') { throw 'Parameter -Sub hanya berlaku untuk remote.' }
+  if (-not [string]::IsNullOrWhiteSpace($BackupPath) -and $Command -cnotin @('backup', 'restore')) { throw 'Parameter -BackupPath hanya berlaku untuk backup dan restore.' }
+  if ($Command -ceq 'restore' -and [string]::IsNullOrWhiteSpace($BackupPath)) { throw 'Parameter -BackupPath wajib untuk restore.' }
   if (-not [string]::IsNullOrWhiteSpace($Channel) -and $Command -cne 'remote') { throw 'Parameter -Channel hanya berlaku untuk remote.' }
   foreach ($extra in @(@('OwnerId', $OwnerId), @('ServerVersion', $ServerVersion), @('ApiUrl', $ApiUrl), @('ModelProvider', $ModelProvider), @('ModelId', $ModelId))) {
     if (-not [string]::IsNullOrWhiteSpace($extra[1]) -and $Command -cne 'remote') { throw "Parameter -$($extra[0]) hanya berlaku untuk remote." }
@@ -1016,6 +1131,8 @@ try {
     }
     'jobs' { Invoke-JobCommand 'list' }
     'health' { Invoke-Health }
+    'backup' { Invoke-Backup }
+    'restore' { Invoke-Restore }
     'remote' { Invoke-Remote $Sub $Channel $Reset }
     'schedule' {
       if ([string]::IsNullOrWhiteSpace($Id)) { Invoke-ScheduleList } else { Invoke-WithLock -Body { Invoke-JobCommand 'schedule' } }

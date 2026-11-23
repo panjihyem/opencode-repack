@@ -77,6 +77,28 @@ try {
   $jobs = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath jobs -Root $root 2>&1 | ConvertFrom-Json
   if ($jobs.count -ne 0) { throw 'invalid add must not store a job.' }
 
+  # B-05/M-04: backup-verifikasi-restore, lalu tolak backup yang dirusak.
+  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath add -Root $root -Id backup-job -Name 'Backup job' -Zone regular -Cron '0 9 * * *' -Action local.status -Resource self | Out-Null
+  $backupDir = Join-Path (Split-Path -Parent $root) ('hyper-hub-backup-' + [Guid]::NewGuid().ToString('N'))
+  $backup = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath backup -Root $root -BackupPath $backupDir | ConvertFrom-Json
+  if ($LASTEXITCODE -ne 0 -or $backup.auditChain -cne 'valid' -or $backup.jobs -ne 1) { throw 'backup contract failed.' }
+  if (-not (Test-Path -LiteralPath (Join-Path $backupDir 'SHA256SUMS.json'))) { throw 'backup manifest missing.' }
+  $restore = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath restore -Root $root -BackupPath $backupDir | ConvertFrom-Json
+  if ($LASTEXITCODE -ne 0 -or $restore.auditChain -cne 'valid') { throw 'restore contract failed.' }
+  $afterRestore = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath jobs -Root $root | ConvertFrom-Json
+  if ($afterRestore.count -ne 1 -or $afterRestore.jobs[0].id -cne 'backup-job') { throw 'restore did not recover jobs.' }
+  $insideError = Join-Path $root 'backup-inside.err'
+  $inside = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), 'backup', '-Root', ('"' + $root + '"'), '-BackupPath', ('"' + (Join-Path $root 'nested') + '"')) -RedirectStandardError $insideError -Wait -PassThru -WindowStyle Hidden
+  if ($inside.ExitCode -eq 0) { throw 'backup inside state root must be rejected.' }
+  $beforeTamper = [System.IO.File]::ReadAllText((Join-Path $root 'state.json'))
+  [System.IO.File]::AppendAllText((Join-Path $backupDir 'audit.jsonl'), "`n")
+  $badError = Join-Path $root 'restore-bad.err'
+  $bad = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), 'restore', '-Root', ('"' + $root + '"'), '-BackupPath', ('"' + $backupDir + '"')) -RedirectStandardError $badError -Wait -PassThru -WindowStyle Hidden
+  if ($bad.ExitCode -eq 0) { throw 'tampered backup must be rejected.' }
+  if ([System.IO.File]::ReadAllText((Join-Path $root 'state.json')) -cne $beforeTamper) { throw 'rejected restore must not modify state.' }
+  Remove-Item -LiteralPath $backupDir -Recurse -Force -ErrorAction SilentlyContinue
+  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath remove -Root $root -Id backup-job | Out-Null
+
   foreach ($command in @('add', 'run')) {
     $errorFile = Join-Path $root "$command.error"
     $attempt = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), $command, '-Root', ('"' + $root + '"')) -RedirectStandardError $errorFile -Wait -PassThru -WindowStyle Hidden

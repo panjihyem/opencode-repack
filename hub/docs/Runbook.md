@@ -245,7 +245,14 @@ Menyalin `state.json` dan `audit.jsonl` secara terpisah saat `tick` berjalan dap
 
    Harus `Audit chain valid.` Jangan backup rantai yang sudah rusak tanpa mencatat bahwa itu rusak.
 
-3. Buat folder backup dan salin **kedua** berkas sebagai satu tangkapan:
+3. Buat backup dengan perintah Hub (satu tangkapan + manifest + verifikasi rantai):
+
+   ```powershell
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub.ps1 backup -Root "$env:LOCALAPPDATA\HyperHub\state" -BackupPath ".\backups\hyper-hub-$((Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ'))"
+   ```
+
+   Perintah menolak backup bila rantai audit rusak, menulis `SHA256SUMS.json`, dan menolak
+   folder tujuan di dalam root state. Salin manual di bawah hanya bila `backup` tidak tersedia:
 
    ```powershell
    $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
@@ -273,7 +280,16 @@ Menyalin `state.json` dan `audit.jsonl` secara terpisah saat `tick` berjalan dap
 
 ## 6. RESTORE
 
-Prasyarat: tidak ada runner (sama seperti backup). Restore menimpa state dan audit sekaligus — **jangan** memulihkan hanya salah satunya.
+Prasyarat: tidak ada runner (sama seperti backup). Restore menimpa state dan audit sekaligus - **jangan** memulihkan hanya salah satunya.
+
+Jalur utama memakai perintah Hub, yang memverifikasi checksum sebelum menimpa dan
+mengembalikan state lama bila verifikasi pasca-restore gagal:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub.ps1 restore -Root "$env:LOCALAPPDATA\HyperHub\state" -BackupPath ".\backups\hyper-hub-<stamp>"
+```
+
+Prosedur manual di bawah hanya untuk keadaan darurat saat perintah tidak bisa dipakai.
 
 1. Hentikan runner (bagian STOP) dan pastikan kosong.
 2. Pindahkan root saat ini ke tempat aman (jangan hapus, agar bisa diperiksa):
