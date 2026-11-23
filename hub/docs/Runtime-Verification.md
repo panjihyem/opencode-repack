@@ -1,41 +1,85 @@
 # Verifikasi runtime lokal - 23 November 2026
 
-Catatan ini mencatat hasil pemeriksaan runtime **nyata** di mesin ini, sebagai pengganti
-asumsi handoff lama. Tidak ada kredensial yang ditampilkan.
+Catatan ini mencatat hasil pemeriksaan runtime **nyata** di mesin ini, menggantikan asumsi
+handoff lama. Tidak ada kredensial yang ditampilkan. Semua angka dapat direproduksi dengan
+`Hyper-Hub-BlockerAudit.ps1`.
+
+## Koreksi penting
+
+Pemeriksaan sesi sebelumnya menyimpulkan "Hyper AI tidak terpasang". Itu **salah**: yang
+diperiksa hanya `PATH`. Binary memang ada di folder aplikasi, dan menjalankannya berhasil.
+
+```text
+C:\Users\SER\AppData\Roaming\ai.hyperai.desktop\cli\2.1.10-x64\opencode-cli.exe --version
+-> hyper-ai v2.1.10
+```
 
 ## Yang tersedia
 
 | Komponen | Status | Bukti |
 | --- | --- | --- |
+| Hyper AI CLI | **ada, 2.1.10** | `opencode-cli.exe --version` di folder appdata |
+| Hyper AI desktop data | ada | `%APPDATA%\ai.hyperai.desktop` |
 | Bun | 1.4.5 | `bun --version` |
-| Node.js | tidak di PATH | `node --version` gagal; tidak dipakai oleh gate Hub |
-| Git credential manager | terpasang (`credential.helper=manager`) | `git ls-remote` ke GitHub berhasil tanpa prompt |
-| Hyper AI (`opencode-cli.exe`) | **tidak terpasang** | `Get-Command` kosong untuk semua nama kandidat |
-| LM Studio | **aktif** | loopback `127.0.0.1:1234`, `/v1/models` merespons 200 |
-| Provider FLM (`flm`) | **sudah tidak ada** di config | N-02 tidak lagi relevan |
-| Copilot bridge (port 57842) | **tidak ada** | N-03/N-04 tidak lagi relevan |
-| Docker/WSL | tidak ada | spike image-based tetap terkunci |
+| Git credential manager | terpasang | `git ls-remote`+`git push` ke GitHub tanpa prompt |
+| LM Studio | aktif | loopback `127.0.0.1:1234`, `/v1/models` 200 |
+| WSL | **binary ada, distro tidak** | `wsl --list --quiet` -> "not installed" |
+| Docker | tidak ada | `docker` tidak di PATH |
+| Windows-MCP | tidak ada | tidak ada proses, tidak ada `mcp.json` |
+| MeshCentral agent | tidak ada | service `MeshAgent` kosong |
+| Playwright cache | tidak ada | `%USERPROFILE%\.cache\ms-playwright` tidak ada |
+| Neo4j/FalkorDB | tidak berjalan | port 7474/7687 tertutup |
+| Whisper | tidak ada | `whisper-cli`/`whisper` tidak di PATH |
+| Kanal Telegram/WhatsApp | belum dipasang | `%LOCALAPPDATA%\HyperHub` tidak ada |
+| State Hub lama | tidak ada | tidak ada migrasi job yang tertunda |
 
 ## Dampak ke N-01..N-15
 
-| ID | Status | Bukti |
-| --- | --- | --- |
-| `N-01` | selesai | `remote -Sub model` membaca 8 provider nyata dari config; apiKey tidak ditampilkan |
-| `N-02` | usang | provider `flm` tidak ada lagi; supervisi FLM tidak diperlukan |
-| `N-03` | usang | tidak ada bridge Copilot di port 57842 |
-| `N-04` | usang | tidak ada provider `copilot-bridge`, jadi klaim `tools:true`-nya tidak berlaku |
-| `N-05` | selesai (alat) | `Hyper-Hub-Permission.ps1` menurunkan wildcard allow + rollback; config pengguna tidak diubah tanpa izin |
-| `N-06` | selesai | `Hyper-Hub-Index.ps1` menghasilkan `hub/flm-results/INDEX.md` untuk 77 artefak |
-| `N-07` | tidak dapat dijalankan | butuh server model yang menyala dan waktu pengukuran; tidak ada run campur 0/3 vs 3/3 yang bisa direproduksi aman sekarang |
-| `N-08`, `N-09` | terbuka | butuh bridge kanal nyata (token Telegram / nomor WhatsApp); E-05 no-go |
-| `N-10`, `N-11` | alat selesai | `Hyper-Hub-Connector.ps1`, `Hyper-Hub-AuditAnchor.ps1`; sisa entri connector tervalidasi dan lokasi anchor eksternal |
-| `N-12` | dokumentasi | validasi state menolak field tambahan; migrasi job lama tetap manual |
-| `N-13`, `N-15` | terblokir | Hyper AI tidak terpasang di mesin ini |
-| `N-14` | terblokir | butuh engine + token kanal |
+| ID | Status |
+| --- | --- |
+| `N-01` | selesai: 8 provider nyata, apiKey tidak ditampilkan |
+| `N-02` | usang: provider `flm` tidak ada lagi |
+| `N-03` | usang: tidak ada bridge Copilot di 57842 |
+| `N-04` | usang: provider `copilot-bridge` sudah dihapus |
+| `N-05` | selesai (alat): hardening wildcard + rollback; config pengguna tidak diubah |
+| `N-06` | selesai: `hub/flm-results/INDEX.md`, 77 artefak |
+| `N-07` | terblokir: klasifikasi komparabilitas selesai; pengukuran ulang butuh FLM (tidak ada) |
+| `N-08` | selesai (alat): autostart per-user, diuji dengan stub |
+| `N-09` | selesai (alat): `remote -Sub run`/`stop`, diuji 8/8 |
+| `N-10` | alat selesai; butuh entri connector yang disetujui reviewer |
+| `N-11` | alat selesai; butuh lokasi anchor eksternal |
+| `N-12` | tidak ada state lama untuk dimigrasikan (diverifikasi) |
+| `N-13` | **bisa dilanjutkan**: engine ada; uji end-to-end ke engine belum dijalankan |
+| `N-14` | terblokir: butuh token Telegram dari owner |
+| `N-15` | usang: engine sudah terpasang (2.1.10) |
 
-## Bukti terukur
+## Catatan
 
-- Provider: 8 total, 1 loopback (LM Studio, hidup), 7 remote (tidak diprobe karena non-loopback
-  dan berbiaya).
-- Akar masalah N-01 lama ("config punya 7 provider") sudah tidak akurat: sekarang 8 provider,
-  tanpa `flm`/`copilot-bridge`.
+`N-13` bukan lagi terblokir total. Yang belum dilakukan adalah uji end-to-end terhadap
+service yang berjalan; itu memerlukan service Hyper AI aktif dan keputusan untuk menyentuh
+konfigurasi aplikasi pengguna.
+
+## Uji engine hidup (N-13)
+
+Dijalankan dengan `Hyper-Hub-LiveEngine.ps1` terhadap service yang sedang berjalan.
+Read-only: dua request GET, tanpa prompt, tanpa mengubah config.
+
+| Fakta | Nilai |
+| --- | --- |
+| Respons `/api/info` | ya |
+| Versi | `2.1.10` |
+| Endpoint | `http://127.0.0.1:28894` |
+| PID service | 7004 |
+| Capability | `persistentPty: true` |
+| Path OpenAPI | **124** |
+| Path `/api/experimental/schedule` | **tidak ada** |
+
+Kesimpulan yang didukung bukti:
+
+1. Engine 2.1.10 benar-benar berjalan, jadi uji end-to-end ke API mungkin dilakukan.
+2. Scheduler native tidak tersedia di 2.1.10, sesuai riset awal. Keputusan "scheduler lokal
+   Hyper Hub sebagai jalur utama" tetap valid.
+3. `hasSchedulePath=false` adalah alasan konkret `C-09` memakai fallback lokal, bukan asumsi.
+
+Yang belum diuji: sesi, prompt, plugin hook, dan permission API. Semuanya membuat state pada
+aplikasi pengguna sehingga menunggu keputusan eksplisit.

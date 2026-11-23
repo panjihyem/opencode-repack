@@ -46,6 +46,8 @@ Status: prototipe. Eksekusi job diblokir (ADR-007).
 | `Hyper-Hub-ProviderHealth.ps1` | Cek provider lokal/remote dan klaim tool calling tanpa bocor apiKey (N-02..N-04) |
 | `Hyper-Hub-Rerun.ps1` | Klasifikasi komparabilitas 19 CSV benchmark; daftar ulang (N-07) |
 | `Hyper-Hub-BridgeCheck.ps1` | Uji run/stop/autostart bridge dengan proses stub (N-08, N-09) |
+| `Hyper-Hub-BlockerAudit.ps1` | Verifikasi keadaan 14 task sisa terhadap runtime nyata |
+| `Hyper-Hub-LiveEngine.ps1` | Probe read-only engine berjalan: versi, URL, path OpenAPI (N-13) |
 | `agents/hyper-ops.md` | Agent operasi lokal baca-saja tanpa shell/edit/jaringan/subagent |
 | `Hyper-Hub-Spec-Template.md` | Templat dokumen yang lolos gate spec |
 | `Hyper-AI-Backlog.csv` | Backlog 82 task (13 epic) + kolom `Status` dan `Bukti` |
@@ -103,6 +105,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Permission.p
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-ProviderHealth.ps1 -SelfCheck
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Rerun.ps1 -SelfCheck
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-BridgeCheck.ps1 -SelfCheck
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-BlockerAudit.ps1 -SelfCheck
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-LiveEngine.ps1 -SelfCheck
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Acceptance.ps1 -SelfCheck
 ```
 

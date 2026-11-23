@@ -45,9 +45,9 @@ Rekomendasi untuk tiap keputusan owner: `Rekomendasi-Keputusan-Owner.md`. Rekome
 | `N-10` | Connector registry tervalidasi sebelum membuka `run`/`tick` | SUDAH ADA `Hyper-Hub-Connector.ps1`; sisa: entri connector nyata yang disetujui reviewer |
 | `N-11` | Audit anchor eksternal sebelum produksi | SUDAH ADA `Hyper-Hub-AuditAnchor.ps1`; sisa: lokasi anchor yang tidak dapat ditulis akun yang sama |
 | `N-12` | Migrasi job prototipe lama ke JobSpec final | Validasi `state.json` kini menolak field tambahan serta aksi selain `local.status/self`; job lama perlu ditinjau, bukan dibuka otomatis |
-| `N-13` | Jalankan `Hyper-Hub-SecurityCheck.ps1` di mesin yang punya Hyper AI terpasang | Suite ada dan lulus offline; uji end-to-end ke engine belum |
-| `N-14` | Hubungkan hook/kanal ke runtime nyata (plugin V2, bridge Telegram) | Logika dan kontrak sudah diuji; integrasi butuh engine/token |
-| `N-15` | Pasang Hyper AI di mesin uji untuk verifikasi end-to-end | Semua gate berjalan offline; executable belum ada di mesin ini |
+| `N-13` | Jalankan `Hyper-Hub-SecurityCheck.ps1` di mesin yang punya Hyper AI terpasang | SEBAGIAN: engine 2.1.10 terbukti hidup (124 path OpenAPI, tanpa path schedule) lewat `Hyper-Hub-LiveEngine.ps1`; uji sesi/prompt/plugin belum karena membuat state pada aplikasi pengguna |
+| `N-14` | Hubungkan hook/kanal ke runtime nyata (plugin V2, bridge Telegram) | TERBLOKIR: butuh token Telegram dari owner dan engine terpasang; logika kanal lulus uji offline |
+| `N-15` | Pasang Hyper AI di mesin uji untuk verifikasi end-to-end | USANG: engine 2.1.10 sudah terpasang di `%APPDATA%\ai.hyperai.desktop\cli\2.1.10-x64\opencode-cli.exe`; tidak perlu pemasangan |
 
 ## 4. Terbuka di backlog (14)
 
