@@ -55,14 +55,33 @@ function Save-Registry([string]$Path, [hashtable]$Lookup) {
   [IO.File]::Move($tmp, $Path)
 }
 
+function Get-EgressHost([string]$Item) {
+  if ($Item -match '^[a-z][a-z0-9+.-]*://') {
+    # Uri menolak '*', jadi ambil host lewat regex agar wildcard subdomain tetap sah.
+    $match = [regex]::Match($Item, '^[a-z][a-z0-9+.-]*://(\*\.)?([^/:]+)')
+    if (-not $match.Success) { return $null }
+    return $match.Groups[2].Value
+  }
+  return ($Item -split ':')[0]
+}
+
 function Test-EgressPattern([string]$Value) {
   if ([string]::IsNullOrWhiteSpace($Value)) { return $false }
   foreach ($entry in ($Value -split ',')) {
     $item = $entry.Trim()
     # Wildcard seluruh host ditolak; wildcard subdomain eksplisit (*.host) diizinkan.
     if ($item -match '://\*(?=[^.]|$)' -or $item -match '://\*/' -or $item -match '^(\*|\*/)(:|$)') { return $false }
-    if ($item -match '^[a-z][a-z0-9+.-]*://(\*\.)?[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+(:\d{1,5})?$') { continue }
-    if ($item -match '^(\*\.)?[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*:\d{1,5}$') { continue }
+    if ($item -match '^[a-z][a-z0-9+.-]*://(\*\.)?[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+(:\d{1,5})?$') {
+      $hostName = Get-EgressHost $item
+      # SSRF/T11: IP literal (loopback, link-local, privat, publik) ditolak; pakai hostname.
+      if ($null -eq $hostName -or $hostName -match '^\d{1,3}(\.\d{1,3}){3}$' -or $hostName -match ':') { return $false }
+      continue
+    }
+    if ($item -match '^(\*\.)?[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*:\d{1,5}$') {
+      $hostName = ($item -split ':')[0]
+      if ($hostName -match '^\d{1,3}(\.\d{1,3}){3}$') { return $false }
+      continue
+    }
     if ($item -match '^(\*\.)?[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$') { continue }
     return $false
   }
@@ -181,6 +200,12 @@ if ($SelfCheck) {
     if ((Test-ConnectorEntry $bad).Count -gt 0) { $failures.Add('egress subdomain eksplisit harus diterima') }
     $bad = $entry.PSObject.Copy(); $bad.egress = 'https://evil.example.com/path?x=1'
     if ((Test-ConnectorEntry $bad).Count -eq 0) { $failures.Add('egress dengan path harus ditolak') }
+    foreach ($ssrf in @('http://127.0.0.1', 'http://localhost:8080', 'http://169.254.169.254', 'http://10.0.0.5', '127.0.0.1:443', 'http://[::1]')) {
+      $bad = $entry.PSObject.Copy(); $bad.egress = $ssrf
+      if ((Test-ConnectorEntry $bad).Count -eq 0) { $failures.Add("egress IP literal harus ditolak: $ssrf") }
+    }
+    $bad = $entry.PSObject.Copy(); $bad.egress = 'https://jdih.kemenkeu.go.id, *.go.id:443'
+    if ((Test-ConnectorEntry $bad).Count -gt 0) { $failures.Add('daftar egress sah harus diterima') }
     $bad = $entry.PSObject.Copy(); $bad.secret_ref = 'ghp_abcdefghijklmnop'
     if ((Test-ConnectorEntry $bad).Count -eq 0) { $failures.Add('secret_ref berisi token harus ditolak') }
     $bad = $entry.PSObject.Copy(); $bad.zona_diizinkan = 'case'

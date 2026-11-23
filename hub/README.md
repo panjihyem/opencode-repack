@@ -23,6 +23,7 @@ Status: prototipe. Eksekusi job diblokir (ADR-007).
 | `Hyper-Hub-AgentCheck.ps1` | Gate izin minimal agent `hyper-ops` (D-02) |
 | `Hyper-Hub-AuditAnchor.ps1` | Anchor harian audit di luar root state; deteksi truncation/rewrite (D-05) |
 | `Hyper-Hub-Approval.ps1` | Approval broker: nonce sekali pakai, expiry deny, audit sendiri (D-07) |
+| `Hyper-Hub-SecurityCheck.ps1` | Suite keamanan internal 25 uji: SSRF, traversal, replay, secret, case-egress (D-10) |
 | `agents/hyper-ops.md` | Agent operasi lokal baca-saja tanpa shell/edit/jaringan/subagent |
 | `Hyper-Hub-Spec-Template.md` | Templat dokumen yang lolos gate spec |
 | `Hyper-AI-Backlog.csv` | Backlog 82 task (13 epic) + kolom `Status` dan `Bukti` |
@@ -58,6 +59,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Migrate.ps1 
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-AgentCheck.ps1 -SelfCheck
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-AuditAnchor.ps1 -SelfCheck
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Approval.ps1 -Action self-check
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-SecurityCheck.ps1 -SelfCheck
 ```
 
 ## Batasan
