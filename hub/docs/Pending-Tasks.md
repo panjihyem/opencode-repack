@@ -42,21 +42,26 @@ Rekomendasi untuk tiap keputusan owner: `Rekomendasi-Keputusan-Owner.md`. Rekome
 | `N-07` | Ulangi perbandingan model lokal dengan timeout seragam | run campur 0/3 lalu 3/3 |
 | `N-08` | Auto-start bridge setelah pairing | proses mati saat PC restart |
 | `N-09` | `remote -Sub run` untuk menjalankan bridge sebagai layanan | belum ada perintah |
-| `N-10` | Connector registry tervalidasi sebelum membuka `run`/`tick` | ADR-007; belum ada entri connector yang disetujui |
-| `N-11` | Audit anchor eksternal sebelum produksi | T20: admin lokal dapat menulis ulang state dan chain sekaligus |
+| `N-10` | Connector registry tervalidasi sebelum membuka `run`/`tick` | SUDAH ADA `Hyper-Hub-Connector.ps1`; sisa: entri connector nyata yang disetujui reviewer |
+| `N-11` | Audit anchor eksternal sebelum produksi | SUDAH ADA `Hyper-Hub-AuditAnchor.ps1`; sisa: lokasi anchor yang tidak dapat ditulis akun yang sama |
 | `N-12` | Migrasi job prototipe lama ke JobSpec final | Validasi `state.json` kini menolak field tambahan serta aksi selain `local.status/self`; job lama perlu ditinjau, bukan dibuka otomatis |
+| `N-13` | Jalankan `Hyper-Hub-SecurityCheck.ps1` di mesin yang punya Hyper AI terpasang | Suite ada dan lulus offline; uji end-to-end ke engine belum |
+| `N-14` | Hubungkan hook/kanal ke runtime nyata (plugin V2, bridge Telegram) | Logika dan kontrak sudah diuji; integrasi butuh engine/token |
 
-## 4. Terbuka di backlog (62)
+## 4. Terbuka di backlog (23)
 
-Prioritas P0: `A-01`, `B-01`, `B-03`, `B-04`, `B-05`, `C-01`, `C-02`, `C-03`, `C-04`,
-`C-05`, `C-06`, `C-09`, `D-01` sampai `D-07`, `D-09`, `D-10`, `F-02`, `F-04`,
-`F-05`, `F-06`, `F-07`, `F-10`, `M-00`, `M-01`, `M-02`, `M-04`, `M-05`, `M-06`, `M-08`.
+Status: 82 task, **59 done / 23 open** per 23 November 2026.
 
-Prioritas P1: `B-08`, `C-07`, `D-08`, `E-02`, `E-03`, `E-04`, `F-03`, `F-08`, `F-09`,
-`G-01`, `G-03`, `G-04`, `M-07`.
-
-Prioritas P2/P3: `C-08`, `E-05`, `E-06`, `H-02`, `H-03`, `H-04`, `I-02`, `I-03`,
+Sisa P0 (keputusan manusia): `A-01`, `M-00`, `F-10`, `M-06`, `M-08`.
+Sisa P1–P3 (butuh runtime/kredensial eksternal): `B-08` (uji orang lain),
+`E-05`, `E-06`, `G-01`, `G-03`, `G-04`, `H-02`, `H-03`, `H-04`, `I-02`, `I-03`,
 `J-01` sampai `J-03`, `K-02`, `K-03`, `L-02`, `L-03`.
+
+Catatan kesiapan: lapisan Hub (policy, audit, approval, secret, runner lokal,
+registry connector, redaksi, karantina, SBOM, rilis) sudah diimplementasikan dan
+diuji offline. Yang belum bisa dibuktikan tanpa mesin/runtime/kredensial:
+Hyper AI terpasang, bot Telegram, nomor WhatsApp, Playwright/Docling,
+Windows-MCP, SaaS vendor, graph DB, STT, dan MeshCentral.
 
 ## 5. Kendala lingkungan
 
