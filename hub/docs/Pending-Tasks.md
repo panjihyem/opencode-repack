@@ -49,28 +49,30 @@ Rekomendasi untuk tiap keputusan owner: `Rekomendasi-Keputusan-Owner.md`. Rekome
 | `N-14` | Hubungkan hook/kanal ke runtime nyata (plugin V2, bridge Telegram) | Logika dan kontrak sudah diuji; integrasi butuh engine/token |
 | `N-15` | Pasang Hyper AI di mesin uji untuk verifikasi end-to-end | Semua gate berjalan offline; executable belum ada di mesin ini |
 
-## 4. Terbuka di backlog (16)
+## 4. Terbuka di backlog (14)
 
-Status: 82 task, **66 done / 16 open** per 23 November 2026.
+Status: 82 task, **68 done / 14 open** per 23 November 2026.
 
 | Task | Blokir konkret | Yang harus disiapkan |
 | --- | --- | --- |
-| `B-08` | Definition of Done: "diuji orang selain penulis" | Reviewer manusia menjalankan `Hyper-Hub-RunbookCheck.ps1` + prosedur manual, lalu mencatat nama/tanggal |
-| `E-06` | `E-05` sudah no-go; WAHA belum dipasang | Owner menyetujui risiko + menyediakan nomor WhatsApp khusus |
-| `F-10` | Butuh 14 hari kalender nyata + sign-off | Jadwal pilot, data non-sensitif, owner menandatangani hasil |
-| `H-02` | `HG-DESKTOP-GO` masih no-go; Windows-MCP belum terpasang | VM/akun terpisah, keputusan owner |
-| `H-03` | Bergantung `H-02` | Sama |
-| `H-04` | Bergantung `H-03` + 10 alur GUI | Sama + skenario UAT |
-| `I-02` | Butuh akun Composio + DPA vendor | Kredensial uji, kontrak/DPA |
-| `I-03` | Butuh deployment Activepieces self-host | Docker/WSL (tidak ada di mesin ini) |
-| `J-02` | Butuh Neo4j/FalkorDB lokal | Docker/WSL atau instalasi native |
-| `J-03` | Bergantung `J-01` (baseline ada) + `J-02` | Hasil spike J-02 |
-| `K-02` | Butuh model STT + dataset audio berizin | Unduhan model, dataset, waktu pengukuran |
-| `K-03` | Butuh LiveKit/Pipecat + realtime | Infrastruktur media + use case disetujui |
-| `L-02` | `HG-REMOTE-GO` masih no-go | Keputusan owner + server |
+| `B-08` | DoD: "diuji orang selain penulis" | Reviewer manusia menjalankan drill + mencatat nama/tanggal |
+| `E-06` | `E-05` no-go; WAHA belum dipasang | Owner setujui risiko + nomor WhatsApp khusus |
+| `F-10` | Butuh 14 hari kalender nyata + sign-off | Jadwal pilot, data non-sensitif, tanda tangan owner |
+| `H-02` | `HG-DESKTOP-GO` no-go; Windows-MCP belum ada | VM/akun terpisah, keputusan owner |
+| `H-04` | Bergantung `H-02` + 10 alur GUI | Sidecar terpasang + skenario UAT |
+| `I-02` | Butuh akun Composio + DPA | Kredensial uji, kontrak vendor |
+| `I-03` | Butuh Activepieces self-host | Docker/WSL (tidak ada) |
+| `J-03` | Bergantung spike J-02 runtime | Neo4j/FalkorDB berjalan |
+| `K-02` | Butuh model STT + dataset audio berizin | Unduhan model, dataset |
+| `K-03` | Butuh LiveKit/Pipecat | Infrastruktur media + use case disetujui |
+| `L-02` | `HG-REMOTE-GO` no-go | Keputusan owner + server |
 | `L-03` | Bergantung `L-02` | Sama |
-| `M-06` | Pilot 14 hari; bergantung `F-10` | Pilot nyata + sign-off |
+| `M-06` | Pilot 14 hari | Pilot nyata + sign-off |
 | `M-08` | Setelah `M-06` | Hasil pilot |
+
+Catatan kesiapan: lapisan Hub yang dapat diuji offline hijau (29 gate PowerShell,
+25 uji keamanan, 9 uji load, 9 suite overlay, SBOM 42 paket tanpa temuan).
+Belum terbukti: integrasi runtime nyata dan penerimaan manusia.
 
 Catatan kesiapan: seluruh lapisan Hub yang dapat diuji offline sudah diimplementasikan
 dan hijau (27 gate PowerShell, 25 uji keamanan, 9 uji load, 9 suite overlay, SBOM

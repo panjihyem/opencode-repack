@@ -39,6 +39,8 @@ Status: prototipe. Eksekusi job diblokir (ADR-007).
 | `Hyper-Hub-Provenance.ps1` | Provenance naskah resmi: URL, hash ganda, versi alat (G-04) |
 | `Hyper-Hub-GraphBaseline.ps1` | Baseline 50 pertanyaan relasi hindsight vs graph (J-01) |
 | `Hyper-Hub-Acceptance.ps1` | Harness simulasi 14 hari: JDIH, karantina, rerun idempoten, rekap (F-10) |
+| `Hyper-Hub-Desktop.ps1` | Gate aksi desktop: write/delete wajib approval, screenshot tanpa isi (H-03) |
+| `Hyper-Hub-GraphContract.ps1` | Kontrak graph: provenance source, tanggal valid, tanpa zona kasus (J-02) |
 | `agents/hyper-ops.md` | Agent operasi lokal baca-saja tanpa shell/edit/jaringan/subagent |
 | `Hyper-Hub-Spec-Template.md` | Templat dokumen yang lolos gate spec |
 | `Hyper-AI-Backlog.csv` | Backlog 82 task (13 epic) + kolom `Status` dan `Bukti` |
@@ -89,6 +91,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Browser.ps1 
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Download.ps1 -SelfCheck
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Provenance.ps1 -SelfCheck
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-GraphBaseline.ps1 -SelfCheck
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Desktop.ps1 -SelfCheck
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-GraphContract.ps1 -SelfCheck
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Hyper-Hub-Acceptance.ps1 -SelfCheck
 ```
 
