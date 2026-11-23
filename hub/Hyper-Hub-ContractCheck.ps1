@@ -102,6 +102,21 @@ try {
   # B-03: perintah secret tidak boleh membocorkan nilai dan tidak boleh menerima nama tak sah.
   $secretList = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath secret -Root $root -Sub list 2>&1 | ConvertFrom-Json
   if ($LASTEXITCODE -ne 0 -or $secretList.count -ne 0 -or $secretList.valuesExposed -ne $false) { throw 'secret list contract failed.' }
+
+  # Registry connector: gate validated DAN enabled; draft/revoked tetap deny.
+  $registered = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath connector -Root $root -Sub list 2>&1 | ConvertFrom-Json
+  if ($LASTEXITCODE -ne 0 -or $registered.count -ne 0) { throw 'empty connector registry contract failed.' }
+  $connectorScript = Join-Path $PSScriptRoot 'Hyper-Hub-Connector.ps1'
+  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $connectorScript -Registry (Join-Path $root 'connectors.json') -Id test-conn -Type http -Egress 'https://example.invalid' -SecretRef test.ref | Out-Null
+  $draftHealth = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath health -Root $root | ConvertFrom-Json
+  if ($draftHealth.connectors.registered -ne 1 -or $draftHealth.connectors.allowed -ne 0 -or $draftHealth.executable -ne $false) { throw 'draft connector must never be allowed.' }
+  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath connector -Root $root -Sub validate -Id test-conn -Reviewer 'contract-review' | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw 'connector validate contract failed.' }
+  $validHealth = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath health -Root $root | ConvertFrom-Json
+  if ($validHealth.connectors.validated -ne 1 -or $validHealth.connectors.allowed -ne 1 -or $validHealth.executable -ne $false) { throw 'validated connector still must not open execution.' }
+  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath connector -Root $root -Sub revoke -Id test-conn | Out-Null
+  $revokedHealth = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath health -Root $root | ConvertFrom-Json
+  if ($revokedHealth.connectors.allowed -ne 0) { throw 'revoked connector must be denied.' }
   $noSub = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), 'secret', '-Root', ('"' + $root + '"')) -Wait -PassThru -WindowStyle Hidden -RedirectStandardError (Join-Path $root 'secret-nosub.err')
   if ($noSub.ExitCode -eq 0) { throw 'secret without -Sub must fail.' }
   $badName = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), 'secret', '-Root', ('"' + $root + '"'), '-Sub', 'set', '-Name', '"bad name!"') -Wait -PassThru -WindowStyle Hidden -RedirectStandardError (Join-Path $root 'secret-bad.err')

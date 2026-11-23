@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
   [Parameter(Position = 0)]
-  [ValidateSet('init', 'status', 'discover', 'policy-check', 'add', 'run', 'tick', 'audit', 'self-check', 'jobs', 'schedule', 'remove', 'pause', 'resume', 'health', 'remote', 'backup', 'restore', 'secret', 'api')]
+  [ValidateSet('init', 'status', 'discover', 'policy-check', 'add', 'run', 'tick', 'audit', 'self-check', 'jobs', 'schedule', 'remove', 'pause', 'resume', 'health', 'remote', 'backup', 'restore', 'secret', 'api', 'connector')]
   [string]$Command = 'status',
   [string]$Zone,
   [string]$Operation,
@@ -25,6 +25,7 @@ param(
   [string]$BackupPath,
   [string]$Port,
   [string]$Timeout,
+  [string]$Reviewer,
   [string]$Root = (Join-Path $PWD.Path '.hyper-hub')
 )
 
@@ -653,6 +654,42 @@ function Invoke-Restore {
   }
 }
 
+function Get-ConnectorRegistryPath { return (Join-Path $Root 'connectors.json') }
+
+function Get-ConnectorSummary {
+  $path = Get-ConnectorRegistryPath
+  if (-not [IO.File]::Exists($path)) { return [pscustomobject]@{ registered = 0; validated = 0; allowed = 0; note = 'registry kosong: semua eksekusi ditolak (ADR-007)' } }
+  $connectorScript = Join-Path $PSScriptRoot 'Hyper-Hub-Connector.ps1'
+  if (-not [IO.File]::Exists($connectorScript)) { return [pscustomobject]@{ registered = 0; validated = 0; allowed = 0; note = 'skrip connector tidak ditemukan' } }
+  try {
+    $list = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $connectorScript -Registry $path -List | ConvertFrom-Json
+    $rows = @($list.connectors)
+    return [pscustomobject]@{
+      registered = $rows.Count
+      validated = @($rows | Where-Object { $_.status -ceq 'validated' }).Count
+      allowed = @($rows | Where-Object { $_.decision -ceq 'allow' }).Count
+      note = 'gate tetap tertutup sampai runner direview (ADR-007)'
+    }
+  } catch {
+    return [pscustomobject]@{ registered = 0; validated = 0; allowed = 0; note = 'registry tidak terbaca; gagal-tertutup' }
+  }
+}
+
+function Invoke-ConnectorCommand {
+  $connectorScript = Join-Path $PSScriptRoot 'Hyper-Hub-Connector.ps1'
+  if (-not [IO.File]::Exists($connectorScript)) { throw 'Hyper-Hub-Connector.ps1 tidak ditemukan.' }
+  $path = Get-ConnectorRegistryPath
+  $args = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $connectorScript + '"'), '-Registry', ('"' + $path + '"'))
+  if (-not [string]::IsNullOrWhiteSpace($Id)) { $args += @('-Id', ('"' + $Id + '"')) }
+  if ($Sub -ceq 'list') { $args += '-List' }
+  if ($Sub -ceq 'validate') { $args += @('-Validate', '-Reviewer', ('"' + $Reviewer + '"')) }
+  if ($Sub -ceq 'revoke') { $args += '-Revoke' }
+  $output = & powershell.exe @args 2>&1
+  $code = $LASTEXITCODE
+  $output | ForEach-Object { $_ }
+  if ($code -ne 0) { throw "Perintah connector gagal (exit $code)." }
+}
+
 function Invoke-Health {
   # ponytail: ringkasan baca-saja; tanpa prompt mentah, tanpa HTTP, tanpa eksekusi.
   $state = Read-State
@@ -691,6 +728,7 @@ function Invoke-Health {
     }
     queue = @{ pending = 0; running = 0; deadLetter = 0; note = 'runner disabled: no job is ever launched' }
     approvals = @{ pending = 0; note = 'approval broker not implemented (D-07)' }
+    connectors = (Get-ConnectorSummary)
     executable = $false
   } | ConvertTo-Json -Depth 5
 }
@@ -1280,7 +1318,7 @@ if ($Command -eq 'self-check') {
 }
 
 function Assert-Parameters {
-  $idCommands = @('add', 'remove', 'pause', 'resume', 'schedule')
+  $idCommands = @('add', 'remove', 'pause', 'resume', 'schedule', 'connector')
   if ($DryRun -and $Command -cne 'tick') { throw "Flag -DryRun hanya berlaku untuk tick, bukan $Command." }
   if (-not [string]::IsNullOrWhiteSpace($Id) -and $Command -cnotin $idCommands) { throw "Parameter -Id tidak berlaku untuk $Command." }
   foreach ($pair in @(@('Name', $Name), @('Cron', $Cron), @('EveryMinutes', $EveryMinutes), @('Action', $Action), @('Resource', $Resource))) {
@@ -1290,9 +1328,11 @@ function Assert-Parameters {
   if (-not [string]::IsNullOrWhiteSpace($Zone) -and $Command -cnotin @('add', 'policy-check')) { throw "Parameter -Zone hanya berlaku untuk add dan policy-check." }
   if (-not [string]::IsNullOrWhiteSpace($Operation) -and $Command -cne 'policy-check') { throw 'Parameter -Operation hanya berlaku untuk policy-check.' }
   if (-not [string]::IsNullOrWhiteSpace($Origin) -and $Command -cne 'policy-check') { throw 'Parameter -Origin hanya berlaku untuk policy-check.' }
-  if (-not [string]::IsNullOrWhiteSpace($Sub) -and $Command -cnotin @('remote', 'secret', 'api')) { throw 'Parameter -Sub hanya berlaku untuk remote, secret, dan api.' }
+  if (-not [string]::IsNullOrWhiteSpace($Sub) -and $Command -cnotin @('remote', 'secret', 'api', 'connector')) { throw 'Parameter -Sub hanya berlaku untuk remote, secret, api, dan connector.' }
   if ($Command -eq 'secret' -and [string]::IsNullOrWhiteSpace($Sub)) { throw 'Parameter -Sub wajib untuk secret (set, list, remove, check).' }
   if ($Command -eq 'api' -and [string]::IsNullOrWhiteSpace($Sub)) { throw 'Parameter -Sub wajib untuk api (token, check, start).' }
+  if ($Command -eq 'connector' -and $Sub -notin @('list', 'validate', 'revoke')) { throw 'Parameter -Sub wajib untuk connector (list, validate, revoke).' }
+  if (-not [string]::IsNullOrWhiteSpace($Reviewer) -and $Command -cne 'connector') { throw 'Parameter -Reviewer hanya berlaku untuk connector.' }
   if (-not [string]::IsNullOrWhiteSpace($Port) -and $Command -cne 'api') { throw 'Parameter -Port hanya berlaku untuk api.' }
   if (-not [string]::IsNullOrWhiteSpace($Timeout) -and $Command -cne 'api') { throw 'Parameter -Timeout hanya berlaku untuk api start.' }
   if (-not [string]::IsNullOrWhiteSpace($BackupPath) -and $Command -cnotin @('backup', 'restore')) { throw 'Parameter -BackupPath hanya berlaku untuk backup dan restore.' }
@@ -1344,6 +1384,7 @@ try {
     'remote' { Invoke-Remote $Sub $Channel $Reset }
     'secret' { Invoke-Secret $Sub $Name }
     'api' { Invoke-Api $Sub $Port }
+    'connector' { Invoke-ConnectorCommand }
     'schedule' {
       if ([string]::IsNullOrWhiteSpace($Id)) { Invoke-ScheduleList } else { Invoke-WithLock -Body { Invoke-JobCommand 'schedule' } }
     }
