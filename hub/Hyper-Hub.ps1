@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
   [Parameter(Position = 0)]
-  [ValidateSet('init', 'status', 'discover', 'policy-check', 'add', 'run', 'tick', 'audit', 'self-check', 'jobs', 'schedule', 'remove', 'pause', 'resume', 'health', 'remote', 'backup', 'restore')]
+  [ValidateSet('init', 'status', 'discover', 'policy-check', 'add', 'run', 'tick', 'audit', 'self-check', 'jobs', 'schedule', 'remove', 'pause', 'resume', 'health', 'remote', 'backup', 'restore', 'secret')]
   [string]$Command = 'status',
   [string]$Zone,
   [string]$Operation,
@@ -771,6 +771,14 @@ function Read-DotEnv([string]$Path) {
   return $map
 }
 
+function Set-OwnerOnlyAcl([string]$Path) {
+  # ACL = hanya pemilik, tanpa warisan. icacls tidak butuh SeSecurityPrivilege
+  # (Set-Acl + SetAccessRuleProtection gagal di sesi non-admin).
+  $me = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+  $out = & icacls.exe $Path /inheritance:r /grant:r "${me}:(F)" 2>&1
+  if ($LASTEXITCODE -ne 0) { throw "Gagal mengunci ACL $Path : $out" }
+}
+
 function Write-DotEnv([string]$Path, $Map) {
   # Tulis atomik + ACL hanya pemilik. Gagal ACL = gagal keras.
   if ([string]::IsNullOrWhiteSpace($Path)) { throw 'Path .env kosong; kanal tidak dapat ditemukan.' }
@@ -778,11 +786,7 @@ function Write-DotEnv([string]$Path, $Map) {
   $lines = foreach ($k in $Map.Keys) { "$k=$($Map[$k])" }
   [IO.File]::WriteAllText($tmp, (($lines -join "`n") + "`n"), $utf8)
   if (Test-Path -LiteralPath $Path) { [IO.File]::Copy($tmp, $Path, $true); [IO.File]::Delete($tmp) } else { [IO.File]::Move($tmp, $Path) }
-  # ACL = hanya pemilik, tanpa warisan. icacls tidak butuh SeSecurityPrivilege
-  # (Set-Acl + SetAccessRuleProtection gagal di sesi non-admin).
-  $me = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-  $out = & icacls.exe $Path /inheritance:r /grant:r "${me}:(F)" 2>&1
-  if ($LASTEXITCODE -ne 0) { throw "Gagal mengunci ACL $Path : $out" }
+  Set-OwnerOnlyAcl $Path
 }
 
 function Assert-Secret([string]$Value, [string]$Label, [string]$Pattern) {
@@ -797,6 +801,81 @@ function Read-SecretInput([string]$Label) {
   $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
   try { return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr) }
   finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
+}
+
+function Get-SecretStorePath { return (Join-Path $Root 'secrets.json') }
+
+function Get-DpapiEntropy {
+  # Entropy mengikat secret ke root ini: blob dari mesin/root lain tidak bisa didekripsi.
+  return $utf8.GetBytes("HyperHub|" + [System.IO.Path]::GetFullPath($Root).ToLowerInvariant())
+}
+
+function ConvertTo-ProtectedSecret([string]$Value) {
+  # B-03: DPAPI CurrentUser. Kunci dikelola Windows, tidak pernah ditulis ke repo/log.
+  Add-Type -AssemblyName System.Security -ErrorAction Stop
+  $bytes = $utf8.GetBytes($Value)
+  try { return [Convert]::ToBase64String([Security.Cryptography.ProtectedData]::Protect($bytes, (Get-DpapiEntropy), [Security.Cryptography.DataProtectionScope]::CurrentUser)) }
+  finally { [Array]::Clear($bytes, 0, $bytes.Length) }
+}
+
+function ConvertFrom-ProtectedSecret([string]$Blob) {
+  Add-Type -AssemblyName System.Security -ErrorAction Stop
+  return $utf8.GetString([Security.Cryptography.ProtectedData]::Unprotect([Convert]::FromBase64String($Blob), (Get-DpapiEntropy), [Security.Cryptography.DataProtectionScope]::CurrentUser))
+}
+
+function Read-SecretStore {
+  $path = Get-SecretStorePath
+  if (-not [IO.File]::Exists($path)) { return [pscustomobject]@{ version = 1; secrets = [pscustomobject]@{} } }
+  $store = ConvertFrom-Json -InputObject ([IO.File]::ReadAllText($path, $utf8))
+  if ($store.version -ne 1 -or $null -eq $store.secrets -or $store.secrets -isnot [pscustomobject]) { throw 'Secret store tidak sah; tolak membaca.' }
+  return $store
+}
+
+function Save-SecretStore($Store) {
+  $path = Get-SecretStorePath
+  Write-Atomic -Path $path -Text (ConvertTo-Json -InputObject $Store -Depth 6)
+  Set-OwnerOnlyAcl $path
+}
+
+function Invoke-Secret([string]$Sub, [string]$Name) {
+  if ($Sub -notin @('set', 'list', 'remove', 'check')) { throw 'Sub secret: set, list, remove, check.' }
+  if ($Sub -in @('set', 'remove') -and [string]::IsNullOrWhiteSpace($Name)) { throw 'Parameter -Name wajib untuk secret set/remove.' }
+
+  if ($Sub -ceq 'list' -or $Sub -ceq 'check') {
+    $store = Read-SecretStore
+    $rows = @(@($store.secrets.PSObject.Properties) | Sort-Object Name | ForEach-Object {
+        $ok = $true
+        try { ConvertFrom-ProtectedSecret ([string]$_.Value.blob) | Out-Null } catch { $ok = $false }
+        [pscustomobject]@{ name = $_.Name; updatedAtUtc = [string]$_.Value.updatedAtUtc; decryptable = $ok }
+      })
+    return ([pscustomobject]@{ root = $Root; count = $rows.Count; secrets = $rows; valuesExposed = $false } | ConvertTo-Json -Depth 5)
+  }
+
+  if ([string]::IsNullOrWhiteSpace($Name) -or $Name -notmatch '^[A-Za-z][A-Za-z0-9._-]{1,63}$') { throw "Nama secret tidak sah: $Name" }
+  return Invoke-WithLock -Body {
+    $state = Read-State
+    if (-not (Test-Audit $state)) { throw 'AUDIT INVALID: refusing secret write.' }
+    $store = Read-SecretStore
+    if ($Sub -ceq 'set') {
+      $value = Read-SecretInput "Nilai secret ${Name}"
+      if ([string]::IsNullOrWhiteSpace($value)) { throw 'Secret kosong; tidak disimpan.' }
+      if ($store.secrets.PSObject.Properties.Name -notcontains $Name) {
+        $store.secrets | Add-Member -NotePropertyName $Name -NotePropertyValue ([pscustomobject]@{ blob = ''; updatedAtUtc = '' })
+      }
+      $store.secrets.$Name = [pscustomobject]@{ blob = (ConvertTo-ProtectedSecret $value); updatedAtUtc = (Format-Utc ([DateTime]::UtcNow)) }
+      Save-SecretStore $store
+      Add-Audit $state 'secret.set' 'n/a' 'allow' "name=$Name cipher=dpapi-currentuser"
+      Save-State $state
+      return ([pscustomobject]@{ name = $Name; stored = $true; cipher = 'dpapi-currentuser'; valueExposed = $false } | ConvertTo-Json -Depth 5)
+    }
+    $existing = @($store.secrets.PSObject.Properties | Where-Object { $_.Name -ceq $Name })
+    if ($existing.Count -eq 0) { throw "Secret tidak ada: $Name" }
+    $store.secrets.PSObject.Properties.Remove($Name)
+    Save-SecretStore $store
+    Add-Audit $state 'secret.remove' 'n/a' 'allow' "name=$Name"
+    Save-State $state
+    return ([pscustomobject]@{ name = $Name; removed = $true; valueExposed = $false } | ConvertTo-Json -Depth 5)
+  }
 }
 
 function Invoke-Remote([string]$Sub, [string]$Channel, [switch]$Reset) {
@@ -1067,9 +1146,32 @@ if ($Command -eq 'self-check') {
     [System.IO.File]::WriteAllText($script:auditPath, $text, $utf8)
     if (-not (Test-Audit $chainState)) { throw 'audit yang dipulihkan harus valid.' }
 
-    'Self-check passed: audit chain, tamper, cron bounds, everyMinutes mapping, job validation, and commit order.'
+    # B-03: DPAPI roundtrip, ciphertext != plaintext, root lain tidak bisa dekripsi.
+    $script:Root = Join-Path $tempRoot 'secret-root'
+    [void][System.IO.Directory]::CreateDirectory($script:Root)
+    $plain = 'token-uji-' + [Guid]::NewGuid().ToString('N')
+    $blob = ConvertTo-ProtectedSecret $plain
+    if ($blob -eq $plain -or $blob.Contains($plain)) { throw 'DPAPI: ciphertext memuat plaintext.' }
+    if ((ConvertFrom-ProtectedSecret $blob) -cne $plain) { throw 'DPAPI: roundtrip gagal.' }
+    $script:Root = Join-Path $tempRoot 'secret-root-lain'
+    [void][System.IO.Directory]::CreateDirectory($script:Root)
+    $foreign = $false
+    try { ConvertFrom-ProtectedSecret $blob | Out-Null } catch { $foreign = $true }
+    if (-not $foreign) { throw 'DPAPI: blob bisa didekripsi dari root lain.' }
+    $script:Root = Join-Path $tempRoot 'secret-root'
+    $store = Read-SecretStore
+    $store.secrets | Add-Member -NotePropertyName 'token-uji' -NotePropertyValue ([pscustomobject]@{ blob = $blob; updatedAtUtc = (Format-Utc ([DateTime]::UtcNow)) })
+    Save-SecretStore $store
+    $reloaded = Read-SecretStore
+    if ((ConvertFrom-ProtectedSecret ([string]$reloaded.secrets.'token-uji'.blob)) -cne $plain) { throw 'Secret store: roundtrip berkas gagal.' }
+    if ([IO.File]::ReadAllText((Get-SecretStorePath), $utf8).Contains($plain)) { throw 'Secret store: plaintext tersimpan.' }
+    try { $acl = Get-Acl -LiteralPath (Get-SecretStorePath); if ($acl.Access.Count -ne 1) { throw 'ACL secret store tidak hanya pemilik.' } } catch { if ($_.Exception.Message -notmatch 'tidak hanya pemilik') { throw } }
+    $script:Root = $Root
+
+    'Self-check passed: audit chain, tamper, cron bounds, everyMinutes mapping, job validation, commit order, and DPAPI secrets.'
   } finally {
     Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
+    $script:Root = $Root
     $script:statePath = Join-Path $Root 'state.json'
     $script:auditPath = Join-Path $Root 'audit.jsonl'
   }
@@ -1081,12 +1183,14 @@ function Assert-Parameters {
   if ($DryRun -and $Command -cne 'tick') { throw "Flag -DryRun hanya berlaku untuk tick, bukan $Command." }
   if (-not [string]::IsNullOrWhiteSpace($Id) -and $Command -cnotin $idCommands) { throw "Parameter -Id tidak berlaku untuk $Command." }
   foreach ($pair in @(@('Name', $Name), @('Cron', $Cron), @('EveryMinutes', $EveryMinutes), @('Action', $Action), @('Resource', $Resource))) {
-    if (-not [string]::IsNullOrWhiteSpace($pair[1]) -and $Command -cne 'add') { throw "Parameter -$($pair[0]) hanya berlaku untuk add." }
+    $owner = if ($pair[0] -ceq 'Name') { @('add', 'secret') } else { @('add') }
+    if (-not [string]::IsNullOrWhiteSpace($pair[1]) -and $Command -cnotin $owner) { throw "Parameter -$($pair[0]) hanya berlaku untuk $($owner -join '/')." }
   }
   if (-not [string]::IsNullOrWhiteSpace($Zone) -and $Command -cnotin @('add', 'policy-check')) { throw "Parameter -Zone hanya berlaku untuk add dan policy-check." }
   if (-not [string]::IsNullOrWhiteSpace($Operation) -and $Command -cne 'policy-check') { throw 'Parameter -Operation hanya berlaku untuk policy-check.' }
   if (-not [string]::IsNullOrWhiteSpace($Origin) -and $Command -cne 'policy-check') { throw 'Parameter -Origin hanya berlaku untuk policy-check.' }
-  if (-not [string]::IsNullOrWhiteSpace($Sub) -and $Command -cne 'remote') { throw 'Parameter -Sub hanya berlaku untuk remote.' }
+  if (-not [string]::IsNullOrWhiteSpace($Sub) -and $Command -cnotin @('remote', 'secret')) { throw 'Parameter -Sub hanya berlaku untuk remote dan secret.' }
+  if ($Command -eq 'secret' -and [string]::IsNullOrWhiteSpace($Sub)) { throw 'Parameter -Sub wajib untuk secret (set, list, remove, check).' }
   if (-not [string]::IsNullOrWhiteSpace($BackupPath) -and $Command -cnotin @('backup', 'restore')) { throw 'Parameter -BackupPath hanya berlaku untuk backup dan restore.' }
   if ($Command -ceq 'restore' -and [string]::IsNullOrWhiteSpace($BackupPath)) { throw 'Parameter -BackupPath wajib untuk restore.' }
   if (-not [string]::IsNullOrWhiteSpace($Channel) -and $Command -cne 'remote') { throw 'Parameter -Channel hanya berlaku untuk remote.' }
@@ -1134,6 +1238,7 @@ try {
     'backup' { Invoke-Backup }
     'restore' { Invoke-Restore }
     'remote' { Invoke-Remote $Sub $Channel $Reset }
+    'secret' { Invoke-Secret $Sub $Name }
     'schedule' {
       if ([string]::IsNullOrWhiteSpace($Id)) { Invoke-ScheduleList } else { Invoke-WithLock -Body { Invoke-JobCommand 'schedule' } }
     }

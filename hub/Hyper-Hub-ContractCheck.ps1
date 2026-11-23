@@ -99,6 +99,16 @@ try {
   Remove-Item -LiteralPath $backupDir -Recurse -Force -ErrorAction SilentlyContinue
   & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath remove -Root $root -Id backup-job | Out-Null
 
+  # B-03: perintah secret tidak boleh membocorkan nilai dan tidak boleh menerima nama tak sah.
+  $secretList = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath secret -Root $root -Sub list 2>&1 | ConvertFrom-Json
+  if ($LASTEXITCODE -ne 0 -or $secretList.count -ne 0 -or $secretList.valuesExposed -ne $false) { throw 'secret list contract failed.' }
+  $noSub = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), 'secret', '-Root', ('"' + $root + '"')) -Wait -PassThru -WindowStyle Hidden -RedirectStandardError (Join-Path $root 'secret-nosub.err')
+  if ($noSub.ExitCode -eq 0) { throw 'secret without -Sub must fail.' }
+  $badName = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), 'secret', '-Root', ('"' + $root + '"'), '-Sub', 'set', '-Name', '"bad name!"') -Wait -PassThru -WindowStyle Hidden -RedirectStandardError (Join-Path $root 'secret-bad.err')
+  if ($badName.ExitCode -eq 0) { throw 'secret with invalid name must fail.' }
+  $missing = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), 'secret', '-Root', ('"' + $root + '"'), '-Sub', 'remove', '-Name', 'tidak-ada') -Wait -PassThru -WindowStyle Hidden -RedirectStandardError (Join-Path $root 'secret-missing.err')
+  if ($missing.ExitCode -eq 0) { throw 'removing absent secret must fail.' }
+
   foreach ($command in @('add', 'run')) {
     $errorFile = Join-Path $root "$command.error"
     $attempt = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $scriptPath + '"'), $command, '-Root', ('"' + $root + '"')) -RedirectStandardError $errorFile -Wait -PassThru -WindowStyle Hidden
