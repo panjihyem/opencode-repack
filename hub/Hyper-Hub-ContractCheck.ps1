@@ -56,7 +56,7 @@ try {
   $dueState = [IO.File]::ReadAllText($stateFile) | ConvertFrom-Json
   $dueState.jobs = @(@($dueState.jobs) + @([pscustomobject]@{
     id = 'runner-job'; name = 'Runner job'; zone = 'regular'; cron = '0 9 * * *'; everyMinutes = $null; enabled = $true
-    nextRunUtc = '2020-01-01T00:00:00Z'; action = 'local.status'; resource = 'self'; policy = 'allow'
+    nextRunUtc = [DateTime]::UtcNow.AddMinutes(-1).ToString('yyyy-MM-ddTHH:mm:ssZ'); action = 'local.status'; resource = 'self'; policy = 'allow'
   }))
   [IO.File]::WriteAllText($stateFile, ($dueState | ConvertTo-Json -Depth 10))
   $live = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath tick -Root $root | ConvertFrom-Json
@@ -77,7 +77,7 @@ try {
   & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath runner -Root $root -Sub enable -Actor 'contract-reviewer' | Out-Null
   & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath add -Root $root -Id timeout-job -Name 'Timeout job' -Zone regular -Cron '0 9 * * *' -Action local.status -Resource self | Out-Null
   $timeoutState = [IO.File]::ReadAllText($stateFile) | ConvertFrom-Json
-  foreach ($job in @($timeoutState.jobs)) { if ([string]$job.id -ceq 'timeout-job') { $job.nextRunUtc = '2020-01-01T00:00:00Z'; $job | Add-Member -NotePropertyName timeoutSeconds -NotePropertyValue 1 -Force } }
+  foreach ($job in @($timeoutState.jobs)) { if ([string]$job.id -ceq 'timeout-job') { $job.nextRunUtc = [DateTime]::UtcNow.AddMinutes(-1).ToString('yyyy-MM-ddTHH:mm:ssZ'); $job | Add-Member -NotePropertyName timeoutSeconds -NotePropertyValue 1 -Force } }
   [IO.File]::WriteAllText($stateFile, ($timeoutState | ConvertTo-Json -Depth 10))
   $slow = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath tick -Root $root | ConvertFrom-Json
   if ($LASTEXITCODE -ne 0 -or $slow.deadLetter -ne 1) { throw 'timeout must end in dead-letter.' }
@@ -203,10 +203,18 @@ try {
     if (-not $unauthorized) { throw 'api must reject requests without bearer.' }
     $checked = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath api -Root $root -Sub check -Port "$apiPort" | ConvertFrom-Json
     if ($LASTEXITCODE -ne 0 -or $checked.httpStatus -ne 200 -or $checked.elapsedMs -ge 1000 -or $checked.valuesExposed -ne $false) { throw 'api check contract failed (status/latency/redaction).' }
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath approval -Root $root -Sub request -Id api-approval -Actor requester -Reason api | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'approval request for api contract failed.' }
     $token = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptPath api -Root $root -Sub token | ConvertFrom-Json).token
     if ([string]::IsNullOrWhiteSpace($token) -or $token.Length -lt 32) { throw 'api token must be long random.' }
     $body = (Invoke-WebRequest -Uri "http://127.0.0.1:$apiPort/status" -Headers @{ Authorization = "Bearer $token" } -UseBasicParsing -TimeoutSec 3).Content
     if ($body -match [regex]::Escape($token) -or $body -match 'blob|secret') { throw 'api payload must not expose secrets.' }
+    $approvals = (Invoke-WebRequest -Uri "http://127.0.0.1:$apiPort/approvals" -Headers @{ Authorization = "Bearer $token" } -UseBasicParsing -TimeoutSec 3).Content | ConvertFrom-Json
+    if ($approvals.valuesExposed -ne $false -or $approvals.pending -lt 1) { throw 'api /approvals must list pending without values.' }
+    $single = (Invoke-WebRequest -Uri "http://127.0.0.1:$apiPort/approvals/get" -Headers @{ Authorization = "Bearer $token" } -UseBasicParsing -TimeoutSec 3).Content | ConvertFrom-Json
+    if ($single.found -ne $false) { throw 'api /approvals/get tanpa id tidak boleh menemukan approval.' }
+    $unknown = (Invoke-WebRequest -Uri "http://127.0.0.1:$apiPort/approvals/get?id=tidak-ada" -Headers @{ Authorization = "Bearer $token" } -UseBasicParsing -TimeoutSec 3).Content | ConvertFrom-Json
+    if ($unknown.found -ne $false) { throw 'api /approvals/get id tak dikenal harus found=false.' }
     $notFound = $false
     try { Invoke-WebRequest -Uri "http://127.0.0.1:$apiPort/nope" -Headers @{ Authorization = "Bearer $token" } -UseBasicParsing -TimeoutSec 3 -ErrorAction Stop | Out-Null } catch { if ([int]$_.Exception.Response.StatusCode -eq 404) { $notFound = $true } }
     if (-not $notFound) { throw 'api must 404 unknown paths.' }

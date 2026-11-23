@@ -35,7 +35,7 @@ function Reset-Jobs([string]$Root, [int]$Count = 1, [int]$TimeoutSeconds = 30) {
   for ($i = 1; $i -le $Count; $i++) {
     $due += [pscustomobject]@{
       id = "load-$i"; name = "Load $i"; zone = 'regular'; cron = '0 9 * * *'; everyMinutes = $null; enabled = $true
-      nextRunUtc = '2020-01-01T00:00:00Z'; action = 'local.status'; resource = 'self'; policy = 'allow'; timeoutSeconds = $TimeoutSeconds
+      nextRunUtc = [DateTime]::UtcNow.AddMinutes(-1).ToString('yyyy-MM-ddTHH:mm:ssZ'); action = 'local.status'; resource = 'self'; policy = 'allow'; timeoutSeconds = $TimeoutSeconds
     }
   }
   $statePath = Join-Path $Root 'state.json'
@@ -110,7 +110,7 @@ try {
     $first = Invoke-Ps @('tick', '-Root', $root)
     $stateAfter = ConvertFrom-Json -InputObject ([IO.File]::ReadAllText($statePath, $utf8))
     $dead = @($stateAfter.runs | Where-Object { [string]$_.status -ceq 'dead-letter' }).Count
-    $advanced = [string]$stateAfter.jobs[0].nextRunUtc -cne '2020-01-01T00:00:00Z'
+    $advanced = [string]$stateAfter.jobs[0].nextRunUtc -cne $null -and [DateTime]::Parse([string]$stateAfter.jobs[0].nextRunUtc).ToUniversalTime() -gt [DateTime]::UtcNow.AddMinutes(-2)
     $second = Invoke-Ps @('tick', '-Root', $root)
     $stateSecond = ConvertFrom-Json -InputObject ([IO.File]::ReadAllText($statePath, $utf8))
     $deadSecond = @($stateSecond.runs | Where-Object { [string]$_.status -ceq 'dead-letter' }).Count
@@ -129,6 +129,23 @@ try {
     Reset-Jobs $root 1
     $r = Invoke-Ps @('tick', '-Root', $root)
     $r.text -match 'Runner disabled'
+  }
+
+  Check 'C-07 job terlewat di luar grace dicatat missed' {
+    Reset-Jobs $root 1
+    (Invoke-Ps @('runner', '-Root', $root, '-Sub', 'enable', '-Actor', 'load-test')) | Out-Null
+    $statePath = Join-Path $root 'state.json'
+    $state = ConvertFrom-Json -InputObject ([IO.File]::ReadAllText($statePath, $utf8))
+    $state.runs = @()
+    $state.jobs[0].nextRunUtc = [DateTime]::UtcNow.AddHours(-6).ToString('yyyy-MM-ddTHH:mm:ssZ')
+    [IO.File]::WriteAllText($statePath, (ConvertTo-Json -InputObject $state -Depth 10), $utf8)
+    $out = Invoke-Ps @('tick', '-Root', $root)
+    $live = ConvertFrom-Json -InputObject $out.text
+    $after = ConvertFrom-Json -InputObject ([IO.File]::ReadAllText($statePath, $utf8))
+    $missed = @($after.runs | Where-Object { [string]$_.status -ceq 'succeeded' }).Count -eq 0
+    $shifted = [DateTime]::Parse([string]$after.jobs[0].nextRunUtc).ToUniversalTime() -gt [DateTime]::UtcNow
+    $audited = [IO.File]::ReadAllText((Join-Path $root 'audit.jsonl'), $utf8) -match 'job.missed'
+    $missed -and $shifted -and $audited -and $live.missed -eq 1
   }
 }
 finally {

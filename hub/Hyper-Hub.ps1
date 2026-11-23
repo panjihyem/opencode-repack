@@ -630,6 +630,16 @@ function Invoke-Tick {
 
     $results = @()
     foreach ($job in $due) {
+      # C-07: grace window. Job yang terlewat lebih dari batas dicatat missed, tidak
+      # dijalankan menumpuk saat PC baru hidup; nextRun dimajukan ke jadwal berikutnya.
+      $dueAt = [DateTime]::Parse([string]$job.nextRunUtc).ToUniversalTime()
+      $graceMinutes = 120
+      if (($now - $dueAt).TotalMinutes -gt $graceMinutes) {
+        $job.nextRunUtc = Format-Utc (Get-NextRunUtc $job $now)
+        Add-Audit $state 'job.missed' ([string]$job.id) 'deny' "terlambat $([int]($now - $dueAt).TotalMinutes) menit > grace $graceMinutes"
+        $results += [pscustomobject]@{ jobId = [string]$job.id; status = 'missed'; reason = "melewati grace $graceMinutes menit" }
+        continue
+      }
       $decision = Get-EngineDecision 'regular' 'local.status' 'self' ''
       if ([string]$decision.decision -cne 'allow') {
         Add-Audit $state 'job.blocked' ([string]$job.id) 'deny' ([string]$decision.reason)
@@ -642,7 +652,7 @@ function Invoke-Tick {
       Add-Audit $state "job.$($run.status)" ([string]$job.id) 'allow' "attempts=$($run.attempts)"
     }
     if ($results.Count -gt 0) { Save-State $state }
-    [pscustomobject]@{ mode = 'live'; dueCount = @($due).Count; notDue = $notDue; launched = @($results | Where-Object { $_.status -ceq 'succeeded' }).Count; blocked = @($results | Where-Object { $_.status -ceq 'blocked' }).Count; deadLetter = @($results | Where-Object { $_.status -ceq 'dead-letter' }).Count; results = @($results); executable = $true } | ConvertTo-Json -Depth 6
+    [pscustomobject]@{ mode = 'live'; dueCount = @($due).Count; notDue = $notDue; launched = @($results | Where-Object { $_.status -ceq 'succeeded' }).Count; blocked = @($results | Where-Object { $_.status -ceq 'blocked' }).Count; missed = @($results | Where-Object { $_.status -ceq 'missed' }).Count; deadLetter = @($results | Where-Object { $_.status -ceq 'dead-letter' }).Count; results = @($results); executable = $true } | ConvertTo-Json -Depth 6
   } finally {
     if ($null -ne $lock) { $lock.Dispose() }
   }
@@ -837,6 +847,27 @@ function Invoke-ApprovalCommand {
   $code = $LASTEXITCODE
   $output | ForEach-Object { $_ }
   if ($code -ne 0) { throw "Perintah approval gagal (exit $code)." }
+}
+
+function Get-ApprovalPayload([string]$Kind) {
+  # D-08: bentuk data untuk pending permission. Nilai prompt tidak pernah ikut; hanya
+  # id, aktor, alasan, status, dan waktu. Saat dipanggil lewat HTTP, $script:ApiRequestId
+  # diisi dari query string ?id=.
+  $broker = $null
+  $path = Join-Path $Root 'approvals.json'
+  if ([IO.File]::Exists($path)) { $broker = ConvertFrom-Json -InputObject ([IO.File]::ReadAllText($path, $utf8)) }
+  $rows = @()
+  if ($null -ne $broker -and $null -ne $broker.requests) {
+    $rows = @($broker.requests.PSObject.Properties | ForEach-Object {
+        $r = $_.Value
+        [pscustomobject]@{ id = $_.Name; actor = [string]$r.actor; reason = [string]$r.reason; state = [string]$r.state; expiresAtUtc = [string]$r.expiresAtUtc; consumed = [bool]$r.consumed }
+      } | Where-Object { $_.state -ceq 'pending' })
+  }
+  if ($Kind -ceq 'list') { return [pscustomobject]@{ pending = $rows.Count; approvals = $rows; valuesExposed = $false } }
+  $wanted = if (-not [string]::IsNullOrWhiteSpace($script:ApiRequestId)) { $script:ApiRequestId } else { $Id }
+  $target = @($rows | Where-Object { $_.id -ceq $wanted })
+  if ($target.Count -ne 1) { return [pscustomobject]@{ id = $wanted; found = $false; valuesExposed = $false } }
+  return [pscustomobject]@{ id = $wanted; found = $true; approval = $target[0]; valuesExposed = $false }
 }
 
 function Invoke-Health {
@@ -1141,9 +1172,12 @@ function Invoke-Api([string]$Sub, [string]$Port) {
           $response = $context.Response
           try {
             if ($request.Headers['Authorization'] -cne "Bearer $token") { $response.StatusCode = 401 } else {
+              $script:ApiRequestId = [string]$request.QueryString['id']
               $payload = switch ($request.Url.AbsolutePath) {
                 '/health' { Get-ApiPayload }
                 '/status' { Get-ApiPayload }
+                '/approvals' { Get-ApprovalPayload 'list' }
+                '/approvals/get' { Get-ApprovalPayload 'get' }
                 default { $null }
               }
               if ($null -eq $payload) { $response.StatusCode = 404 } else {
