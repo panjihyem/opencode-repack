@@ -54,7 +54,7 @@ export function plan(sources: ConfigDiscovery.Sources) {
       ...directories.map((path) => ({
         path,
         type: "directory" as const,
-        ignore: FSUtil.ignoreGlobs,
+        ignore: ["node_modules", ".git", "**/{node_modules,.git}/**"],
       })),
       ...Array.from(parents, ([parent, files]) => ({
         path: parent,
