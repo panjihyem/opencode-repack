@@ -25,7 +25,8 @@ const usage = () =>
     "  recall <kueri>      Cari fakta di seluruh bank (opsional: --bank <nama> --limit <n>)",
     "  banks               Daftar bank memori",
     "  fetch --source kemenkeu [--limit 20]  Simpan katalog regulasi dari feed resmi JDIH Kemenkeu",
-    "  viz <job.json>      Render chart ECharts (sankey/graph/treemap/…) ke SVG/PNG di folder job",
+     "  viz <job.json>      Render chart ECharts (sankey/graph/treemap/…) ke SVG/PNG di folder job",
+     "  audit <feature> <input.json>  Workpaper audit lokal; JSON ke stdout, tanpa jaringan",
     "",
     "Server memori berjalan bersama aplikasi Hyper AI; `hyper sync` memerlukan aplikasi terbuka.",
     "`hyper viz` memakai Chromium milik aplikasi dan bisa jalan saat aplikasi terbuka.",
@@ -120,6 +121,25 @@ const runViz = async (jobFile) => {
 async function main() {
   const [command, ...rest] = process.argv.slice(2)
   if (!command || command === "--help" || command === "-h" || command === "help") return console.log(usage())
+
+  if (command === "audit") {
+    const { audit, commands } = await import("./audit.mjs")
+    if (rest.length !== 2 && !(rest.length === 6 && rest[2] === "--docx" && rest[4] === "--python")) throw new Error(`usage: hyper audit <feature> <input.json> [--docx <new.docx> --python <office-python>]; features: ${Object.keys(commands).join(", ")}`)
+    const file = await readFileAsync(path.resolve(rest[1]), "utf8")
+    const result = audit(rest[0], JSON.parse(file))
+    if (rest.length === 6) {
+      if (rest[0] !== "investigation-drafting") throw new Error("--docx only supported for investigation-drafting")
+      await new Promise((resolve, reject) => {
+        const child = spawn(rest[5], [path.join(binDir, "audit-export.py"), path.resolve(rest[3])], { stdio: ["pipe", "inherit", "inherit"] })
+        child.on("error", reject)
+        child.stdin.on("error", reject)
+        child.on("exit", (code) => code === 0 ? resolve() : reject(new Error(`DOCX export failed: ${code}`)))
+        child.stdin.end(JSON.stringify(result))
+      })
+    }
+    console.log(JSON.stringify(result, null, 2))
+    return
+  }
 
   // `viz` needs neither the memory server nor knowledge.mjs: it spawns the desktop app's
   // own Chromium headlessly, and it works even while the app window is open.

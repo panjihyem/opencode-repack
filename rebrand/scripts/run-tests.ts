@@ -18,6 +18,7 @@ function run(label: string, command: string, args: string[], cwd: string) {
 }
 
 run("bun test", process.execPath, ["test"], root)
+run("audit engine", process.execPath, [path.join(root, "test", "audit.check.mjs")], root)
 
 const e2e = path.join(root, "test", "e2e")
 for (const file of readdirSync(e2e).sort()) {
