@@ -362,10 +362,17 @@ const rules: Rule[] = [
   {
     // Upstream menaruh perintah resume di dalam template literal besar, jadi
     // yang ditarget potongan "opencode -s <id>" tanpa backtick pembuka.
+    // Bentuk `input.sessionID` (>= v2.2) dan `input.session.sessionID` (v2.1.x)
+    // sama-sama didukung agar repack tidak bergantung pada satu tag.
+    file: "packages/tui/src/util/presentation.ts",
+    find: "opencode -s ${input.session.sessionID}",
+    replace: `${CLI} -s \${input.session.sessionID}`,
+    critical: true,
+  },
+  {
     file: "packages/tui/src/util/presentation.ts",
     find: "opencode -s ${input.sessionID}",
     replace: `${CLI} -s \${input.sessionID}`,
-    critical: true,
   },
   { file: "packages/tui/src/util/presentation.ts", find: "${left} ${right}", replace: "${left}  ${right}" },
   {
