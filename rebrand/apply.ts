@@ -302,6 +302,15 @@ const rules: Rule[] = [
     replace: `--user-agent=${CLI}/`,
     critical: true,
   },
+  {
+    // GitHub API anonim dibatasi ~60 req/jam dan runner CI sering kena 403 saat
+    // resolve rilis Bun. Pakai GH_TOKEN bila ada; tanpa token perilaku lama tetap.
+    file: "packages/cli/script/build.ts",
+    find: "const pending = fetch(`https://api.github.com/repos/oven-sh/bun/releases/tags/${release}?cache=${Date.now()}`)",
+    replace:
+      'const pending = fetch(`https://api.github.com/repos/oven-sh/bun/releases/tags/${release}?cache=${Date.now()}`, process.env.GH_TOKEN ? { headers: { authorization: `Bearer ${process.env.GH_TOKEN}` } } : undefined)',
+    critical: true,
+  },
 
   // ---- SDK: default service spawn fallback -------------------------------
   {
